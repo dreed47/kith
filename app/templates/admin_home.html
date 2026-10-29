@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon %}
+{% block title %}Admin · {{ super() }}{% endblock %}
+{% macro row(href, label, note) %}<li><a href="{{ href }}">{{ label }}</a><span class="muted small">{{ note }}</span></li>{% endmacro %}
+{% block content %}
+<h1>Admin</h1>
+{% if insecure_cookies %}<p class="card error" role="alert">This site is reached over HTTPS, but the login cookie can
+  still be sent without it. Set <code>KITH_SECURE_COOKIES=1</code> in the site's settings (and
+  <code>KITH_TRUSTED_PROXIES=1</code> behind a reverse proxy), then restart.</p>{% endif %}
+<section class="card">
+  <h2 class="card-title">{{ icon("inbox") }}Waiting on someone</h2>
+  <div class="queue">
+    <a href="{{ url_for('admin.users', show='pending') }}"><strong>{{ counts.registrations }}</strong>New account registrations</a>
+    <a href="{{ url_for('me.requests') }}"><strong>{{ counts.links }}</strong>"This is me" link requests</a>
+    <a href="{{ url_for('feedback.index') }}"><strong>{{ counts.feedback }}</strong>Open feedback reports</a>
+  </div>
+</section>
+<section class="card">
+  <h2 class="card-title">{{ icon("users") }}Recent visits</h2>
+  {% if visits %}
+  <table class="facts visits">
+    <tr><th>Who</th><th>Last active</th><th>Arrived</th><th>From</th></tr>
+    {% for v in visits %}
+    <tr><td><a href="{{ url_for('admin.user', uid=v.userID) }}">{{ v.username }}</a></td>
+      <td title="{{ v.last_seen|local }}">{{ v.last_seen|ago }}</td>
+      <td class="small">{{ (v.started|local).strftime("%-d %b %Y, %-I:%M %p") }}</td>
+      <td class="small muted">{{ v.ip }}</td></tr>
+    {% endfor %}
+  </table>
+  {% else %}<p class="muted">Nobody has visited since visits started being recorded.</p>{% endif %}
+</section>
+<div class="admin-grid">
+  <section class="card">
+    <h2 class="card-title">{{ icon("users") }}People who use the site</h2>
+    <ul class="admin-links">
+      {{ row(url_for('admin.users'), "User accounts", "add, change rights, reset passwords, disable") }}
+      {{ row(url_for('admin.email_everyone'), "Email everyone", "one message to every account holder") }}
+      {{ row(url_for('admin.activity'), "Activity log", "every change, who made it and when") }}
+    </ul>
+  </section>
+  <section class="card">
+    <h2 class="card-title">{{ icon("settings") }}The site</h2>
+    <ul class="admin-links">
+      {{ row(url_for('admin.settings'), "Site settings", "default theme, site title, tagline, welcome page text") }}
+      {{ row(url_for('admin.event_types'), "Kinds of event", "add, rename or hide the choices in \"Add event\"") }}
+      {{ row(url_for('admin.history_events'), "Historical events", "shown on timelines") }}
+    </ul>
+  </section>
+  <section class="card">
+    <h2 class="card-title">{{ icon("edit") }}Tidy the tree</h2>
+    <ul class="admin-links">
+      {{ row(url_for('edit.checks'), "Data checks", "impossible dates and ages, odd family links") }}
+      {{ row(url_for('main.dates_to_fix'), "Dates to fix", "dates that can't be read, so don't sort") }}
+      {{ row(url_for('edit.living_flags'), "Living flags", "people marked living (or not) against their dates") }}
+      {{ row(url_for('edit.merge_page'), "Merge duplicate people", "find and combine records of the same person") }}
+      {{ row(url_for('edit.surname_aliases'), "Surname spellings", "treat spellings like Schmidt and Schmitt as one surname") }}
+      {{ row(url_for('edit.tidy_places'), "Tidy places", "combine places written different ways, delete unused ones") }}
+      {{ row(url_for('edit.place_coordinates'), "Place coordinates", "places the map lookup placed roughly or not at all") }}
+      {{ row(url_for('edit.search_notes'), "Search notes", "find any note by its words") }}
+    </ul>
+  </section>
+  <section class="card">
+    <h2 class="card-title">{{ icon("book") }}Import, export, backups</h2>
+    <ul class="admin-links">
+      {{ row(url_for('admin.backups'), "Backups", "make one now, see them, put the site back to one") }}
+      {{ row(url_for('admin.import_gedcom'), "Import a GEDCOM file", "add people from a relative's genealogy program") }}
+      {% if g.user.allow_ged == 1 %}{{ row(url_for('main.export'), "Export the whole tree as GEDCOM", "for other genealogy programs") }}
+      {% else %}<li><span>Export as GEDCOM</span><span class="muted small">needs the Download GEDCOM right on your account (User accounts)</span></li>{% endif %}
+    </ul>
+  </section>
+</div>
+{% endblock %}

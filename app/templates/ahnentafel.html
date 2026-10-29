@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% from "_macros.html" import gens_picker, person_link %}
+{% from "_chart_tabs.html" import chart_tabs %}
+{% block title %}Ahnentafel: {{ pname(root) }} · {{ super() }}{% endblock %}
+{% macro vitals(p) -%}
+{%- if rights(p).both -%}
+{%- for label, date, place in (("born", p.birthdate, p.birthplace), ("baptized" if p.altbirthtype == "BAPM" else "christened", p.altbirthdate, p.altbirthplace), ("died", p.deathdate, p.deathplace), ("cremated" if p.burialtype == 1 else "buried", p.burialdate, p.burialplace)) if date or place %}{{ "; " if not loop.first }}{{ label }} {{ date|d }}{% if date and place %}, {% endif %}{{ place }}{% endfor -%}
+{%- endif -%}
+{%- endmacro %}
+{% block content %}
+<h1>Ahnentafel: {{ pname(root) }}</h1>
+{{ chart_tabs(root.personID, "main.ahnentafel") }}
+{{ gens_picker(choices, gens) }}
+<p class="muted small">Every ancestor has a number: the person is 1, a father is twice his child's number, a mother twice plus one.</p>
+{% for gen in generations %}
+<section class="card"><h2>{{ loop.index0|generation_name or "Generation 1" }}</h2>
+  <ol class="ahnentafel">
+    {% for n, p in gen %}
+    {% set fam = parents.get(n // 2) if n % 2 == 0 else None %}
+    <li value="{{ n }}"><span class="reg-num">{{ n }}.</span> {{ person_link(p) }} <span class="small">{{ vitals(p) }}</span>
+      {% if fam and rights(fam).both and (fam.marrdate or fam.marrplace) %}<span class="small muted">· married {{ fam.marrdate|d }}{% if fam.marrdate and fam.marrplace %}, {% endif %}{{ fam.marrplace }}</span>{% endif %}</li>
+    {% endfor %}
+  </ol>
+</section>
+{% endfor %}
+{% endblock %}

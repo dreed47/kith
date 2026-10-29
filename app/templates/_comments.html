@@ -1,0 +1,17 @@
+{#- Comments on a person or photo (app/comments.py). Shown only to those who may see the record in full. -#}
+{% macro comments_section(comments, kind, target) %}
+<section class="card" id="comments">
+  <h2>Comments</h2>
+  {% for c in comments %}<div class="note"><p class="small muted">{{ c.username }} · {{ (c.created_at|local).strftime("%-d %b %Y %H:%M") }}
+    {%- if c.userID == g.user.userID or g.user.allow_edit == 1 %}
+    <form method="post" action="{{ url_for('comments.delete', cid=c.id) }}" class="inline">
+      <input type="hidden" name="csrf" value="{{ csrf_token() }}"> · <button class="linklike small">Remove</button></form>{% endif %}</p>
+    <div class="pre">{{ c.body }}</div></div>
+  {% else %}<p class="muted small">Know something about this{{ " photo" if kind == "media" }}, or spotted a mistake? Say so here.</p>{% endfor %}
+  <form method="post" action="{{ url_for('comments.add', kind=kind, target=target) }}" class="edit-form add-child">
+    <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+    <label>Add a comment <textarea name="body" rows="3" required maxlength="5000"></textarea></label>
+    <div class="form-actions"><button>Add comment</button></div>
+  </form>
+</section>
+{% endmacro %}

@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% from "_macros.html" import chart_face, gens_picker, lifespan, photos_toggle %}
+{% from "_chart_tabs.html" import chart_tabs %}
+{% block title %}Hourglass: {{ pname(root) }} · {{ super() }}{% endblock %}
+{% macro box(p, key, up, extra="") %}
+<div class="vped-box{{ extra }}{% if not p %} empty{% endif %}"{% if p %} data-key="{{ key }}" data-from="{{ up }}"{% endif %}>{% if p %}<a href="{{ url_for('main.hourglass', pid=p.personID, gens=gens) }}">{{ pname(p) }}</a>{{ lifespan(p) }}{{ chart_face(p, photos) }}{% endif %}</div>
+{% endmacro %}
+{% macro node(p, key, up, extra="") %}
+<div class="hg-node">{{ box(p, key, up, extra) }}{% if kids_of[p.personID] %}<div class="hg-kids">{% for c in kids_of[p.personID] %}{{ node(c, "d" ~ c.personID, key) }}{% endfor %}</div>{% endif %}</div>
+{% endmacro %}
+{% block content %}
+<h1>Hourglass: {{ pname(root) }}</h1>
+{{ chart_tabs(root.personID, "main.hourglass") }}
+<div class="chart-options">{{ gens_picker(choices, gens) }}{{ photos_toggle(photos) }}</div>
+<div class="vped">
+  {% for row in above %}<div class="vped-row">{% for n, p in row %}{{ box(p, "a" ~ n, "a" ~ 2 * n ~ " a" ~ (2 * n + 1)) }}{% endfor %}</div>
+  {% endfor %}
+  <div class="vped-row">{{ node(root, "a1", "a2 a3", " hg-root") }}</div>
+  {% if not above and not kids_of %}<p class="muted">No parents or children recorded.</p>{% endif %}
+</div>
+<script src="{{ url_for('static', filename='chartlines.js') }}" defer></script>
+{% endblock %}

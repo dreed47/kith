@@ -1,0 +1,72 @@
+/* Heritage: an old family bible. Parchment with a faint grain, oxblood ink, gold rules, Garamond type. */
+@font-face { font-family: "Cormorant Garamond"; src: url("../static/fonts/cormorant-garamond-latin-600-normal.woff2") format("woff2"); font-weight: 600; font-display: swap; }
+@font-face { font-family: "Cormorant Garamond"; src: url("../static/fonts/cormorant-garamond-latin-700-normal.woff2") format("woff2"); font-weight: 700; font-display: swap; }
+@font-face { font-family: "EB Garamond"; src: url("../static/fonts/eb-garamond-latin-wght-normal.woff2") format("woff2"); font-weight: 400 800; font-display: swap; }
+@font-face { font-family: "EB Garamond"; src: url("../static/fonts/eb-garamond-latin-wght-italic.woff2") format("woff2"); font-weight: 400 800; font-style: italic; font-display: swap; }
+
+:root {
+  color-scheme: light dark;
+  --font-body: "EB Garamond", Georgia, "Times New Roman", serif;
+  --font-heading: "EB Garamond", Georgia, serif;
+  --font-display: "Cormorant Garamond", "EB Garamond", Georgia, serif;
+  --font-size: 108%;
+  --radius: 3px;
+  --radius-lg: 6px;
+  --space-3: 0.75rem;
+  --space-4: 1.2rem;
+  --link-underline: 45%;
+
+  --bg: #f1e8d5;
+  --surface: #fbf6ea;
+  --surface-2: #f2e8d3;
+  --border: #d9c6a0;
+  --shadow: 0 12px 30px rgb(60 35 15 / 0.22);
+  --shadow-card: 0 1px 0 rgb(60 35 15 / 0.08), 0 3px 10px rgb(60 35 15 / 0.06);
+  --text: #35281b;
+  --text-muted: #7a654a;
+  --heading: #4a2614;
+  --link: #8a3412;
+  --accent: #8a3412;
+  --accent-text: #fbf6ea;
+  --accent-soft: #eedbbd;
+  --highlight: #c9a227;
+  --danger: #a1260f;
+  --header-bg: #3b2215;
+  --header-text: #f6ead2;
+  --hero-bg: linear-gradient(160deg, #3b2215 0%, #5d3420 65%, #7a4426 100%);
+  --hero-text: #f6ead2;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #19130d;
+    --surface: #241b13;
+    --surface-2: #2d2218;
+    --border: #4a3a28;
+    --shadow: 0 12px 30px rgb(0 0 0 / 0.6);
+    --shadow-card: 0 1px 2px rgb(0 0 0 / 0.35);
+    --text: #ecdfc5;
+    --text-muted: #b6a07e;
+    --heading: #f0d9a8;
+    --link: #e3a66a;
+    --accent: #dd9b5a;
+    --accent-text: #1d140c;
+    --accent-soft: #3e2b19;
+    --highlight: #d4af45;
+    --danger: #f08a6c;
+    --header-bg: #110c08;
+    --header-text: #f0d9a8;
+    --hero-bg: linear-gradient(160deg, #1d130b 0%, #3a2414 100%);
+    --hero-text: #f0d9a8;
+  }
+}
+
+/* Character beyond the tokens: paper grain, a double gold rule under the header, small-capital headings. */
+body { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.35 0 0 0 0 0.22 0 0 0 0 0.1 0 0 0 0.07 0'/%3E%3C/filter%3E%3Crect width='240' height='240' filter='url(%23n)'/%3E%3C/svg%3E"); }
+.site-header { border-bottom: 4px double var(--highlight); }
+h2, .card-title, .eyebrow, .family-glance h3 { font-variant: small-caps; letter-spacing: 0.04em; text-transform: none; }
+.eyebrow, .family-glance h3 { font-size: 0.95rem; font-weight: 600; }
+h1, .site-title, .person-summary h1 { font-weight: 700; letter-spacing: 0; }
+.card { border-color: var(--border); }
+.avatar { font-family: var(--font-display); font-size: 0.95rem; }
+.timeline li::after { border-radius: 0; transform: rotate(45deg); }

@@ -1,0 +1,20 @@
+[project]
+name = "kith"
+version = "0.1.0"
+requires-python = ">=3.12"
+dependencies = [
+    "flask>=3.1",
+    "pillow>=13.0.0",
+    "pymysql>=1.1",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8",
+    "pytest-cov>=7.1.0",
+]
+
+[tool.pytest.ini_options]
+pythonpath = [".", "tests"]
+# Every line and branch of app/ must be exercised; the run fails below 100%.
+addopts = "--cov=app --cov-branch --cov-report=term-missing:skip-covered --cov-fail-under=100"

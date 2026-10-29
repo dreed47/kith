@@ -1,0 +1,184 @@
+"""More chart styles (TNG's verticalchart, fan, ahnentafel, descendtables and familychart): the same ancestors and
+descendants as the pedigree and descendants pages, drawn other ways."""
+import math
+
+from flask import abort, render_template
+
+from .db import query
+from .privacy import display_name, rights
+from .views import (DESCEND_GENS, ancestors, bp, chart_photos, children_by_family, families_of, gens_arg, one,
+                    people_by_id, tree)
+
+VERTICAL_GENS = range(3, 6)  # each generation doubles the width: 16 boxes across is the most that fits a screen
+FAN_GENS = range(3, 7)
+LIST_GENS = range(3, 11)
+HOURGLASS_GENS = range(1, 5)  # each way from the person
+FAN_RING = 70  # pixels per generation
+FAN_CENTER = 60  # radius of the middle (the person themselves)
+
+
+def get_person(pid):
+    p = one("SELECT * FROM people WHERE gedcom = %s AND personID = %s", (tree(), pid))
+    if not p:
+        abort(404)
+    return p
+
+
+@bp.get("/pedigree/<pid>/vertical")
+def vertical_pedigree(pid):
+    """Ancestors upward: the person at the bottom, each generation a row above."""
+    gens = gens_arg(VERTICAL_GENS, 4)
+    root = get_person(pid)
+    slots, _ = ancestors(root, gens)
+    rows = [[(n, slots.get(n)) for n in range(2 ** g, 2 ** (g + 1))] for g in reversed(range(gens))]
+    return render_template("pedigree_vertical.html", root=root, rows=rows, gens=gens, choices=VERTICAL_GENS,
+                           photos=chart_photos(p for row in rows for _, p in row))
+
+
+def descendant_rows(root, gens):
+    """Each generation below root as a row of groups, one per parent: [[(parent, [child, ...]), ...], ...]."""
+    rows, seen, current = [], {root["personID"]}, [root]
+    for _ in range(gens):
+        fams = families_of([p["personID"] for p in current])
+        kids = children_by_family([f["familyID"] for fs in fams.values() for f in fs])
+        row = []
+        for p in current:
+            mine = [c for f in fams.get(p["personID"], []) for c in kids.get(f["familyID"], [])
+                    if c["personID"] not in seen]  # a loop in bad data stops instead of repeating
+            seen.update(c["personID"] for c in mine)
+            if mine:
+                row.append((p, mine))
+        if not row:
+            break
+        rows.append(row)
+        current = [c for _, cs in row for c in cs]
+    return rows
+
+
+@bp.get("/hourglass/<pid>")
+def hourglass(pid):
+    """Ancestors above, descendants below as a tree (each person centred over their own children)."""
+    gens = gens_arg(HOURGLASS_GENS, 2)
+    root = get_person(pid)
+    slots, _ = ancestors(root, gens + 1)
+    above = [[(n, slots.get(n)) for n in range(2 ** g, 2 ** (g + 1))] for g in reversed(range(1, gens + 1))]
+    above = [row for row in above if any(p for _, p in row)]  # no empty rows past the furthest known generation
+    below = descendant_rows(root, gens)
+    everyone = [root, *(p for row in above for _, p in row), *(c for row in below for _, cs in row for c in cs)]
+    kids_of = {parent["personID"]: kids for row in below for parent, kids in row}
+    return render_template("hourglass.html", root=root, above=above, kids_of=kids_of, gens=gens,
+                           choices=HOURGLASS_GENS, photos=chart_photos(everyone))
+
+
+def point(r, degrees):
+    a = math.radians(degrees)
+    return round(r * math.cos(a), 1), round(-r * math.sin(a), 1)
+
+
+def fan_sectors(slots, gens):
+    """SVG pieces for a half-circle fan: father's side on the left, mother's on the right. Each generation is a
+    ring; each ancestor gets an equal slice of it, with their name written along the slice (outer rings, where
+    slices are narrow, write it outward from the middle)."""
+    out = []
+    for g in range(1, gens):
+        span = 180 / 2 ** g
+        inner, outer = FAN_CENTER + (g - 1) * FAN_RING, FAN_CENTER + g * FAN_RING
+        for i, n in enumerate(range(2 ** g, 2 ** (g + 1))):
+            start, end = 180 - i * span, 180 - (i + 1) * span
+            (x1, y1), (x2, y2), (x3, y3), (x4, y4) = (point(inner, start), point(outer, start),
+                                                      point(outer, end), point(inner, end))
+            path = (f"M{x1},{y1} L{x2},{y2} A{outer},{outer} 0 0 1 {x3},{y3} L{x4},{y4}"
+                    f" A{inner},{inner} 0 0 0 {x1},{y1} Z")
+            mid, radius = (start + end) / 2, (inner + outer) / 2
+            x, y = point(radius, mid)
+            radial = g >= 3  # thin slices: read along the radius
+            room = (FAN_RING if radial else math.radians(span) * radius) / 6.5  # characters that fit
+            angle = -mid if mid <= 90 else 180 - mid  # outward text, never upside down
+            out.append({"n": n, "path": path, "x": x, "y": y, "rotate": round(angle if radial else 90 - mid, 1),
+                        "person": slots.get(n), "room": int(room)})
+    return out
+
+
+def short(text, room):
+    return text if len(text) <= room else text[:max(room - 1, 1)].rstrip() + "…"
+
+
+@bp.get("/pedigree/<pid>/fan")
+def fan_chart(pid):
+    gens = gens_arg(FAN_GENS, 5)
+    root = get_person(pid)
+    slots, _ = ancestors(root, gens)
+    sectors = fan_sectors(slots, gens)
+    for s in sectors:
+        s["label"] = short(display_name(s["person"]), s["room"]) if s["person"] else ""
+    size = FAN_CENTER + (gens - 1) * FAN_RING
+    return render_template("fan.html", root=root, sectors=sectors, gens=gens, choices=FAN_GENS, size=size)
+
+
+@bp.get("/ahnentafel/<pid>")
+def ahnentafel(pid):
+    """The numbered list of ancestors: 1 is the person, 2n the father of n, 2n+1 the mother."""
+    gens = gens_arg(LIST_GENS, 5)
+    root = get_person(pid)
+    slots, parents = ancestors(root, gens)
+    generations = [[(n, slots[n]) for n in range(2 ** g, 2 ** (g + 1)) if slots.get(n)] for g in range(gens)]
+    return render_template("ahnentafel.html", root=root, generations=[x for x in generations if x], gens=gens,
+                           choices=LIST_GENS, parents=parents)
+
+
+GENERATION_NAMES = ("", "Parents", "Grandparents", "Great-grandparents")
+
+
+@bp.app_template_filter("generation_name")
+def generation_name(g):
+    """0 -> "", 1 -> "Parents", 4 -> "2nd great-grandparents"."""
+    if g < len(GENERATION_NAMES):
+        return GENERATION_NAMES[g]
+    n = g - 2
+    return f"{n}{'th' if 11 <= n % 100 <= 13 else {1: 'st', 2: 'nd', 3: 'rd'}.get(n % 10, 'th')} great-grandparents"
+
+
+@bp.get("/descendants/<pid>/table")
+def descendant_table(pid):
+    """Every descendant on one row: generation, name, dates, spouses and which parent they come through."""
+    gens = gens_arg(DESCEND_GENS, 4)
+    root = get_person(pid)
+    rows, seen, current = [], {pid}, [(root, None)]
+    for g in range(gens):
+        fams = families_of([p["personID"] for p, _ in current])
+        kids = children_by_family([f["familyID"] for fs in fams.values() for f in fs])
+        spouses = people_by_id([x for fs in fams.values() for f in fs for x in (f["husband"], f["wife"])])
+        following = []
+        for p, parent in current:
+            mine = fams.get(p["personID"], [])
+            rows.append({"generation": g + 1, "person": p, "parent": parent,
+                         "spouses": [spouses.get(f["wife"] if f["husband"] == p["personID"] else f["husband"])
+                                     for f in mine]})
+            for f in mine:
+                for c in kids.get(f["familyID"], []):
+                    if c["personID"] not in seen:  # a loop in bad data stops instead of repeating
+                        seen.add(c["personID"])
+                        following.append((c, p))
+        current = following
+    return render_template("descendant_table.html", root=root, rows=rows, gens=gens, choices=DESCEND_GENS)
+
+
+@bp.get("/family/<fid>/chart")
+def family_chart(fid):
+    """The couple in the middle, each one's parents above, their children below."""
+    f = one("SELECT * FROM families WHERE gedcom = %s AND familyID = %s", (tree(), fid))
+    if not f:
+        abort(404)
+    folks = people_by_id([f["husband"], f["wife"]])
+    couple = [folks.get(f["husband"]), folks.get(f["wife"])]
+    famcs = [p["famc"] for p in couple if p and p["famc"]]
+    parent_fams = {x["familyID"]: x for x in query(
+        f"SELECT * FROM families WHERE gedcom = %s AND familyID IN ({','.join(['%s'] * len(famcs))})",
+        [tree(), *famcs])} if famcs else {}
+    elders = people_by_id([x for pf in parent_fams.values() for x in (pf["husband"], pf["wife"])])
+    above = [[elders.get(parent_fams[p["famc"]][k]) for k in ("husband", "wife")]
+             if p and p["famc"] in parent_fams else [None, None] for p in couple]
+    children = children_by_family([fid]).get(fid, [])
+    return render_template("family_chart.html", f=f, couple=couple, above=above, children=children,
+                           show_marriage=rights(f)["both"])
+

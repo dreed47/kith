@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}Import GEDCOM · {{ super() }}{% endblock %}
+{% block content %}
+<h1>Import a GEDCOM file</h1>
+<p class="muted">For a file from a relative's genealogy program. Everyone in it comes in as new people and families, linked among themselves; nothing already in the tree changes. You'll see what's in the file before anything is imported, and an import can be undone until someone edits what it brought in.</p>
+<form method="post" enctype="multipart/form-data" class="card edit-form">
+  <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+  <label>GEDCOM file (.ged) <input type="file" name="file" accept=".ged,.GED,text/plain" required></label>
+  <div class="form-actions"><button>Look at the file</button><a href="{{ url_for('admin.home') }}">Cancel</a></div>
+</form>
+{% if history %}
+<section class="card"><h2>Earlier imports</h2>
+  <ul class="child-list">
+    {% for h in history %}
+    <li><span>{{ (h.at|local).strftime("%-d %b %Y %H:%M") }} · {{ h.filename or "file" }} · {{ h.username }}:
+      {{ h.counts.people }} people, {{ h.counts.families }} families{% if h.undone_at %} <span class="tag">undone</span>{% endif %}</span>
+      {% if not h.undone_at %}<form method="post" action="{{ url_for('admin.undo_import', import_id=h.id) }}" class="row-actions">
+        <input type="hidden" name="csrf" value="{{ csrf_token() }}"><button class="small-button secondary">Undo this import</button></form>{% endif %}</li>
+    {% endfor %}
+  </ul>
+</section>
+{% endif %}
+{% endblock %}

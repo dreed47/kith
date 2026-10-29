@@ -1,0 +1,66 @@
+/* Large print: bigger text, strong contrast, links always fully underlined, Atkinson Hyperlegible
+   (designed by the Braille Institute for low-vision readers). */
+@font-face { font-family: "Atkinson Hyperlegible"; src: url("../static/fonts/atkinson-hyperlegible-latin-400-normal.woff2") format("woff2"); font-weight: 400; font-display: swap; }
+@font-face { font-family: "Atkinson Hyperlegible"; src: url("../static/fonts/atkinson-hyperlegible-latin-700-normal.woff2") format("woff2"); font-weight: 700; font-display: swap; }
+
+:root {
+  color-scheme: light dark;
+  --font-body: "Atkinson Hyperlegible", Verdana, system-ui, sans-serif;
+  --font-heading: "Atkinson Hyperlegible", Verdana, system-ui, sans-serif;
+  --font-display: "Atkinson Hyperlegible", Verdana, system-ui, sans-serif;
+  --font-size: 122%;
+  --radius: 6px;
+  --radius-lg: 8px;
+  --space-3: 0.8rem;
+  --space-4: 1.1rem;
+  --link-underline: 100%;
+
+  --bg: #ffffff;
+  --surface: #ffffff;
+  --surface-2: #eeeeee;
+  --border: #1a1a1a;
+  --shadow: 0 6px 18px rgb(0 0 0 / 0.35);
+  --shadow-card: none;
+  --text: #000000;
+  --text-muted: #2b2b2b;
+  --heading: #000000;
+  --link: #0000c8;
+  --accent: #0000c8;
+  --accent-text: #ffffff;
+  --accent-soft: #e0e4ff;
+  --highlight: #ffd400;
+  --danger: #a30000;
+  --header-bg: #000000;
+  --header-text: #ffffff;
+  --hero-bg: #000000;
+  --hero-text: #ffffff;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #000000;
+    --surface: #0a0a0a;
+    --surface-2: #1e1e1e;
+    --border: #e6e6e6;
+    --shadow: 0 6px 18px rgb(0 0 0 / 0.9);
+    --text: #ffffff;
+    --text-muted: #e6e6e6;
+    --heading: #ffffff;
+    --link: #ffd84d;
+    --accent: #ffd84d;
+    --accent-text: #000000;
+    --accent-soft: #3a3200;
+    --highlight: #ffd84d;
+    --danger: #ff8a8a;
+    --header-bg: #000000;
+    --header-text: #ffffff;
+    --hero-bg: #000000;
+    --hero-text: #ffffff;
+  }
+}
+
+:focus-visible { outline-width: 3px; }
+.site-header { border-bottom: 2px solid var(--border); }
+.site-nav a { opacity: 1; }
+.hero { border: 2px solid var(--border); }
+.hero::after { display: none; }

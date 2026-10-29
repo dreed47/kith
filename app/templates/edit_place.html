@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}Edit place · {{ super() }}{% endblock %}
+{% block content %}
+<h1>Edit place <span class="muted small">{{ old }}</span></h1>
+{% if errors %}<div class="card error" role="alert"><ul>{% for e in errors %}<li>{{ e }}</li>{% endfor %}</ul></div>{% endif %}
+<form method="post" class="card edit-form">
+  <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+  <input type="hidden" name="name" value="{{ old }}">
+  <label>Place name <input name="place" value="{{ v.place or '' }}" maxlength="248" required data-places="{{ url_for('edit.place_hint') }}"></label>
+  <p class="muted small">Used by {{ used }} record{{ "s" if used != 1 }}. Changing the name changes it on all of them. Renaming it to a place that already exists combines the two (fixes a misspelling everywhere).</p>
+  <div class="grid">
+    <label>Latitude <input name="latitude" value="{{ v.latitude or '' }}" maxlength="22" inputmode="decimal" placeholder="e.g. 41.2148"></label>
+    <label>Longitude <input name="longitude" value="{{ v.longitude or '' }}" maxlength="22" inputmode="decimal" placeholder="e.g. -79.3853"></label>
+  </div>
+  <p class="muted small">Tip: right-click the spot in Google Maps; the first line of the menu is latitude, longitude.</p>
+  <label>Notes <textarea name="notes" rows="4">{{ v.notes or '' }}</textarea></label>
+  <div class="form-actions"><button>Save</button><a href="{{ url_for('places.place', name=old) }}">Cancel</a></div>
+</form>
+<script src="{{ url_for('static', filename='places.js') }}" defer></script>
+{% endblock %}

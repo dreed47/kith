@@ -1,0 +1,20 @@
+# Local database for development and tests (port 3307). Never point the app at a live server.
+services:
+  db:
+    image: mariadb:11.8  # matches the staging/live server (Debian 13)
+    environment:
+      MARIADB_ROOT_PASSWORD: dev
+      MARIADB_DATABASE: kith
+      MARIADB_USER: genealogy
+      MARIADB_PASSWORD: dev
+      MARIADB_AUTO_UPGRADE: "1"  # upgrade the data in place when the image version changes
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 2s
+      retries: 30
+    ports:
+      - "127.0.0.1:3307:3306"
+    volumes:
+      - dbdata:/var/lib/mysql
+volumes:
+  dbdata:

@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block title %}{{ ("Edit " if link else "Add ") ~ ("biography" if bio else "obituary" if about_label == "Death" else "note") }} · {{ super() }}{% endblock %}
+{% block content %}
+<h1>{{ ("Edit " if link else "Add ") ~ ("biography" if bio else "obituary" if about_label == "Death" else "note") }} <span class="muted small">for {{ owner_name(owner_id) }}{% if about_label %}, about: {{ about_label }}{% endif %}</span></h1>
+{% if link and link.links > 1 %}<p class="card flash">This note is shared with {{ link.links - 1 }} other record(s). Changing the text changes it there too.</p>{% endif %}
+{% if errors %}<div class="card error" role="alert"><ul>{% for x in errors %}<li>{{ x }}</li>{% endfor %}</ul></div>{% endif %}
+<form method="post" class="card edit-form">
+  <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+  {% if not link %}<input type="hidden" name="for" value="{{ owner_id }}"><input type="hidden" name="about" value="{{ about }}">{% endif %}
+  <label>Note <textarea name="note" rows="10" required>{{ note }}</textarea></label>
+  <label class="check"><input type="checkbox" name="secret" value="1" {% if secret %}checked{% endif %}> Private (only users allowed to see private notes)</label>
+  {% if can_bio %}<label class="check"><input type="checkbox" name="bio" value="1" {% if bio %}checked{% endif %}> Biography: show at the top of their page (replaces any other biography)</label>{% endif %}
+  <div class="form-actions">
+    <button>{{ "Save" if link else "Add note" }}</button>
+    <a href="{{ back }}">Cancel</a>
+    {% if link and g.user.allow_delete == 1 %}<a class="danger-link" href="{{ url_for('edit.delete_note', link_id=link.ID, back=request.args.back) }}">Delete note…</a>{% endif %}
+  </div>
+</form>
+{% endblock %}

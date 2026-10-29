@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% from "_macros.html" import person_link, lifespan %}
+{% block title %}Statistics · {{ super() }}{% endblock %}
+{% macro years(v) %}{{ "%.1f years"|format(v) if v is not none else "not enough dates" }}{% endmacro %}
+{% block content %}
+<h1>Statistics</h1>
+<section class="card"><h2>The tree</h2>
+  <div class="stats">{% for label, n in totals.items() %}<div class="stat"><strong>{{ "{:,}".format(n) }}</strong><span class="muted small">{{ label }}</span></div>{% endfor %}</div>
+</section>
+<section class="card"><h2>Lives</h2>
+  <table class="facts">
+    {% for label, v in lifespans.items() %}<tr><th>Average age at death: {{ label|lower }}</th><td>{{ years(v) }}</td></tr>{% endfor %}
+    {% for label, v in married_at.items() %}<tr><th>Average age at marriage: {{ label|lower }}</th><td>{{ years(v) }}</td></tr>{% endfor %}
+    <tr><th>Children per family</th><td>{{ "%.1f"|format(kids.avg) if kids.avg is not none else "–" }} on average{% if biggest %}; the most is {{ biggest.n }} (<a href="{{ url_for('main.family', fid=biggest.familyID) }}">family {{ biggest.familyID }}</a>){% endif %}</td></tr>
+  </table>
+  <p class="muted small">Only people with both a birth and a death year count; lifespans over 110 years are left out as likely typos.</p>
+</section>
+{% if oldest %}<section class="card"><h2>Longest lives</h2><ol class="people">
+  {% for p in oldest %}<li>{{ person_link(p) }} {{ lifespan(p) }} <span class="muted small">{{ p.age }} years</span></li>{% endfor %}
+</ol></section>{% endif %}
+<div class="stats-lists">
+  {% for label, rows in ranked.items() %}
+  <section class="card"><h2>Most common {{ label|lower }}</h2><ol>
+    {% for r in rows %}<li><a href="{{ url_for('main.surname', name=r.name) if label == 'Surnames' else (url_for('main.firstname', name=r.name) if label == 'First names' else url_for('places.place', name=r.name)) }}">{{ r.name }}</a> <span class="muted small">{{ r.n }}</span></li>{% endfor %}
+  </ol></section>
+  {% endfor %}
+</div>
+{% if earliest %}<section class="card"><h2>Earliest recorded births</h2><ul class="people">
+  {% for p in earliest %}<li>{{ person_link(p) }} {{ lifespan(p) }}</li>{% endfor %}
+</ul></section>{% endif %}
+{% endblock %}

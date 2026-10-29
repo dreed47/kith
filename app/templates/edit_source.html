@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}{{ "Edit source" if s else "Add source" }} · {{ super() }}{% endblock %}
+{% block content %}
+<h1>{{ "Edit source" if s else "Add source" }}</h1>
+{% if errors %}<div class="card error" role="alert"><ul>{% for e in errors %}<li>{{ e }}</li>{% endfor %}</ul></div>{% endif %}
+<form method="post" class="card edit-form">
+  <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+  <input type="hidden" name="back" value="{{ back }}">
+  {% for key, label in labels.items() %}<label>{{ label }} <input name="{{ key }}" value="{{ v[key] or '' }}"{% if key == "title" %} required{% endif %}></label>{% endfor %}
+  <label>Text of the source <textarea name="actualtext" rows="5">{{ v.actualtext or '' }}</textarea></label>
+  <label>Comments <textarea name="comments" rows="3">{{ v.comments or '' }}</textarea></label>
+  <div class="form-actions"><button>{{ "Save" if s else "Add source" }}</button>
+    <a href="{{ back or (url_for('main.source', sid=s.sourceID) if s else url_for('main.sources')) }}">Cancel</a></div>
+</form>
+{% endblock %}

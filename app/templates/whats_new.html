@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% from "_news.html" import news_item %}
+{% block title %}What's new · {{ super() }}{% endblock %}
+{% block content %}
+<h1>What's new</h1>
+<p class="muted">People and photos added, faces tagged and comments, newest first.</p>
+<section class="card">
+  {% if entries %}<ul class="recent-comments">{% for e in entries %}{{ news_item(e, 300) }}{% endfor %}</ul>
+  {% else %}<p class="muted">Nothing new yet.</p>{% endif %}
+</section>
+{% if page > 1 or more %}
+<nav class="pager">
+  {% if page > 1 %}<a href="{{ url_with(page=page - 1) }}">Newer</a>{% endif %}
+  <span>Page {{ page }}</span>
+  {% if more %}<a href="{{ url_with(page=page + 1) }}">Older</a>{% endif %}
+</nav>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}Sources · {{ super() }}{% endblock %}
+{% block content %}
+<h1>Sources</h1>
+{% if g.user.allow_add == 1 %}<p class="actions"><a href="{{ url_for('edit.edit_source') }}">Add source</a></p>{% endif %}
+<table class="facts card">
+  {% for s in sources %}
+  <tr><th><a href="{{ url_for('main.source', sid=s.sourceID) }}">{{ s.title or s.sourceID }}</a></th>
+    <td>{{ s.author }}</td><td class="muted small">{{ s.n }} citation{{ "s" if s.n != 1 }}</td></tr>
+  {% else %}<tr><td class="muted">No sources yet.</td></tr>
+  {% endfor %}
+</table>
+{% endblock %}

@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block title %}{{ title }} · {{ super() }}{% endblock %}
+{% block content %}
+<div class="narrow card">
+  <h1>{{ title }}</h1>
+  <p>{{ message }}</p>
+  <p class="small"><a href="{{ url_for('auth.login') }}">Log in</a> · <a href="{{ url_for('main.home') }}">Home</a></p>
+</div>
+{% endblock %}

@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% from "_macros.html" import person_link, search_tabs %}
+{% block title %}Search families · {{ super() }}{% endblock %}
+{% macro sort_link(key, label) %}
+{% if sort == key %}<span aria-current="true">{{ label }} ▲</span>{% else %}<a href="{{ url_with(sort=key, page=1) }}">{{ label }}</a>{% endif %}
+{% endmacro %}
+{% block content %}
+<h1>Search families</h1>
+{{ search_tabs("main.search_families") }}
+<form class="card edit-form search-form" action="{{ url_with(_clear=True) }}">
+  <div class="grid">
+    <label>Husband <input name="husband" value="{{ husband }}" placeholder="First and/or last name" autofocus></label>
+    <label>Wife <input name="wife" value="{{ wife }}" placeholder="First and/or last name (maiden)"></label>
+    <label>Married from (year) <input name="married_from" value="{{ married_from or '' }}" inputmode="numeric" maxlength="4"></label>
+    <label>Married to (year) <input name="married_to" value="{{ married_to or '' }}" inputmode="numeric" maxlength="4"></label>
+    <label>Place of marriage <input name="place" value="{{ place }}"></label>
+  </div>
+  <label class="check"><input type="checkbox" name="exact" value="1" {% if exact %}checked{% endif %}> Exact surname spelling only</label>
+  <input type="hidden" name="sort" value="{{ sort }}">
+  <button>Search</button>
+</form>
+
+{% if asked %}
+  {% if families %}
+  <p class="muted">{{ "{:,}".format(total) }} {{ "family" if total == 1 else "families" }}{% if pages > 1 %} · page {{ page }} of {{ pages }}{% endif %}
+    {% if variants %} · including similar spellings: {{ variants|join(", ") }} · <a href="{{ url_with(exact=1, page=1) }}">exact spelling only</a>{% endif %}
+    {% if exact %} · <a href="{{ url_with(exact=None, page=1) }}">include similar spellings</a>{% endif %}
+  </p>
+  <div class="table-wrap">
+  <table class="results">
+    <thead><tr>
+      <th>{{ sort_link("husband", "Husband") }}</th><th>{{ sort_link("wife", "Wife") }}</th><th>{{ sort_link("married", "Married") }}</th><th></th>
+    </tr></thead>
+    <tbody>
+    {% for f in families %}
+    <tr>
+      <td data-label="Husband">{{ person_link(folks.get(f.husband)) }}</td>
+      <td data-label="Wife">{{ person_link(folks.get(f.wife)) }}</td>
+      <td data-label="Married">{% if rights(f).both %}{{ f.marrdate|d }}{% if f.marrplace %}<div class="muted small">{{ f.marrplace }}</div>{% endif %}{% endif %}</td>
+      <td><a href="{{ url_for('main.family', fid=f.familyID) }}">Family</a></td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {% if pages > 1 %}
+  <nav class="pager">
+    {% if page > 1 %}<a href="{{ url_with(page=page - 1) }}">Previous</a>{% endif %}
+    <span>Page {{ page }} of {{ pages }}</span>
+    {% if page < pages %}<a href="{{ url_with(page=page + 1) }}">Next</a>{% endif %}
+  </nav>
+  {% endif %}
+  {% else %}
+  <p>No families found.{% if exact %} <a href="{{ url_with(exact=None, page=1) }}">Try similar spellings</a>.{% endif %}</p>
+  {% endif %}
+{% endif %}
+{% endblock %}

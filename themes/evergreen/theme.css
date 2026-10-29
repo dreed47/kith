@@ -1,0 +1,66 @@
+/* Evergreen: a light, airy header, forest greens, generous rounding; Lora for names, Nunito Sans for reading. */
+@font-face { font-family: "Lora"; src: url("../static/fonts/lora-latin-wght-normal.woff2") format("woff2"); font-weight: 400 700; font-display: swap; }
+@font-face { font-family: "Nunito Sans"; src: url("../static/fonts/nunito-sans-latin-wght-normal.woff2") format("woff2"); font-weight: 200 1000; font-display: swap; }
+
+:root {
+  color-scheme: light dark;
+  --font-body: "Nunito Sans", "Segoe UI", system-ui, sans-serif;
+  --font-heading: Lora, Georgia, serif;
+  --font-display: Lora, Georgia, serif;
+  --font-size: 102%;
+  --radius: 12px;
+  --radius-lg: 20px;
+  --space-3: 0.8rem;
+  --space-4: 1.25rem;
+  --link-underline: 30%;
+
+  --bg: #eef3ec;
+  --surface: #ffffff;
+  --surface-2: #f0f5ee;
+  --border: #d5e0d3;
+  --shadow: 0 16px 36px rgb(25 60 40 / 0.16);
+  --shadow-card: 0 2px 4px rgb(25 60 40 / 0.04), 0 8px 24px rgb(25 60 40 / 0.06);
+  --text: #1c2a23;
+  --text-muted: #5a6b61;
+  --heading: #1f4d3a;
+  --link: #1f6e4d;
+  --accent: #2b7556;
+  --accent-text: #ffffff;
+  --accent-soft: #dbebdf;
+  --highlight: #3f8f63;
+  --danger: #b42318;
+  --header-bg: #fbfcf9;
+  --header-text: #1f4d3a;
+  --hero-bg: linear-gradient(135deg, #1f4d3a 0%, #2f6e4e 55%, #6f9f58 100%);
+  --hero-text: #f4f8f1;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0f1612;
+    --surface: #17211b;
+    --surface-2: #1d2922;
+    --border: #2b3a31;
+    --shadow: 0 16px 36px rgb(0 0 0 / 0.55);
+    --shadow-card: 0 1px 2px rgb(0 0 0 / 0.35);
+    --text: #e1eae4;
+    --text-muted: #9cb0a4;
+    --heading: #cfe8d9;
+    --link: #82d2aa;
+    --accent: #62bf92;
+    --accent-text: #0b1711;
+    --accent-soft: #1b3a2a;
+    --highlight: #62bf92;
+    --danger: #f97066;
+    --header-bg: #121b16;
+    --header-text: #d7eadf;
+    --hero-bg: linear-gradient(135deg, #133024 0%, #1d4a35 70%, #3d6a3a 100%);
+    --hero-text: #eef6f0;
+  }
+}
+
+/* A light header needs a line under it, and the search field a visible edge. */
+.site-header { box-shadow: 0 1px 0 var(--border), 0 4px 18px rgb(25 60 40 / 0.05); }
+.header-search input { background: var(--surface-2); border-color: var(--border); color: var(--text); }
+.header-search input::placeholder { color: var(--text-muted); }
+.brand-mark { color: var(--accent-text); }

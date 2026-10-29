@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% from "_macros.html" import person_link %}
+{% from "_picker.html" import picker %}
+{% from "_comments.html" import comments_section %}
+{% block content %}
+<h1>{{ m.description or m.path }}</h1>
+{% if g.user.allow_edit == 1 or g.user.allow_delete == 1 %}<p class="actions">
+  {% if g.user.allow_edit == 1 %}<a href="{{ url_for('edit.media', mid=m.mediaID) }}">Edit details and links</a>{% endif %}
+  {% if g.user.allow_delete == 1 %}· <a href="{{ url_for('edit.delete_media', mid=m.mediaID) }}">Delete</a>{% endif %}
+</p>{% endif %}
+{% if url %}
+  {% if m.path.startswith(("http://", "https://")) %}<p><a href="{{ m.path }}" rel="noopener">{{ m.path }}</a></p>{% endif %}
+{% elif m.path and image %}
+  <div class="face-photo">
+    <a href="{{ url_for('media.file', media_id=m.mediaID) }}" title="Open full size">
+      <img class="media-full" src="{{ url_for('media.thumb', media_id=m.mediaID, s=1200) }}" alt="{{ m.description }}" draggable="false"></a>
+    {% for t in faces %}<a class="face" data-tag="{{ t.tag_id }}" href="{{ url_for('main.person', pid=t.personID) }}"
+       style="left: {{ t.x * 100 }}%; top: {{ t.y * 100 }}%; width: {{ t.w * 100 }}%; height: {{ t.h * 100 }}%"><span>{{ pname(t) }}</span></a>{% endfor %}
+  </div>
+  <p class="small"><a href="{{ url_for('media.file', media_id=m.mediaID) }}">Open full size</a>
+    {% if g.user.allow_edit == 1 %}· <button type="button" class="linklike" id="tag-face">Tag a face</button>{% endif %}</p>
+  {% if g.user.allow_edit == 1 %}
+  <form method="post" action="{{ url_for('edit.add_face', mid=m.mediaID) }}" class="card edit-form face-form" hidden>
+    <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+    {% for k in "xywh" %}<input type="hidden" name="{{ k }}">{% endfor %}
+    {% set tagged = faces|map(attribute="personID")|list %}
+    {% set linked = people|rejectattr("personID", "in", tagged)|list %}
+    {% if linked %}<p class="quick-tags">Tag as {% for x in linked %}<button class="small-button secondary" name="quick" value="{{ x.personID }}">{{ pname(x) }}</button> {% endfor %}</p>
+    <p class="muted small">or someone else:</p>{% endif %}
+    {{ picker("personID", "Who is this?", "", None) }}
+    <div class="form-actions"><button>Save tag</button> <button type="button" class="secondary" data-cancel>Cancel</button></div>
+  </form>
+  <p class="small muted face-hint" hidden>Drag a box around the face, from forehead to chin. A tight box makes a better portrait on their page and in charts.</p>
+  <script src="{{ url_for('static', filename='picker.js') }}" defer></script>
+  {% endif %}
+  {% if faces %}
+  <section class="card faces-list">
+    <h2>In this photo</h2>
+    <ul class="people">{% for t in faces %}<li data-tag="{{ t.tag_id }}">{{ person_link(t) }}
+      {% if g.user.allow_edit == 1 %}<form method="post" action="{{ url_for('edit.remove_face', mid=m.mediaID, tid=t.tag_id) }}" class="inline">
+        <input type="hidden" name="csrf" value="{{ csrf_token() }}"><button class="linklike small">Remove tag</button></form>{% endif %}</li>{% endfor %}</ul>
+  </section>
+  {% endif %}
+  <script src="{{ url_for('static', filename='faces.js') }}" defer></script>
+{% elif m.path %}
+  {% if m.path.lower().endswith(".pdf") %}<a href="{{ url_for('media.file', media_id=m.mediaID) }}" title="Open the PDF">
+    <img class="media-full" src="{{ url_for('media.thumb', media_id=m.mediaID, s=1200) }}" alt="First page of {{ m.description or m.path }}"></a>{% endif %}
+  <p><a href="{{ url_for('media.file', media_id=m.mediaID) }}">Open {{ m.path }}</a></p>
+{% endif %}
+{# bodytext is HTML from TNG, cleaned to simple formatting (files.clean_html) #}
+{% if body %}<div class="card">{{ body|safe }}</div>{% endif %}
+<section class="card">
+  {% if m.datetaken or m.placetaken %}<p>{{ m.datetaken|d }} {{ m.placetaken }}</p>{% endif %}
+  {% if m.notes %}<div class="pre">{{ m.notes }}</div>{% endif %}
+  {% if people or families %}
+  <h2>Linked to</h2>
+  <ul class="people">
+    {% for p in people %}<li>{{ person_link(p) }}</li>{% endfor %}
+    {% for f in families %}<li><a href="{{ url_for('main.family', fid=f.familyID) }}">{{ pname(spouses.get(f.husband)) }} &amp; {{ pname(spouses.get(f.wife)) }}</a></li>{% endfor %}
+  </ul>
+  {% endif %}
+  {% if evidence %}
+  <h2>Evidence for</h2>
+  <ul>{% for c in evidence %}<li>{% if c.title %}<a href="{{ url_for('main.source', sid=c.sourceID) }}">{{ c.title }}</a>{% else %}{{ c.description or "A source" }}{% endif %}
+    {%- if c.page %}, {{ c.page }}{% endif %}: {% if c.person %}{{ person_link(c.person) }}{% else %}<a href="{{ url_for('main.family', fid=c.persfamID) }}">family</a>{% endif %}
+    {%- if c.about %}, {{ c.about|lower }}{% endif %}</li>{% endfor %}</ul>
+  {% endif %}
+</section>
+{{ comments_section(comments, "media", m.mediaID) }}
+{% endblock %}

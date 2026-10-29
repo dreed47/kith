@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}Ask for an account · {{ super() }}{% endblock %}
+{% block content %}
+<div class="narrow">
+<h1>Ask for an account</h1>
+<p class="muted">This site is for family. Tell us who you are; we'll email you a link to confirm your address, then an admin will look at your request.</p>
+{% if errors %}<div class="card error" role="alert"><ul>{% for e in errors %}<li>{{ e }}</li>{% endfor %}</ul></div>{% endif %}
+<form method="post" class="card edit-form">
+  <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+  <input type="hidden" name="stamp" value="{{ stamp }}">
+  {# Left empty by people (it's hidden from them); bots fill in every box. #}
+  <div class="visually-hidden" aria-hidden="true"><label>Website <input name="website" tabindex="-1" autocomplete="off"></label></div>
+  <label>{{ labels.realname }} <input name="realname" value="{{ v.realname or '' }}" maxlength="50" required autocomplete="name"></label>
+  <label>{{ labels.email }} <input type="email" name="email" value="{{ v.email or '' }}" maxlength="50" required autocomplete="email"></label>
+  <label>{{ labels.relation }} <textarea name="relation" rows="3" maxlength="500" required placeholder="e.g. Granddaughter of Don and Jane Hollis">{{ v.relation or '' }}</textarea></label>
+  <label>{{ labels.username }} <input name="username" value="{{ v.username or '' }}" maxlength="100" required autocomplete="username"></label>
+  <label>Password <input type="password" name="password" minlength="8" required autocomplete="new-password"></label>
+  <label>Password again <input type="password" name="password2" minlength="8" required autocomplete="new-password"></label>
+  <div class="form-actions"><button>Send request</button><a href="{{ url_for('auth.login') }}">Cancel</a></div>
+</form>
+</div>
+{% endblock %}

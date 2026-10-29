@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}Historical events · {{ super() }}{% endblock %}
+{% block content %}
+<h1>Historical events</h1>
+<p class="muted">Shown on timelines next to people's lifetimes: wars, migrations, local happenings that touched the family.</p>
+<form method="post" class="card edit-form">
+  <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+  <div class="grid">
+    <label>Year <input name="evyear" inputmode="numeric" maxlength="4" required></label>
+    <label>Until (optional) <input name="endyear" inputmode="numeric" maxlength="4"></label>
+  </div>
+  <label>What happened <input name="evtitle" maxlength="128" required placeholder="e.g. Civil War"></label>
+  <label>More detail <textarea name="evdetail" rows="2"></textarea></label>
+  <div class="form-actions"><button>Add</button></div>
+</form>
+{% if rows %}<section class="card"><table class="facts">
+  {% for r in rows %}<tr><th>{{ r.evyear }}{% if r.endyear %}–{{ r.endyear }}{% endif %}</th><td>{{ r.evtitle }}{% if r.evdetail %}<div class="muted small">{{ r.evdetail }}</div>{% endif %}</td>
+    <td><form method="post" action="{{ url_for('admin.delete_history_event', tid=r.tleventID) }}"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><button class="small-button secondary">Delete</button></form></td></tr>{% endfor %}
+</table></section>{% else %}<p class="muted">None yet.</p>{% endif %}
+{% endblock %}

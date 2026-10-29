@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}Delete family {{ f.familyID }} · {{ super() }}{% endblock %}
+{% block content %}
+<h1>Delete family {{ f.familyID }}?</h1>
+<section class="card">
+  <p>This removes the family of <strong>{{ pname(husband) or "unknown" }}</strong> and <strong>{{ pname(wife) or "unknown" }}</strong>{% if f.marrdate %} (married {{ f.marrdate|d }}){% endif %}, and:</p>
+  <ul>
+    {% if links.children %}<li>the links to its {{ links.children|length }} child(ren) (the children themselves stay)</li>{% endif %}
+    {% if links.events %}<li>{{ links.events|length }} event(s)</li>{% endif %}
+    {% if links.notelinks %}<li>{{ links.notelinks|length }} note(s)</li>{% endif %}
+    {% if links.citations %}<li>{{ links.citations|length }} source citation(s)</li>{% endif %}
+    {% if links.medialinks %}<li>{{ links.medialinks|length }} media link(s) (the media itself stays)</li>{% endif %}
+  </ul>
+  <p>The spouses and children are not deleted. A full copy is kept in the edit history.</p>
+  <form method="post" class="form-actions">
+    <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+    <button class="danger">Delete family</button>
+    <a href="{{ url_for('main.family', fid=f.familyID) }}">Cancel</a>
+  </form>
+</section>
+{% endblock %}

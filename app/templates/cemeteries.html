@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Cemeteries</h1>
+{% if g.user.allow_add == 1 %}<p class="actions"><a href="{{ url_for('edit.cemetery') }}">Add cemetery</a></p>{% endif %}
+{% if pins %}
+<section class="card">
+  <link rel="stylesheet" href="{{ url_for('static', filename='leaflet/leaflet.css') }}">
+  <div id="cemetery-map" class="cemetery-map" role="region" aria-label="Map of the cemeteries" data-pins='{{ pins|tojson }}'></div>
+  <script src="{{ url_for('static', filename='leaflet/leaflet.js') }}" defer></script>
+  <script src="{{ url_for('static', filename='cemeterymap.js') }}" defer></script>
+</section>
+{% endif %}
+<table class="facts">
+  {% for c in cemeteries %}
+  <tr><th><a href="{{ url_for('places.cemetery', cid=c.cemeteryID) }}">{{ c.cemname }}</a></th>
+    <td>{{ [c.city, c.county, c.state]|select|join(", ") }}</td><td class="muted">{{ c.people }} {{ "person" if c.people == 1 else "people" }} · {{ c.n }} headstones/media</td></tr>
+  {% endfor %}
+</table>
+{% endblock %}

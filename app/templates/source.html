@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% from "_macros.html" import person_link, longtext %}
+{% block title %}{{ s.title or s.sourceID }} · {{ super() }}{% endblock %}
+{% block content %}
+<h1>{{ s.title or s.sourceID }}</h1>
+<p class="actions action-row"><a href="{{ url_for('main.sources') }}">All sources</a>
+  {% if g.user.allow_edit == 1 %}<a href="{{ url_for('edit.edit_source', sid=s.sourceID) }}">Edit source</a>{% endif %}
+  {% if g.user.allow_delete == 1 %}<a href="{{ url_for('edit.delete_source', sid=s.sourceID) }}">Delete source</a>{% endif %}</p>
+<section class="card">
+  <table class="facts">
+    {% for key, label in (("shorttitle", "Short title"), ("author", "Author"), ("publisher", "Publisher / where"), ("callnum", "Call number")) if s[key] %}
+    <tr><th>{{ label }}</th><td>{{ s[key] }}</td></tr>
+    {% endfor %}
+  </table>
+  {% if s.actualtext %}<h2>Text</h2>{{ longtext(s.actualtext, 10, 1200) }}{% endif %}
+  {% if s.comments %}<h2>Comments</h2>{{ longtext(s.comments, 6, 800) }}{% endif %}
+</section>
+<section class="card"><h2>Cited for {{ cites|length }} fact{{ "s" if cites|length != 1 }}</h2>
+  {% if cites %}<table class="facts">
+    {% for c in cites %}
+    <tr><td>{% if c.person %}{{ person_link(c.person) }}{% else %}<a href="{{ url_for('main.family', fid=c.persfamID) }}">{{ pname(spouses.get(c.family.husband)) }}{% if c.family.husband and c.family.wife %} &amp; {% endif %}{{ pname(spouses.get(c.family.wife)) }}</a>{% endif %}</td>
+      <td class="small">{{ c.about or "" }}</td><td class="small">{{ c.page }}{% if c.citetext %}<div class="pre muted">{{ c.citetext }}</div>{% endif %}</td></tr>
+    {% endfor %}
+  </table>{% endif %}
+  {% if hidden %}<p class="muted small">And {{ hidden }} about people you can't see.</p>{% endif %}
+</section>
+{% if others %}
+<form method="post" action="{{ url_for('edit.merge_source', sid=s.sourceID) }}" class="card edit-form">
+  <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+  <h2>Merge a duplicate into this source</h2>
+  <p class="muted small">Its citations move here and it's deleted. The activity log keeps a copy.</p>
+  <label>Duplicate source <select name="other">{% for o in others %}<option value="{{ o.sourceID }}">{{ o.title or o.sourceID }} ({{ o.sourceID }})</option>{% endfor %}</select></label>
+  <div class="form-actions"><button class="danger">Merge into {{ s.sourceID }}</button></div>
+</form>
+{% endif %}
+{% endblock %}

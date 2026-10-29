@@ -1,0 +1,168 @@
+{% macro person_link(p) -%}
+{%- if p -%}<a href="{{ url_for('main.person', pid=p.personID) }}">{{ pname(p) }}</a>{%- endif -%}
+{%- endmacro %}
+
+{% macro lifespan(p) -%}
+{%- if p and rights(p).both and (p.birthdate or p.deathdate) -%}
+<span class="muted">{{ p.birthdate|d or "?" }} – {{ p.deathdate|d }}</span>
+{%- endif -%}
+{%- endmacro %}
+
+{% macro vital_lines(p) -%}
+{#- Birth and death, date and place, one line each, for chart boxes. -#}
+{%- if rights(p).both -%}
+{%- for label, date, place in (("b.", p.birthdate, p.birthplace), ("d.", p.deathdate, p.deathplace)) if date or place %}
+<span class="small">{{ label }} {{ date|d }}{% if date and place %}, {% endif %}{{ place }}</span>
+{%- endfor -%}
+{%- endif -%}
+{%- endmacro %}
+
+{% macro gens_picker(choices, current) -%}
+<p class="small gens">Generations:
+  {% for n in choices %}{% if n == current %}<strong aria-current="true">{{ n }}</strong>{% else %}<a href="{{ url_with(gens=n) }}">{{ n }}</a>{% endif %} {% endfor %}
+</p>
+{%- endmacro %}
+
+{% macro photos_toggle(photos) -%}
+<p class="small gens">Photos: {% if photos is not none %}<strong aria-current="true">on</strong> <a href="{{ url_with(photos=0) }}">off</a>{% else %}<a href="{{ url_with(photos=1) }}">on</a> <strong aria-current="true">off</strong>{% endif %}</p>
+{%- endmacro %}
+
+{#- A chart box's picture: the person's main photo, else their initials. Nothing when the viewer turned photos off. -#}
+{% macro chart_face(p, photos) -%}
+{%- if photos is not none -%}
+{%- if p.personID in photos %}{% set m, tag = photos[p.personID] %}<img class="chart-face" src="{{ url_for('media.face', media_id=m.mediaID, tag_id=tag.id) if tag else url_for('media.thumb', media_id=m.mediaID) }}" alt="" loading="lazy">
+{%- else %}<span class="chart-face">{{ avatar(p, "sm") }}</span>{% endif -%}
+{%- endif -%}
+{%- endmacro %}
+
+{% macro place_link(place) -%}
+{%- if place %}<a href="{{ url_for('places.place', name=place) }}">{{ place }}</a>{% endif -%}
+{%- endmacro %}
+
+{% macro longtext(text, lines=4, chars=400) -%}
+{#- Long text shows its start; "Show more" reveals the rest right after it, so nothing is repeated. -#}
+{%- set head = text.splitlines(true)[:lines]|join -%}{#- keeps \r\n endings, so head is an exact prefix -#}
+{%- if head|length > chars %}{% set head = text[:chars] %}{% endif -%}
+{%- if head|length < text|trim|length -%}
+<div class="pre">{{ head }}</div><details class="more"><summary>Show more</summary><div class="pre">{{ text[head|length:] }}</div></details>
+{%- else -%}<div class="pre">{{ text }}</div>{%- endif -%}
+{%- endmacro %}
+
+{% macro fact_notes(notes) -%}
+{#- Notes about one fact, shown under it. -#}
+{%- for n in notes %}<div class="fact-note">{{ longtext(n.note, 3, 300) }}
+  <span class="small muted">{% if n.secret %}Private note{% endif %}
+  {% if g.user.allow_edit == 1 %}<a href="{{ url_for('edit.note', link_id=n.ID) }}">Edit note</a>{% endif %}</span></div>
+{%- endfor %}
+{%- endmacro %}
+
+{% macro scans(media) -%}
+{#- Scans and photos that are evidence for one fact. -#}
+{%- if media %}<p class="scans small">{{ icon("photo") }}{% for m in media %}<a href="{{ url_for('media.show', media_id=m.mediaID) }}">{{ m.description or m.path }}</a>{% if not loop.last %} · {% endif %}{% endfor %}</p>{% endif %}
+{%- endmacro %}
+
+{% macro add_fact_note(owner, key, label) -%}
+{%- if owner and g.user.allow_add == 1 %}<a class="small" href="{{ url_for('edit.new_note', for=owner, about=key) }}" aria-label="Add a note about {{ label }}">Add note</a> · <a class="small" href="{{ url_for('edit.new_citation', for=owner, about=key) }}" aria-label="Add a source for {{ label }}">Add source</a>{% endif -%}
+{%- endmacro %}
+
+{#- An event's address (TNG's addresses), one line each; plain text, as it's typed in by hand. -#}
+{% macro address_lines(lines) -%}
+{%- if lines %}<address class="event-address">{% for x in lines %}{{ x }}{% if not loop.last %}<br>{% endif %}{% endfor %}</address>{% endif -%}
+{%- endmacro %}
+
+{#- An event's age as recorded (which may differ from the one worked out from dates), agency and cause. -#}
+{% macro event_details(e) -%}
+{%- set parts = [("Age given", e.age), ("Agency", e.agency), ("Cause", e.cause)]|selectattr(1)|list -%}
+{%- if parts %}<span class="event-details small">{% for label, value in parts %}{{ label }}: {{ value }}{% if not loop.last %} · {% endif %}{% endfor %}</span>{% endif -%}
+{%- endmacro %}
+
+{% macro facts(vitals, events, owner=None) %}
+{% if vitals or events %}
+<table class="facts">
+  {% for label, date, place, key, vnotes, vscans in vitals %}<tr><th>{{ label }}</th><td>{{ date|d }}</td><td>{{ place_link(place) }}{{ scans(vscans) }}{{ fact_notes(vnotes) }}</td>
+    {% if g.user.allow_edit == 1 or g.user.allow_add == 1 %}<td class="row-edit">{{ add_fact_note(owner, key, label) }}</td>{% endif %}</tr>{% endfor %}
+  {% for e in events %}
+  <tr{% if e.empty %} class="empty-event"{% endif %}><th>{{ e.display }}</th><td>{{ e.eventdate|d }}{% if e.empty %}<span class="muted small">(empty)</span>{% endif %}</td><td>{{ place_link(e.eventplace) }}{{ event_details(e) }}{{ address_lines(e.address) }}{% if e.info %}{{ longtext(e.info) }}{% endif %}{{ scans(e.scans) }}{{ fact_notes(e.notes) }}</td>
+    {% if g.user.allow_edit == 1 or g.user.allow_add == 1 %}<td class="row-edit">{% if g.user.allow_edit == 1 %}<a href="{{ url_for('edit.event', eid=e.eventID) }}" aria-label="Edit {{ e.display }}">Edit</a> · {% endif %}{{ add_fact_note(owner, e.eventID, e.display) }}</td>{% endif %}</tr>
+  {% endfor %}
+</table>
+{% endif %}
+{% if owner and g.user.allow_add == 1 %}<p class="small"><a href="{{ url_for('edit.new_event', for=owner) }}">Add event</a></p>{% endif %}
+{% endmacro %}
+
+{% macro extras(notes, citations, media, owner=None) %}
+{% if media or (owner and g.user.allow_add == 1) %}
+<section class="card"><h2>Media</h2>
+  <div class="thumbs">{% for m in media %}{{ thumb(m) }}{% endfor %}</div>
+  {% if owner and g.user.allow_add == 1 %}<p class="small"><a href="{{ url_for('edit.new_media', for=owner) }}">Upload photo or document</a>
+    {%- if media and g.user.allow_edit == 1 %} · <a href="{{ url_for('edit.arrange_media', persfam_id=owner) }}">Arrange, choose the main picture</a>{% endif %}</p>{% endif %}
+</section>
+{% endif %}
+{% if notes or (owner and g.user.allow_add == 1) %}
+<section class="card"><h2>Notes</h2>
+  {% for n in notes %}<div class="note">{% if n.about %}<p class="small muted">About: {{ n.about }}</p>{% endif %}{{ longtext(n.note, 8, 800) }}
+    {% if n.secret or g.user.allow_edit == 1 or g.user.allow_delete == 1 %}<p class="small muted">
+      {% if n.secret %}Private note{% endif %}
+      {% if g.user.allow_edit == 1 %}<a href="{{ url_for('edit.note', link_id=n.ID) }}">Edit</a>{% endif %}
+      {% if g.user.allow_delete == 1 %}<a href="{{ url_for('edit.delete_note', link_id=n.ID) }}">Delete</a>{% endif %}
+    </p>{% endif %}</div>{% endfor %}
+  {% if owner and g.user.allow_add == 1 %}<p class="small"><a href="{{ url_for('edit.new_note', for=owner) }}">Add note</a></p>{% endif %}
+</section>
+{% endif %}
+{% if citations or (owner and g.user.allow_add == 1) %}
+<section class="card"><h2>Sources</h2><ol>
+  {% for c in citations %}<li>{% if c.title %}<a href="{{ url_for('main.source', sid=c.sourceID) }}">{{ c.title }}</a>{% else %}{{ c.sourceID or c.description }}{% endif %}
+    {%- if c.page %}, {{ c.page }}{% endif %}{% if c.citedate %} <span class="muted">({{ c.citedate }})</span>{% endif %}
+    {% if c.about %}<span class="muted small">about: {{ c.about }}</span>{% endif %}
+    {% if c.citetext %}<div class="pre muted">{{ c.citetext }}</div>{% endif %}
+    {% if c.note %}<div class="pre small">{{ c.note }}</div>{% endif %}
+    {{ scans(c.media) }}
+    {% if g.user.allow_edit == 1 %}<a class="small" href="{{ url_for('edit.citation', cid=c.citationID) }}">Edit</a>
+      <a class="small" href="{{ url_for('edit.citation', cid=c.citationID) }}#scans">Attach scan</a>{% endif %}
+    {% if g.user.allow_delete == 1 %}<a class="small" href="{{ url_for('edit.delete_citation', cid=c.citationID) }}">Remove</a>{% endif %}</li>{% endfor %}
+</ol>
+{% if owner and g.user.allow_add == 1 %}<p class="small"><a href="{{ url_for('edit.new_citation', for=owner) }}">Add source</a></p>{% endif %}
+</section>
+{% endif %}
+{% endmacro %}
+
+{% macro thumb(m) -%}
+<a class="thumb" href="{{ url_for('media.show', media_id=m.mediaID) }}">
+  <img src="{{ url_for('media.thumb', media_id=m.mediaID) }}" alt="" loading="lazy">
+  <span>{{ m.description or m.path }}</span>
+</a>
+{%- endmacro %}
+
+{% macro icon(name) -%}
+<svg class="icon" aria-hidden="true" focusable="false"><use href="{{ url_for('static', filename='icons.svg') }}#{{ name }}"/></svg>
+{%- endmacro %}
+
+{% macro initials(name) -%}
+{%- set words = (name or "?").replace(",", " ").split() -%}
+{{ (words[0][0] ~ (words[-1][0] if words|length > 1 else ""))|upper }}
+{%- endmacro %}
+
+{% macro avatar(p, size="") -%}
+{#- A person's main picture in a circle, else their initials; hidden people get a plain figure. -#}
+{%- set photo = face_photo(p) -%}
+{%- if photo %}{% set m, tag = photo %}<img class="avatar {{ size }}" src="{{ url_for('media.face', media_id=m.mediaID, tag_id=tag.id) if tag else url_for('media.thumb', media_id=m.mediaID) }}" alt="" loading="lazy">
+{%- else -%}
+<span class="avatar {{ size }}{% if p.sex == 'F' %} f{% elif p.sex == 'M' %} m{% endif %}" aria-hidden="true">
+{%- if rights(p).living %}{{ initials(pname(p)) }}{% else %}{{ icon("user") }}{% endif -%}
+</span>
+{%- endif %}
+{%- endmacro %}
+
+{% macro person_row(p) -%}
+<li class="person-row">{{ avatar(p) }}<span class="who">{{ person_link(p) }}{% if rights(p).both and (p.birthdate or p.deathdate) %}<span class="dates">{{ p.birthdate|d or "?" }} – {{ p.deathdate|d }}</span>{% endif %}</span></li>
+{%- endmacro %}
+
+{% macro search_tabs(current) -%}
+{#- What to search: people, couples, or (for editors) notes. -#}
+<nav class="tabs" aria-label="What to search">
+  {% for endpoint, label in (("main.search", "People"), ("main.search_families", "Families"), ("edit.search_notes", "Notes"))
+     if endpoint != "edit.search_notes" or g.user.allow_edit == 1 %}
+  <a href="{{ url_for(endpoint) }}"{% if endpoint == current %} aria-current="page"{% endif %}>{{ label }}</a>
+  {% endfor %}
+</nav>
+{%- endmacro %}

@@ -1,0 +1,3 @@
+{# Proves layer 2: a theme overriding a template block, inheriting the rest. #}
+{% extends "app/base.html" %}
+{% block tagline %}<span class="tagline">{{ theme.tagline or "Our family history" }}</span>{% endblock %}

@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% from "_macros.html" import initials, person_row %}
+{% block title %}Your account · {{ super() }}{% endblock %}
+{# A theme's main colors, from its theme.toml, so it can be recognised before trying it. #}
+{% macro swatches(meta) %}{% if meta.swatches %}<span class="swatches">{% for c in meta.swatches %}<i style="background: {{ c }}"></i>{% endfor %}</span>{% endif %}{% endmacro %}
+{% block content %}
+<div class="account">
+<h1>Your account</h1>
+<p class="muted">Logged in as <strong>{{ g.user.username }}</strong>{% if g.user.realname %} ({{ g.user.realname }}){% endif %}.</p>
+<form method="post" class="card edit-form" enctype="multipart/form-data">
+  <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+  <fieldset class="theme-choices">
+    <legend>Your picture</legend>
+    <div class="avatar-choice">
+      {% if avatar_url() %}<img class="avatar lg" src="{{ avatar_url() }}" alt="">{% else %}<span class="avatar lg" aria-hidden="true">{{ initials(g.user.realname or g.user.username) }}</span>{% endif %}
+      <div>
+        <label>Upload a picture <input type="file" name="avatar" accept="image/*"></label>
+        <p class="small muted">Shown in the top corner. Cropped to a square.</p>
+        {% if avatar_url() %}<label class="check"><input type="checkbox" name="remove_avatar" value="1"> Remove it and show my initials</label>{% endif %}
+      </div>
+    </div>
+  </fieldset>
+  <fieldset class="theme-choices">
+    <legend>How the site looks</legend>
+    <p class="small muted">Only for you; everyone else keeps their own. The page changes as you pick, and Save keeps it.</p>
+    <label class="theme-choice">
+      <input type="radio" name="theme" value="" data-css="{{ url_for('theme_file', filename='theme.css') if default == config.THEME else url_for('user_theme', name=default) }}"{% if chosen in (None, default) %} checked{% endif %}>
+      <span><strong>{{ site.name or default }} <span class="tag">site default</span></strong>{{ swatches(site) }}{% if site.description %}<span class="small muted">{{ site.description }}</span>{% endif %}</span>
+    </label>
+    {% for name, meta in themes.items() if name != default %}
+    <label class="theme-choice">
+      <input type="radio" name="theme" value="{{ name }}" data-css="{{ url_for('user_theme', name=name) }}"{% if chosen == name %} checked{% endif %}>
+      <span><strong>{{ meta.name or name }}</strong>{{ swatches(meta) }}{% if meta.description %}<span class="small muted">{{ meta.description }}</span>{% endif %}</span>
+    </label>
+    {% endfor %}
+  </fieldset>
+  <fieldset class="theme-choices">
+    <legend>Email</legend>
+    <label class="check"><input type="checkbox" name="group_email" value="1"{% if not g.user.no_email %} checked{% endif %}>
+      Send me the occasional email the site's admins send to everyone, and the weekly &ldquo;This week in family history&rdquo;{% if not g.user.email %} <span class="muted small">(your account has no email address; ask an admin to add one)</span>{% endif %}</label>
+  </fieldset>
+  <div class="form-actions"><button>Save</button></div>
+</form>
+<div class="card">
+  <h2>People you watch</h2>
+  {% if watched %}<p class="muted small">You get an email when someone else changes one of them, at most once a day each.</p>
+  <ul class="people-list">{% for p in watched %}{{ person_row(p) }}{% endfor %}</ul>
+  {% else %}<p class="muted">Nobody yet. Press <strong>Watch</strong> on someone's page to get an email when they're changed.</p>{% endif %}
+</div>
+<div class="card">
+  <h2>Password</h2>
+  <p><a href="{{ url_for('account.password') }}">Change your password</a></p>
+</div>
+{% if g.user.allow_ged == 1 %}
+<div class="card">
+  <h2>Download the tree</h2>
+  <p><a href="{{ url_for('main.export') }}">Download the whole tree as GEDCOM</a> <span class="muted small">(for other genealogy programs)</span></p>
+</div>
+{% endif %}
+</div>
+<script src="{{ url_for('static', filename='theme_preview.js') }}" defer></script>
+{% endblock %}

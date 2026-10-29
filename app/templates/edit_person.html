@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% from "_date.html" import date_input %}
+{% block title %}{{ "Edit " ~ pname(p) if p else "Add person" }} · {{ super() }}{% endblock %}
+{% block content %}
+<h1>{% if p %}Edit {{ pname(p) }}{% elif fam %}Add child to family {{ fam.familyID }}{% elif spouse %}Add spouse of {{ pname(spouse) }}{% elif child %}Add {{ "father" if role == "husband" else "mother" }} of {{ pname(child) }}{% else %}Add person{% endif %}</h1>
+{% if p %}<nav class="tabs" aria-label="Parts of this page"><a href="#details">Name and vital events</a>
+  <a href="#family">Family</a>{% if r.both %} <a href="#events">Life events</a> <a href="#notes">Biography and notes</a> <a href="#media">Photos and documents</a>{% endif %}
+</nav>
+<p><a class="btn primary" href="{{ url_for('main.person', pid=p.personID) }}">← Done: return to {{ pname(p) }}</a></p>{% endif %}
+{% if errors %}<div class="card error" role="alert"><ul>{% for e in errors %}<li>{{ e }}</li>{% endfor %}</ul></div>{% endif %}
+<form method="post" class="card edit-form" id="details">
+  <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+  {% if p %}<input type="hidden" name="changedate" value="{{ request.form.changedate or p.changedate }}">{% endif %}
+  {% if fam %}<input type="hidden" name="child_of" value="{{ fam.familyID }}">{% endif %}
+  {% if spouse %}<input type="hidden" name="spouse_of" value="{{ spouse.personID }}">{% endif %}
+  {% if child %}<input type="hidden" name="parent_of" value="{{ child.personID }}"><input type="hidden" name="role" value="{{ role }}">{% endif %}
+  {% if back %}<input type="hidden" name="return_to" value="{{ back.personID }}">{% endif %}
+
+  <fieldset><legend>Name</legend>
+    <div class="grid">
+      <label>First / given names <input name="firstname" value="{{ v.firstname }}" maxlength="127"></label>
+      <label>Surname prefix <input name="lnprefix" value="{{ v.lnprefix }}" maxlength="25" placeholder="van, de"></label>
+      <label>Last name <input name="lastname" value="{{ v.lastname }}" maxlength="127"></label>
+      <label>Suffix <input name="suffix" value="{{ v.suffix }}" maxlength="100" placeholder="Jr."></label>
+      <label>Title <input name="title" value="{{ v.title }}" maxlength="100"></label>
+      <label>Prefix <input name="prefix" value="{{ v.prefix }}" maxlength="100"></label>
+      <label>Nickname <input name="nickname" value="{{ v.nickname }}" maxlength="200"></label>
+      <label>Sex
+        <select name="sex">{% for code, label in [("M", "Male"), ("F", "Female"), ("U", "Unknown")] %}
+          <option value="{{ code }}" {% if v.sex == code %}selected{% endif %}>{{ label }}</option>{% endfor %}
+        </select>
+      </label>
+    </div>
+    <label class="check"><input type="checkbox" name="living" value="1" {% if v.living %}checked{% endif %}> Living</label>
+    <label class="check"><input type="checkbox" name="private" value="1" {% if v.private %}checked{% endif %}> Private</label>
+  </fieldset>
+
+  <fieldset><legend>Events</legend>
+    <p class="muted small">Dates as text, e.g. <code>3 Dec 1920</code>, <code>abt 1895</code>, <code>bef 1850</code>, <code>bet 1900 and 1910</code>.
+      Tick Remove and save to take an event off.</p>
+    <table class="facts edit-events">
+      {% for ev, label in events.items() %}
+      <tr id="event-{{ ev }}">
+        <th>{% if ev == "altbirth" %}
+          <select name="altbirthtype" aria-label="Christening or baptism">
+            <option value="CHR" {% if v.altbirthtype != "BAPM" %}selected{% endif %}>Christening</option>
+            <option value="BAPM" {% if v.altbirthtype == "BAPM" %}selected{% endif %}>Baptism</option>
+          </select>{% else %}{{ label }}{% endif %}</th>
+        <td>{{ date_input(ev ~ "date", v[ev ~ 'date'], label) }}</td>
+        <td><input name="{{ ev }}place" value="{{ v[ev ~ 'place'] }}" maxlength="248" data-places="{{ url_for('edit.place_hint') }}" aria-label="{{ label }} place" placeholder="Place"></td>
+        <td>{% if p and (p[ev ~ 'date'] or p[ev ~ 'place']) %}<label class="check small"><input type="checkbox" name="remove_{{ ev }}" value="1"> Remove</label>{% endif %}</td>
+      </tr>
+      {% endfor %}
+    </table>
+    <label class="check"><input type="checkbox" name="cremated" value="1" {% if v.burialtype == 1 %}checked{% endif %}> Cremated (not buried)</label>
+  </fieldset>
+
+  <div class="form-actions">
+    <button>{{ "Save" if p else "Add" }}</button>
+    <a href="{{ url_for('main.person', pid=p.personID) if p else back_url if back else (url_for('main.family', fid=fam.familyID) if fam else (url_for('main.person', pid=spouse.personID) if spouse else url_for('main.person', pid=child.personID) if child else url_for('main.home'))) }}">Cancel</a>
+  </div>
+</form>
+{% if p %}{% include "_edit_person_hub.html" %}{% endif %}
+<script src="{{ url_for('static', filename='dates.js') }}" defer></script>
+<script src="{{ url_for('static', filename='places.js') }}" defer></script>
+{% endblock %}

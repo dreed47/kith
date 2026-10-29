@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block title %}Arrange photos and documents · {{ super() }}{% endblock %}
+{% block content %}
+<h1>Arrange photos and documents <span class="muted small">for {{ owner_name(owner_id) }}</span></h1>
+<form method="post" class="card edit-form">
+  <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+  <p class="muted small">Number them in the order you want them shown. The main picture heads the page; a headstone is only used when there's no other photo.</p>
+  <table class="facts arrange">
+    <tr><th>Position</th><th>Main picture</th><th></th><th>Description</th></tr>
+    {% for l in links %}
+    <tr><td><input name="pos{{ l.medialinkID }}" value="{{ loop.index }}" inputmode="numeric" size="3" aria-label="Position of {{ l.description or l.path }}"></td>
+      <td>{% if is_image(l.path) and not is_url(l) %}<input type="radio" name="main" value="{{ l.medialinkID }}"{% if l.defphoto == "1" %} checked{% endif %} aria-label="Main picture: {{ l.description or l.path }}">{% endif %}</td>
+      <td><img src="{{ url_for('media.thumb', media_id=l.mediaID) }}" alt="" loading="lazy" class="arrange-thumb"></td>
+      <td>{{ l.description or l.path }} <span class="muted small">{{ l.mediatypeID }}</span></td></tr>
+    {% endfor %}
+  </table>
+  <div class="form-actions"><button>Save</button><a href="{{ back }}">Cancel</a></div>
+</form>
+{% endblock %}

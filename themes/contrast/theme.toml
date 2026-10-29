@@ -1,0 +1,4 @@
+name = "Large print"
+description = "Bigger, clearer letters, strong contrast and plainly underlined links, for easier reading."
+swatches = ["#000000", "#0000c8", "#ffd400", "#ffffff"]
+site_title = "Our Family History"

@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% from "_macros.html" import gens_picker, lifespan, person_link %}
+{% from "_chart_tabs.html" import chart_tabs %}
+{% block title %}Descendants: {{ pname(root) }} · {{ super() }}{% endblock %}
+{% block content %}
+<h1>Descendants: {{ pname(root) }}</h1>
+{{ chart_tabs(root.personID, "main.descendants") }}
+{{ gens_picker(choices, gens) }}
+{% macro branch(p, depth) %}
+<li><span class="muted small">{{ depth + 1 }}.</span> {{ person_link(p) }} {{ lifespan(p) }}
+  {% for f in fams.get(p.personID, []) %}
+  {% set s = spouses.get(f.wife if f.husband == p.personID else f.husband) %}
+  {% set children = kids.get(f.familyID, []) %}
+  <div class="desc-fam">
+    {% if s %}m. {{ person_link(s) }} {{ lifespan(s) }}{% else %}<span class="muted">Family</span>{% endif %}
+    {% if rights(f).both and f.marrdate %} · married {{ f.marrdate|d }}{% endif %}
+    · <a class="small" href="{{ url_for('main.family', fid=f.familyID) }}">family</a>
+    {% if children %}
+      {% if depth < gens - 1 %}<ul>{% for c in children %}{{ branch(c, depth + 1) }}{% endfor %}</ul>
+      {% else %}· <a class="small" href="{{ url_for('main.descendants', pid=p.personID, gens=gens) }}" aria-label="Later generations of {{ pname(p) }}">{{ children|length }} {{ "child" if children|length == 1 else "children" }} →</a>{% endif %}
+    {% endif %}
+  </div>
+  {% endfor %}
+</li>
+{% endmacro %}
+<ul class="descendants card">{{ branch(root, 0) }}</ul>
+{% endblock %}

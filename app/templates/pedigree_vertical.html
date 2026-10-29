@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% from "_macros.html" import chart_face, gens_picker, lifespan, photos_toggle %}
+{% from "_chart_tabs.html" import chart_tabs %}
+{% block title %}Pedigree: {{ pname(root) }} · {{ super() }}{% endblock %}
+{% block content %}
+<h1>Pedigree: {{ pname(root) }}</h1>
+{{ chart_tabs(root.personID, "main.vertical_pedigree") }}
+<div class="chart-options">{{ gens_picker(choices, gens) }}{{ photos_toggle(photos) }}</div>
+<div class="vped">
+  {% for row in rows %}
+  <div class="vped-row">{% for n, p in row %}
+    <div class="vped-box{% if not p %} empty{% endif %}"{% if p %} data-key="a{{ n }}" data-from="{{ "a" ~ 2 * n ~ " a" ~ (2 * n + 1) }}"{% endif %}>{% if p %}<a href="{{ url_for('main.vertical_pedigree', pid=p.personID, gens=gens) }}">{{ pname(p) }}</a>{{ lifespan(p) }}{{ chart_face(p, photos) }}{% endif %}</div>
+  {% endfor %}</div>
+  {% endfor %}
+</div>
+<script src="{{ url_for('static', filename='chartlines.js') }}" defer></script>
+{% endblock %}

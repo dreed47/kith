@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}{{ "Edit source citation" if c else "Add a source" }} · {{ super() }}{% endblock %}
+{% block content %}
+<h1>{{ "Edit source citation" if c else "Add a source" }} <span class="muted small">for {{ owner_name(owner_id) }}{% if about_label %}, about: {{ about_label }}{% endif %}</span></h1>
+{% if errors %}<div class="card error" role="alert"><ul>{% for e in errors %}<li>{{ e }}</li>{% endfor %}</ul></div>{% endif %}
+<form method="post" class="card edit-form">
+  <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+  {% if not c %}<input type="hidden" name="for" value="{{ owner_id }}"><input type="hidden" name="about" value="{{ about }}">{% endif %}
+  <label>Source <select name="sourceID" required><option value="">Choose…</option>
+    {% for s in sources %}<option value="{{ s.sourceID }}"{% if s.sourceID == v.sourceID %} selected{% endif %}>{{ s.title or s.sourceID }}</option>{% endfor %}</select></label>
+  <p class="small muted">Not in the list? <a href="{{ url_for('edit.edit_source', back=request.full_path) }}">Add the source first</a>.</p>
+  <label>Page or where in it <input name="page" value="{{ v.page or '' }}" maxlength="500" placeholder="e.g. p. 12, entry 340"></label>
+  <label>Date of the record <input name="citedate" value="{{ v.citedate or '' }}" maxlength="50"></label>
+  <label>What it says <textarea name="citetext" rows="4">{{ v.citetext or '' }}</textarea></label>
+  <label>Note <textarea name="note" rows="2" placeholder="e.g. Picture taken by Aunt Ruth">{{ v.note or '' }}</textarea></label>
+  <div class="form-actions"><button>{{ "Save" if c else "Add source" }}</button><a href="{{ back }}">Cancel</a></div>
+</form>
+{% if c %}
+<section class="card" id="scans"><h2>Scans</h2>
+  <p class="small muted">A picture of the record itself: the census page, the certificate, the newspaper clipping.</p>
+  {% if scans %}<ul>{% for m in scans %}<li><a href="{{ url_for('media.show', media_id=m.mediaID) }}">{{ m.description or m.path }}</a>
+    <form method="post" action="{{ url_for('edit.citation_scans', cid=c.citationID) }}" class="inline">
+      <input type="hidden" name="csrf" value="{{ csrf_token() }}"><input type="hidden" name="mediaID" value="{{ m.mediaID }}">
+      <button class="linklike small" name="action" value="remove">Detach</button></form></li>{% endfor %}</ul>{% endif %}
+  {% if g.user.allow_add == 1 %}<p><a href="{{ url_for('edit.new_media', for=c.persfamID, citation=c.citationID) }}">Upload a scan</a></p>{% endif %}
+  <form method="post" action="{{ url_for('edit.citation_scans', cid=c.citationID) }}" class="edit-form">
+    <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+    <label>Or attach one already on the site, by its number <input name="mediaID" inputmode="numeric" pattern="[0-9]+" required placeholder="the number in its address, /media/123"></label>
+    <div class="form-actions"><button name="action" value="add">Attach</button></div>
+  </form>
+</section>
+{% endif %}
+{% endblock %}

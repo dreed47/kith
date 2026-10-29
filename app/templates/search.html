@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% from "_macros.html" import person_link, place_link, search_tabs %}
+{% block title %}{{ listing or "Search" }} · {{ super() }}{% endblock %}
+{% macro sort_link(key, label) %}
+{% if sort == key %}<span aria-current="true">{{ label }} ▲</span>{% else %}<a href="{{ url_with(sort=key, page=1) }}">{{ label }}</a>{% endif %}
+{% endmacro %}
+{% block content %}
+<h1>{{ listing or "Search people" }}</h1>
+{% if not listing %}{{ search_tabs("main.search") }}{% endif %}
+<form class="card edit-form search-form" action="{{ url_with(_clear=True) }}">
+  {% if not listing %}
+  <label class="wide">Name <input name="q" value="{{ q }}" placeholder="First and/or last name (maiden or married), or an ID" autofocus></label>
+  {% endif %}
+  <details {% if born_from or born_to or place or status %}open{% endif %}><summary>More options</summary>
+    <div class="grid">
+      <label>Born from (year) <input name="born_from" value="{{ born_from or '' }}" inputmode="numeric" maxlength="4"></label>
+      <label>Born to (year) <input name="born_to" value="{{ born_to or '' }}" inputmode="numeric" maxlength="4"></label>
+      <label>Place (birth, death or burial) <input name="place" value="{{ place }}"></label>
+      <label>Status
+        <select name="status">
+          {% for v, label in [("", "Anyone"), ("deceased", "Deceased"), ("living", "Living")] %}
+          <option value="{{ v }}" {% if status == v %}selected{% endif %}>{{ label }}</option>{% endfor %}
+        </select>
+      </label>
+    </div>
+    {% if not listing %}<label class="check"><input type="checkbox" name="exact" value="1" {% if exact %}checked{% endif %}> Exact surname spelling only</label>{% endif %}
+  </details>
+  <input type="hidden" name="sort" value="{{ sort }}">
+  <button>Search</button>
+</form>
+
+{% if asked %}
+  {% if people %}
+  <p class="muted">{{ "{:,}".format(total) }} {{ "person" if total == 1 else "people" }}{% if pages > 1 %} · page {{ page }} of {{ pages }}{% endif %}
+    {% if variants %} · including similar spellings: {{ variants|join(", ") }} · <a href="{{ url_with(exact=1, page=1) }}">exact spelling only</a>{% endif %}
+    {% if exact and q %} · <a href="{{ url_with(exact=None, page=1) }}">include similar spellings</a>{% endif %}
+  </p>
+  <div class="table-wrap">
+  <table class="results">
+    <thead><tr>
+      <th>{{ sort_link("name", "Name") }}</th><th>{{ sort_link("born", "Born") }}</th><th>{{ sort_link("died", "Died") }}</th><th>Parents</th>
+    </tr></thead>
+    <tbody>
+    {% for p in people %}
+    {% set ok = rights(p).both %}
+    <tr>
+      <td data-label="Name">{{ person_link(p) }}{% if p.married_as and p.married_as != p.lastname and rights(p).living %}<div class="muted small">married name {{ p.married_as }}</div>{% endif %}</td>
+      <td data-label="Born">{% if ok %}{{ p.birthdate|d }}{% if p.birthplace %}<div class="muted small">{{ p.birthplace }}</div>{% endif %}{% endif %}</td>
+      <td data-label="Died">{% if ok %}{{ p.deathdate|d }}{% if p.deathplace %}<div class="muted small">{{ p.deathplace }}</div>{% endif %}{% endif %}</td>
+      <td data-label="Parents">{% for x in parents.get(p.famc, []) if x %}{{ person_link(x) }}{% if not loop.last %} &amp; {% endif %}{% endfor %}</td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {% if pages > 1 %}
+  <nav class="pager">
+    {% if page > 1 %}<a href="{{ url_with(page=page - 1) }}">Previous</a>{% endif %}
+    <span>Page {{ page }} of {{ pages }}</span>
+    {% if page < pages %}<a href="{{ url_with(page=page + 1) }}">Next</a>{% endif %}
+  </nav>
+  {% endif %}
+  {% else %}
+  <p>No one found.{% if exact %} <a href="{{ url_with(exact=None, page=1) }}">Try similar spellings</a>.{% endif %}</p>
+  {% endif %}
+{% endif %}
+{% endblock %}

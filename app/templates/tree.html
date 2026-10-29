@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% from "_macros.html" import person_row %}
+{% from "_picker.html" import picker %}
+{% block title %}Family tree · {{ super() }}{% endblock %}
+{% block content %}
+<h1>Family tree</h1>
+<form class="card edit-form" action="{{ url_for('main.tree_home') }}">
+  {{ picker("pid", "Whose tree?", "", None, url_for('main.find')) }}
+  <div class="form-actions"><button>Show tree</button></div>
+</form>
+{% if starts %}
+<section class="card">
+  <h2>Start from someone on the site</h2>
+  <ul class="people-list cols">{% for p in starts %}{{ person_row(p) }}{% endfor %}</ul>
+  <p class="small muted">These link to each person's page; their Pedigree button opens their tree.</p>
+</section>
+{% endif %}
+<p class="small muted">Find yourself in the tree and press <strong>This is me</strong> on your page: then Tree opens your own.</p>
+<script src="{{ url_for('static', filename='picker.js') }}" defer></script>
+{% endblock %}

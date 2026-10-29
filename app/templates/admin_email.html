@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}Email everyone · {{ super() }}{% endblock %}
+{% block content %}
+<div class="account">
+<h1>Email everyone</h1>
+{% if not enabled %}<p class="card error" role="alert">Email isn't set up on this server (KITH_SMTP_USER and the rest,
+  and KITH_SITE_URL, in the site's settings), so nothing can be sent.</p>{% endif %}
+{% if errors %}<div class="card error" role="alert"><ul>{% for e in errors %}<li>{{ e }}</li>{% endfor %}</ul></div>{% endif %}
+<form method="post" class="card edit-form">
+  <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+  <label>Subject <input name="subject" value="{{ v.subject }}" maxlength="{{ limits.subject }}" required></label>
+  <label>Message <textarea name="body" rows="12" maxlength="{{ limits.body }}" required>{{ v.body }}</textarea></label>
+  <p class="muted small">Plain text. Your name, the site's name and its address are added at the bottom, with a note on how to stop these emails.</p>
+  <div class="form-actions">
+    <button name="test" value="1" class="secondary">Send me a test</button>
+    <button>Send to {{ people|length }} {{ "person" if people|length == 1 else "people" }}</button>
+    <a href="{{ url_for('admin.home') }}">Cancel</a>
+  </div>
+</form>
+<section class="card">
+  <h2>This week in family history</h2>
+  <p>Every Monday, each person on the list gets the coming week's births, marriages and deaths, their closest
+    relatives first (at most 25). Each sees only who they may see on the site.</p>
+  <p><strong>{{ "On" if weekly else "Off" }}</strong>{% if weekly_sent %} <span class="muted small">· last sent {{ weekly_sent }}</span>{% endif %}</p>
+  {% if not site_url %}<p class="small error">KITH_SITE_URL isn't set, so the Monday email can't be sent.</p>{% endif %}
+  <form method="post" action="{{ url_for('admin.weekly_email') }}" class="form-actions">
+    <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+    <button name="action" value="test" class="secondary">Send me this week's</button>
+    {% if weekly %}<button name="action" value="off" class="secondary">Turn off</button>{% else %}<button name="action" value="on">Turn on</button>{% endif %}
+  </form>
+</section>
+<details class="card">
+  <summary>Who gets it ({{ people|length }})</summary>
+  <ul class="small">{% for u in people %}<li>{{ u.realname or u.username }} <span class="muted">({{ u.username }})</span></li>{% endfor %}</ul>
+  <p class="muted small">Everyone who can log in, has an email address and hasn't turned these off under Your account. Each person gets their own copy.</p>
+</details>
+</div>
+{% endblock %}

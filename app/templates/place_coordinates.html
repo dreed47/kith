@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}Place coordinates · {{ super() }}{% endblock %}
+{% block content %}
+<h1>Place coordinates</h1>
+<p class="muted">Each night the site looks up places that have no coordinates on OpenStreetMap (only the place name is sent). These are the ones it could only place roughly, from the town or county in the name, and the ones it couldn't find. Open one to check it or type its coordinates; saving takes it off this list.{% if waiting %} {{ waiting }} place{{ "s" if waiting != 1 }} still have no coordinates.{% endif %}</p>
+<p>{% if last_at %}Last lookup: {{ (last_at|local).strftime("%-d %b %Y %H:%M") }}, {{ last.values()|sum }} place{{ "s" if last.values()|sum != 1 }} ({{ last.get("found", 0) }} found, {{ last.get("approximate", 0) }} approximate, {{ last.get("not found", 0) }} not found).{% else %}No lookups yet.{% endif %}</p>
+{% for status, label in (("approximate", "Approximate"), ("not found", "Not found")) %}
+{% set found = rows|selectattr("status", "equalto", status)|list %}
+<section class="card">
+  <h2 class="card-title">{{ label }} <span class="muted">{{ found|length }}</span></h2>
+  {% if found %}
+  <div class="scroll-list"><table class="facts">
+    {% for r in found %}
+    <tr><td><a href="{{ url_for('edit.place', name=r.place) }}">{{ r.place }}</a></td>
+      <td class="small muted">{{ r.matched if r.matched else "" }}{% if r.latitude %} ({{ r.latitude }}, {{ r.longitude }}){% endif %}</td></tr>
+    {% endfor %}
+  </table></div>
+  {% else %}<p class="muted">None.</p>{% endif %}
+</section>
+{% endfor %}
+<section class="card">
+  <h2 class="card-title">Latest found</h2>
+  {% if latest %}
+  <div class="scroll-list"><table class="facts">
+    {% for r in latest %}
+    <tr><td><a href="{{ url_for('edit.place', name=r.place) }}">{{ r.place }}</a></td>
+      <td class="small muted">{{ r.matched }}{% if r.latitude %} ({{ r.latitude }}, {{ r.longitude }}){% endif %} · {{ (r.at|local).strftime("%-d %b") }}</td></tr>
+    {% endfor %}
+  </table></div>
+  {% else %}<p class="muted">None.</p>{% endif %}
+</section>
+{% endblock %}

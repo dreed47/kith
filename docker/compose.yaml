@@ -1,0 +1,50 @@
+# Kith with its database. In this folder:
+#   1. Copy example.env to .env and set DB_PASSWORD.
+#   2. docker compose up -d
+#   3. docker compose exec app flask --app app setup db          (once: the tables and the first admin)
+#      docker compose exec app flask --app app setup sample      (optional: a made-up family to try it with)
+#   4. Open http://localhost:8000
+# Updating: git pull, then docker compose up -d --build (database upgrades run as the site starts).
+name: kith
+services:
+  db:
+    image: mariadb:11.8
+    environment:
+      MARIADB_DATABASE: kith
+      MARIADB_USER: kith
+      MARIADB_PASSWORD: ${DB_PASSWORD:?set DB_PASSWORD in .env}
+      MARIADB_RANDOM_ROOT_PASSWORD: "1"
+      MARIADB_AUTO_UPGRADE: "1"
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 5s
+      retries: 30
+    volumes:
+      - db:/var/lib/mysql
+    restart: unless-stopped
+  app:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      KITH_DB_HOST: db
+      KITH_DB_PORT: "3306"
+      KITH_DB_NAME: kith
+      KITH_DB_USER: kith
+      KITH_DB_PASSWORD: ${DB_PASSWORD}
+    ports:
+      - "${PORT:-8000}:8000"
+    volumes:
+      - media:/data/media
+      - instance:/data/instance
+    restart: unless-stopped
+volumes:
+  db:
+  media:
+  instance:

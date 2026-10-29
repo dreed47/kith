@@ -1,0 +1,11 @@
+{# The ways to see one person's family: charts of ancestors and of descendants. #}
+{% macro chart_tabs(pid, current) %}
+<p class="tabs small chart-tabs">
+  {% for endpoint, label in (("main.pedigree", "Pedigree"), ("main.vertical_pedigree", "Upward"), ("main.fan_chart", "Fan"),
+                             ("main.ahnentafel", "Ahnentafel"), ("main.descendants", "Descendants"),
+                             ("main.descendant_table", "Descendant table"),
+                             ("main.hourglass", "Hourglass"), ("main.register", "Register")) %}
+  {% if endpoint == current %}<strong aria-current="page">{{ label }}</strong>{% else %}<a href="{{ url_for(endpoint, pid=pid) }}">{{ label }}</a>{% endif %}
+  {% endfor %}
+</p>
+{% endmacro %}

@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block body_class %}welcome{% endblock %}
+{% block content %}
+<div class="public">
+  <section class="public-intro">
+    <p class="eyebrow">A private family history</p>
+    <h1>{{ theme.welcome_title or theme.site_title or "Family Tree" }}</h1>
+    {% if theme.tagline %}<p class="lead">{{ theme.tagline }}</p>{% endif %}
+    <div class="pre">{{ theme.welcome or "This is a private family history site. Family members can log in to browse the family tree, photos and stories." }}</div>
+    {% if theme.contact %}<p class="muted">Family member without an account? {{ theme.contact }}</p>{% endif %}
+  </section>
+  {% include "_login_form.html" %}
+</div>
+<div class="fan-art" aria-hidden="true"></div>
+{% endblock %}

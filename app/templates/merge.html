@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% from "_picker.html" import picker %}
+{% from "_macros.html" import person_link, lifespan %}
+{% block title %}Merge duplicates · {{ super() }}{% endblock %}
+{% block content %}
+<h1>Merge duplicate people</h1>
+<form class="card edit-form" method="get">
+  <p class="muted small">Pick the record to keep and the duplicate to fold into it. You'll see them side by side before anything changes.</p>
+  <div class="grid">
+    <div>{{ picker("keep", "Keep", "", None) }}</div>
+    <div>{{ picker("merge", "Merge into it (then removed)", "", None) }}</div>
+  </div>
+  <div class="form-actions"><button>Compare</button></div>
+</form>
+<h2>Possible duplicates</h2>
+<div class="tabs">
+  {% if strong %}<strong aria-current="page">Same name and birth year</strong><a href="{{ url_with(weak=1, page=None) }}">Same name, birth year missing</a>
+  {% else %}<a href="{{ url_with(weak=None, page=None) }}">Same name and birth year</a><strong aria-current="page">Same name, birth year missing</strong>{% endif %}
+  <span class="muted small">{{ total }} pair{{ "s" if total != 1 }}</span>
+</div>
+{% if pairs %}
+<section class="card"><ul class="child-list">
+  {% for a, b in pairs %}
+  <li><span>{{ person_link(a) }} {{ lifespan(a) }} <span class="muted small">{{ a.personID }}</span> · {{ person_link(b) }} {{ lifespan(b) }} <span class="muted small">{{ b.personID }}</span></span>
+    <span class="row-actions small"><a href="{{ url_for('edit.merge_page', keep=a.personID, merge=b.personID) }}">Compare</a></span></li>
+  {% endfor %}
+</ul></section>
+{% else %}<p class="muted">None found.</p>{% endif %}
+{% if pages > 1 %}<p class="pager">
+  {% if page > 1 %}<a href="{{ url_with(page=page - 1) }}">Previous</a>{% endif %}
+  <span>Page {{ page }} of {{ pages }}</span>
+  {% if page < pages %}<a href="{{ url_with(page=page + 1) }}">Next</a>{% endif %}
+</p>{% endif %}
+<script src="{{ url_for('static', filename='picker.js') }}" defer></script>
+{% endblock %}

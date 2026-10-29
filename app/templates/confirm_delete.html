@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}{{ title }} · {{ super() }}{% endblock %}
+{% block content %}
+<h1>{{ title }}</h1>
+<section class="card">
+  {% for d in details %}<p class="pre">{{ d }}</p>{% endfor %}
+  <p class="muted">{{ note or "A full copy is kept in the edit history." }}</p>
+  <form method="post" class="form-actions">
+    <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+    <button class="danger">Delete</button>
+    <a href="{{ back }}">Cancel</a>
+  </form>
+</section>
+{% endblock %}

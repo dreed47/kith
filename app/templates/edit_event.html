@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% from "_date.html" import date_input %}
+{% block title %}{{ "Edit event" if e else "Add event" }} · {{ super() }}<script src="{{ url_for('static', filename='dates.js') }}" defer></script>
+<script src="{{ url_for('static', filename='places.js') }}" defer></script>
+{% endblock %}
+{% block content %}
+<h1>{{ "Edit event" if e else "Add event" }} <span class="muted small">for {{ owner_name(owner_id) }}</span></h1>
+{% if errors %}<div class="card error" role="alert"><ul>{% for x in errors %}<li>{{ x }}</li>{% endfor %}</ul></div>{% endif %}
+<form method="post" class="card edit-form">
+  <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+  {% if not e %}<input type="hidden" name="for" value="{{ owner_id }}">{% endif %}
+  <div class="grid">
+    <label>Event type
+      <select name="eventtypeID" required>
+        <option value="">Choose…</option>
+        {% for t in types %}<option value="{{ t.eventtypeID }}" {% if v.eventtypeID == t.eventtypeID %}selected{% endif %}>{{ t.display }}</option>{% endfor %}
+      </select>
+    </label>
+    <div><label for="date-eventdate">Date</label> {{ date_input("eventdate", v.eventdate, "Event") }}</div>
+    <label>Place <input name="eventplace" value="{{ v.eventplace }}" maxlength="248" data-places="{{ url_for('edit.place_hint') }}"></label>
+    <label>Age <input name="age" value="{{ v.age }}" maxlength="12"></label>
+    <label>Agency <input name="agency" value="{{ v.agency }}" maxlength="120"></label>
+    <label>Cause <input name="cause" value="{{ v.cause }}" maxlength="90"></label>
+  </div>
+  <label>Details <textarea name="info" rows="5">{{ v.info }}</textarea></label>
+  <details {% if addr.values()|select|list %}open{% endif %}><summary>Address</summary>
+    <div class="grid">
+      {% for k, label in [("address1", "Address line 1"), ("address2", "Address line 2"), ("city", "City"), ("state", "State"),
+                          ("zip", "ZIP"), ("country", "Country"), ("phone", "Phone"), ("email", "Email"), ("www", "Website")] %}
+      <label>{{ label }} <input name="{{ k }}" value="{{ addr[k] }}"></label>
+      {% endfor %}
+    </div>
+  </details>
+  <div class="form-actions">
+    <button>{{ "Save" if e else "Add event" }}</button>
+    <a href="{{ back }}">Cancel</a>
+    {% if e and g.user.allow_delete == 1 %}<a class="danger-link" href="{{ url_for('edit.delete_event', eid=e.eventID, back=request.args.back) }}">Delete event…</a>{% endif %}
+  </div>
+</form>
+<script src="{{ url_for('static', filename='dates.js') }}" defer></script>
+<script src="{{ url_for('static', filename='places.js') }}" defer></script>
+{% endblock %}

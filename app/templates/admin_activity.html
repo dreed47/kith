@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}Activity log · {{ super() }}{% endblock %}
+{% macro record_link(r) -%}
+{%- if r.tbl == "people" and r.after_json %}<a href="{{ url_for('main.person', pid=r.record) }}">{{ r.record }}</a>
+{%- elif r.tbl == "families" and r.after_json %}<a href="{{ url_for('main.family', fid=r.record) }}">{{ r.record }}</a>
+{%- elif r.tbl == "users" and r.after_json %}<a href="{{ url_for('admin.user', uid=r.record) }}">account {{ r.record }}</a>
+{%- else %}{{ r.record }}{% endif -%}
+{%- endmacro %}
+{% block content %}
+<h1>Activity log</h1>
+<form class="tabs filters" role="search">
+  <label>Who <select name="user"><option value="">Everyone</option>{% for u in users %}<option{% if u == who %} selected{% endif %}>{{ u }}</option>{% endfor %}</select></label>
+  <label>Record <input name="record" value="{{ record }}" placeholder="e.g. I1474" size="10"></label>
+  <button class="small-button">Show</button>
+  <span class="muted small">{{ total }} change{{ "s" if total != 1 }}</span>
+</form>
+<section class="card">
+  {% if rows %}
+  <table class="facts">
+    {% for r in rows %}
+    <tr>
+      <td class="small">{{ (r.at|local).strftime("%-d %b %Y %H:%M") }}</td>
+      <td>{{ r.username }}</td>
+      <td>{{ r.action }} {{ record_link(r) }}
+        {% if r.changes %}<details><summary class="small">{{ r.changes|length }} field{{ "s" if r.changes|length != 1 }}</summary>
+          <dl class="changes">{% for field, old, new in r.changes %}<div><dt>{{ field }}</dt><dd>{% if old not in (None, "") %}<del>{{ old }}</del> {% endif %}{% if new not in (None, "") %}<ins>{{ new }}</ins>{% endif %}</dd></div>{% endfor %}</dl>
+        </details>{% endif %}</td>
+    </tr>
+    {% endfor %}
+  </table>
+  {% else %}<p class="muted">Nothing recorded{% if who or record %} for that filter{% endif %}.</p>{% endif %}
+</section>
+{% if pages > 1 %}<p class="pager">
+  {% if page > 1 %}<a href="{{ url_with(page=page - 1) }}">Newer</a>{% endif %}
+  <span>Page {{ page }} of {{ pages }}</span>
+  {% if page < pages %}<a href="{{ url_with(page=page + 1) }}">Older</a>{% endif %}
+</p>{% endif %}
+{% endblock %}

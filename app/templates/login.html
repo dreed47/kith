@@ -1,0 +1,7 @@
+{% extends "base.html" %}
+{% block title %}Log in · {{ super() }}{% endblock %}
+{% block body_class %}welcome{% endblock %}
+{% block content %}
+<div class="narrow">{% include "_login_form.html" %}</div>
+<div class="fan-art" aria-hidden="true"></div>
+{% endblock %}

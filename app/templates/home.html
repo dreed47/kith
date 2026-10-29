@@ -1,0 +1,120 @@
+{% extends "base.html" %}
+{% from "_macros.html" import person_link, lifespan, thumb, icon, avatar, person_row %}
+{% from "_news.html" import news_item %}
+{% block body_class %}home{% endblock %}
+{% macro couple(spouses) %}{% for x in spouses if x %}{{ person_link(x) }}{% if not loop.last %} &amp; {% endif %}{% endfor %}{% endmacro %}
+{% macro recent_card(title) %}
+  <section class="card">
+    <h2 class="card-title">{{ icon("clock") }}{{ title }}</h2>
+    {% if recent %}
+    <ul class="recent">
+      {% for r in recent %}
+      <li>{% if r.kind == "I" %}{{ avatar(r.person) }}<span class="who">{{ person_link(r.person) }}</span>{% else %}<span class="avatar family" aria-hidden="true">{{ icon("users") }}</span><span class="who"><a href="{{ url_for('main.family', fid=r.id) }}">{{ couple(r.spouses)|striptags or "Family " ~ r.id }}</a> <span class="muted small">family</span></span>{% endif %}
+        <span class="muted small when">{{ r.ago }}{% if r.changedby %} by {{ r.changedby }}{% endif %}</span></li>
+      {% endfor %}
+    </ul>
+    {% else %}<p class="muted">Nothing yet.</p>{% endif %}
+  </section>
+{% endmacro %}
+{% macro branch_card() %}
+  <section class="card branch">
+    <h2 class="card-title">{{ icon("tree") }}Your branch</h2>
+    <div class="branch-me">{{ avatar(branch.me, "lg") }}<div><span class="name">{{ person_link(branch.me) }}</span> {{ lifespan(branch.me) }}</div></div>
+    {% if branch.parents %}<h3 class="eyebrow">Parents</h3><ul class="people-list">{% for x in branch.parents %}{{ person_row(x) }}{% endfor %}</ul>{% endif %}
+    {% if branch.grandparents %}<h3 class="eyebrow">Grandparents</h3><ul class="people-list cols">{% for x in branch.grandparents %}{{ person_row(x) }}{% endfor %}</ul>{% endif %}
+    <p class="card-links"><a class="btn" href="{{ url_for('main.pedigree', pid=branch.me.personID) }}">{{ icon("chart") }}Your pedigree</a> <a class="btn" href="{{ url_for('main.relationship_page') }}">{{ icon("link") }}How are we related?</a></p>
+  </section>
+{% endmacro %}
+{% macro days_card() %}
+  <section class="card">
+    <h2 class="card-title">{{ icon("calendar") }}On this day <span class="card-sub">{{ today.strftime("%B") }} {{ today.day }}</span></h2>
+    {% if days %}
+    <ul class="on-this-day">
+      {% for x in days %}
+      <li>
+        <span class="year-badge">{{ x.year }}</span>
+        <span>{% if x.kind == "married" %}{{ couple(x.spouses) }} married{% else %}{{ person_link(x.person) }} {{ x.kind }}{% endif %}
+        <span class="muted">· {{ x.years_ago }} years ago</span>
+        {% if x.rel %}<span class="small rel">· {{ rel_phrase(x.rel, "your") }}</span>{% endif %}</span>
+      </li>
+      {% endfor %}
+    </ul>
+    <p class="muted small">{% if day_total > days|length %}And {{ day_total - days|length }} more. {% endif %}<a href="{{ url_for('main.anniversaries') }}">All of today's dates and anniversaries</a></p>
+    {% else %}<p class="muted">No births, deaths or marriages recorded on this date.</p>{% endif %}
+  </section>
+{% endmacro %}
+{% macro news_card() %}
+{% if news %}
+<section class="card">
+  <h2 class="card-title">{{ icon("sparkle") }}What's new</h2>
+  <ul class="recent-comments">{% for e in news %}{{ news_item(e, 140) }}{% endfor %}</ul>
+  <p class="card-links"><a href="{{ url_for('main.whats_new_page') }}">See everything {{ icon("arrow") }}</a></p>
+</section>
+{% endif %}
+{% endmacro %}
+{% macro photos_card() %}
+{% if photos %}
+<section class="card">
+  <h2 class="card-title">{{ icon("photo") }}Recent photos</h2>
+  <div class="thumbs">{% for m in photos %}{{ thumb(m) }}{% endfor %}</div>
+  <p class="card-links"><a href="{{ url_for('media.browse') }}">All media {{ icon("arrow") }}</a></p>
+</section>
+{% endif %}
+{% endmacro %}
+
+{% block content %}
+<section class="hero">
+  <div class="hero-text">
+    <p class="eyebrow">{{ today.strftime("%A") }}, {{ today.strftime("%B") }} {{ today.day }}</p>
+    <h1 class="hero-title">Welcome back, {{ (g.user.realname or g.user.username).split()[0] }}</h1>
+    <form class="hero-search" action="{{ url_for('main.search') }}" role="search">
+      {{ icon("search") }}<input name="q" aria-label="Find a person" placeholder="Find a person: first and last name">
+      <button>Search</button>
+    </form>
+    <nav class="chips" aria-label="Explore">
+      <a href="{{ url_for('main.surnames') }}">{{ icon("names") }}Surnames</a>
+      <a href="{{ url_for('places.places') }}">{{ icon("place") }}Places</a>
+      <a href="{{ url_for('main.firstnames') }}">{{ icon("user") }}First names</a>
+      <a href="{{ url_for('main.sources') }}">{{ icon("book") }}Sources</a>
+      <a href="{{ url_for('main.statistics') }}">{{ icon("chart") }}Statistics</a>
+    </nav>
+  </div>
+</section>
+
+{% if g.user.allow_edit == 1 %}
+<div class="home-grid">
+{{ recent_card("Recently updated") }}
+  {% if fix is not none %}
+  <section class="card">
+    <h2 class="card-title">{{ icon("edit") }}Dates to fix</h2>
+    {% if fix %}
+    <p class="big-number"><strong>{{ "{:,}".format(fix) }}</strong> date{{ "" if fix == 1 else "s" }} can't be read, so they don't sort or count toward ages.</p>
+    <p><a class="btn primary" href="{{ url_for('main.dates_to_fix') }}">Work through the list</a></p>
+    {% else %}<p>All dates are readable. Nice.</p>{% endif %}
+    <p class="small"><a href="{{ url_for('edit.living_flags') }}">Check who's marked living</a> · <a href="{{ url_for('edit.checks') }}">Other data checks</a></p>
+  </section>
+  {% endif %}
+</div>
+<div class="home-grid">
+  {% if branch %}{{ branch_card() }}{% endif %}
+  {{ days_card() }}
+</div>
+{{ news_card() }}
+{{ photos_card() }}
+{% else %}
+<div class="home-grid">
+  {% if not branch %}
+  <section class="card callout">
+    <h2 class="card-title">{{ icon("sparkle") }}Make this site yours</h2>
+    <p>Find yourself in the tree (use the search box above), open your page and press <strong>This is me</strong>.
+      Once an editor confirms it, this page shows your family, and every page shows how you're related.</p>
+  </section>
+  {% endif %}
+  {% if branch %}{{ branch_card() }}{% endif %}
+  {{ days_card() }}
+</div>
+{{ news_card() }}
+{{ photos_card() }}
+<div class="home-grid">{{ recent_card("Recently updated") }}</div>
+{% endif %}
+{% endblock %}

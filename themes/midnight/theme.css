@@ -1,0 +1,40 @@
+/* Midnight: always dark, whatever the device prefers. Ink blue-black, candlelight gold. */
+@font-face { font-family: "Fraunces"; src: url("../static/fonts/fraunces-latin-wght-normal.woff2") format("woff2"); font-weight: 100 900; font-display: swap; }
+@font-face { font-family: "Fraunces"; src: url("../static/fonts/fraunces-latin-wght-italic.woff2") format("woff2"); font-weight: 100 900; font-style: italic; font-display: swap; }
+@font-face { font-family: "Inter"; src: url("../static/fonts/inter-latin-wght-normal.woff2") format("woff2"); font-weight: 100 900; font-display: swap; }
+
+:root {
+  color-scheme: dark;
+  --font-body: Inter, system-ui, sans-serif;
+  --font-heading: Fraunces, Georgia, serif;
+  --font-display: Fraunces, Georgia, serif;
+  --font-size: 100%;
+  --radius: 10px;
+  --radius-lg: 16px;
+  --space-3: 0.75rem;
+  --space-4: 1.1rem;
+  --link-underline: 35%;
+
+  --bg: #0d1015;
+  --surface: #151a21;
+  --surface-2: #1c222b;
+  --border: #29303a;
+  --shadow: 0 18px 40px rgb(0 0 0 / 0.6);
+  --shadow-card: 0 1px 0 rgb(255 255 255 / 0.03) inset, 0 4px 18px rgb(0 0 0 / 0.35);
+  --text: #e8e5de;
+  --text-muted: #a3a7ad;
+  --heading: #f6efe0;
+  --link: #e8c27c;
+  --accent: #d9a54a;
+  --accent-text: #1b1406;
+  --accent-soft: #33291a;
+  --highlight: #d9a54a;
+  --danger: #ff8a7a;
+  --header-bg: #090b0f;
+  --header-text: #f2ece0;
+  --hero-bg: radial-gradient(circle at 85% 10%, #4a3a1c 0%, #1b1a17 45%, #11141a 100%);
+  --hero-text: #f6efe0;
+}
+
+h1, .site-title, .hero-title { font-style: italic; font-weight: 500; }
+.site-header { border-bottom: 1px solid #1f242c; }

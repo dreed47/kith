@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% from "_picker.html" import picker %}
+{% from "_date.html" import date_input %}
+{% from "_macros.html" import person_link, lifespan %}
+{% block title %}{{ "Edit family " ~ f.familyID if f else "Add family" }} · {{ super() }}{% endblock %}
+{% block content %}
+<h1>{% if f %}Edit family {{ f.familyID }}{% elif child %}Add parents of {{ pname(child) }}{% else %}Add family{% endif %}</h1>
+{% if errors %}<div class="card error" role="alert"><ul>{% for e in errors %}<li>{{ e }}</li>{% endfor %}</ul></div>{% endif %}
+<form method="post" class="card edit-form">
+  <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+  {% if f %}<input type="hidden" name="changedate" value="{{ request.form.changedate or f.changedate }}">{% endif %}
+  {% if child %}<input type="hidden" name="child" value="{{ child.personID }}">{% endif %}
+  <fieldset><legend>Spouses</legend>
+    <p class="muted small">Type a name and pick from the list, or enter a person ID (e.g. I1234). Leave one empty if unknown.</p>
+    <div class="grid">
+      <div>{{ picker("husband", "Husband / father", v.husband, people.husband) }}</div>
+      <div>{{ picker("wife", "Wife / mother", v.wife, people.wife) }}</div>
+    </div>
+  </fieldset>
+  <fieldset id="marriage"><legend>Marriage</legend>
+    <table class="facts edit-events">
+      {% for ev, label in events.items() %}
+      <tr><th>{{ label }}</th>
+        <td>{{ date_input(ev ~ "date", v[ev ~ 'date'], label) }}</td>
+        <td><input name="{{ ev }}place" value="{{ v[ev ~ 'place'] }}" maxlength="248" data-places="{{ url_for('edit.place_hint') }}" aria-label="{{ label }} place" placeholder="Place"></td></tr>
+      {% endfor %}
+    </table>
+    <label>Marriage type <input name="marrtype" value="{{ v.marrtype }}" maxlength="90" placeholder="e.g. Civil, Religious"></label>
+    <label class="check"><input type="checkbox" name="living" value="1" {% if v.living %}checked{% endif %}> Living</label>
+    <label class="check"><input type="checkbox" name="private" value="1" {% if v.private %}checked{% endif %}> Private</label>
+  </fieldset>
+  <div class="form-actions">
+    <button>{{ "Save" if f else "Add family" }}</button>
+    <a href="{{ url_for('main.family', fid=f.familyID) if f else (url_for('main.person', pid=child.personID) if child else url_for('main.home')) }}">Cancel</a>
+  </div>
+</form>
+
+{% if f %}
+<section class="card" id="children"><h2>Children</h2>
+  {% if children %}
+  <ol class="child-list">
+    {% for c in children %}
+    <li>{{ person_link(c) }} {{ lifespan(c) }}
+      <span class="row-actions">
+        {% set first, last = loop.first, loop.last %}{# the inner loop below shadows loop #}
+        {% if g.user.allow_edit == 1 %}{% for action, text, aria in [("up", "↑", "Move up"), ("down", "↓", "Move down"), ("remove", "Remove", "Remove from family")] %}
+        <form method="post" action="{{ url_for('edit.family_children', fid=f.familyID) }}">
+          <input type="hidden" name="csrf" value="{{ csrf_token() }}"><input type="hidden" name="personID" value="{{ c.personID }}">
+          <button name="action" value="{{ action }}" class="small-button{% if action == 'remove' %} secondary{% endif %}"
+                  aria-label="{{ aria }}: {{ pname(c) }}"
+                  {% if (action == "up" and first) or (action == "down" and last) %}disabled{% endif %}>{{ text }}</button>
+        </form>
+        {% endfor %}{% endif %}
+      </span>
+    </li>
+    {% endfor %}
+  </ol>
+  {% else %}<p class="muted">No children yet.</p>{% endif %}
+  {% if g.user.allow_add == 1 %}
+  <form method="post" action="{{ url_for('edit.family_children', fid=f.familyID) }}" class="edit-form add-child">
+    <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+    {{ picker("personID", "Add an existing person as a child", "", None) }}
+    <button name="action" value="add">Add child</button>
+    <a href="{{ url_for('edit.new_person', child_of=f.familyID) }}">or create a new child</a>
+  </form>
+  {% endif %}
+</section>
+{% if g.user.allow_delete == 1 %}<p><a class="danger-link" href="{{ url_for('edit.delete_family', fid=f.familyID) }}">Delete this family…</a></p>{% endif %}
+{% endif %}
+<script src="{{ url_for('static', filename='picker.js') }}" defer></script>
+<script src="{{ url_for('static', filename='dates.js') }}" defer></script>
+<script src="{{ url_for('static', filename='places.js') }}" defer></script>
+{% endblock %}

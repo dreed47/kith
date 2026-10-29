@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% from "_macros.html" import gens_picker, person_link, longtext %}
+{% from "_chart_tabs.html" import chart_tabs %}
+{% block title %}Register: {{ pname(root) }} · {{ super() }}{% endblock %}
+{#- A person's name in sentences: their first name if we may show it, else "Living" (pname). -#}
+{% macro first(p) %}{{ (p.firstname or pname(p)) if rights(p).living else pname(p) }}{% endmacro %}
+{% macro subject(p) %}{{ {"M": "He", "F": "She"}.get(p.sex) or first(p) }}{% endmacro %}
+{% macro short_dates(p) -%}
+{%- if p and rights(p).both and (p.birthdate or p.deathdate) %} ({% if p.birthdate %}b. {{ p.birthdate|d }}{% endif %}{% if p.birthdate and p.deathdate %}, {% endif %}{% if p.deathdate %}d. {{ p.deathdate|d }}{% endif %}){% endif -%}
+{%- endmacro %}
+{% macro life(p) -%}
+{%- if not rights(p).both %}<span class="muted">Details are private.</span>
+{%- else -%}
+{%- set said = namespace(any=false) -%}
+{%- for verb, date, place in (("was born", p.birthdate, p.birthplace),
+                             ("was " ~ ("baptized" if p.altbirthtype == "BAPM" else "christened"), p.altbirthdate, p.altbirthplace),
+                             ("died", p.deathdate, p.deathplace),
+                             ("was " ~ ("cremated" if p.burialtype == 1 else "buried"), p.burialdate, p.burialplace)) if date or place -%}
+{{ " " if said.any }}{{ subject(p) if said.any else first(p) }} {{ verb }} {{ when_where(date, place) }}.{% set said.any = true %}
+{%- endfor -%}
+{%- endif -%}
+{%- endmacro %}
+{% block content %}
+<h1>Register: {{ pname(root) }}</h1>
+{{ chart_tabs(root.personID, "main.register") }}
+{{ gens_picker(choices, gens) }}
+<p class="muted small">Every descendant is numbered. A + before a child means they have their own entry further down.</p>
+{% for gen in generations %}
+<section class="card register">
+  <h2>Generation {{ loop.index }}</h2>
+  {% for p in gen %}
+  {% set n = numbers[p.personID] %}
+  <article class="reg-person" id="p{{ n }}">
+    <h3>{{ n }}. {{ person_link(p) }}
+      {%- if lineage[p.personID] %} <span class="muted small">({% for a, depth in lineage[p.personID] %}{{ first(a) }}<sup>{{ depth }}</sup>{{ ", " if not loop.last }}{% endfor %})</span>{% endif %}</h3>
+    <p>{{ life(p) }}</p>
+    {% for nt in notes.get(p.personID, []) %}<div class="note">{% if nt.about %}<span class="small muted">About: {{ nt.about }}. </span>{% endif %}{{ longtext(nt.note, 4, 500) }}</div>{% endfor %}
+    {% for f in fams.get(p.personID, []) %}
+    {% set s = spouses.get(f.wife if f.husband == p.personID else f.husband) %}
+    {% set pf = parent_fams.get(s.famc) if s else None %}
+    <p>{{ first(p) }}
+      {%- if s %} married {{ person_link(s) }}{{ short_dates(s) }}
+        {%- if pf and (pf.husband or pf.wife) %}, {{ {"M": "son", "F": "daughter"}.get(s.sex, "child") }} of {{ person_link(parents.get(pf.husband)) }}{{ " and " if pf.husband and pf.wife }}{{ person_link(parents.get(pf.wife)) }}{% endif %}
+        {%- if rights(f).both and (f.marrdate or f.marrplace) %}, {{ when_where(f.marrdate, f.marrplace) }}{% endif %}.
+      {%- else %} had a family with an unknown spouse.{% endif %}
+      <a class="small" href="{{ url_for('main.group_sheet', fid=f.familyID) }}">Group sheet</a></p>
+    {% set children = kids.get(f.familyID, []) %}
+    {% if children %}
+    <p class="small muted">Children{% if s %} of {{ first(p) }} and {{ first(s) }}{% endif %}:</p>
+    <ul class="reg-children">
+      {% for c in children %}
+      {% set cn = numbers[c.personID] %}
+      <li><span class="reg-num">{% if c.personID in shown and c.personID != p.personID %}+ <a href="#p{{ cn }}">{{ cn }}</a>{% else %}{{ cn }}{% endif %}</span>
+        <span class="reg-roman">{{ roman(loop.index) }}.</span>
+        {{ person_link(c) }}{{ short_dates(c) }}</li>
+      {% endfor %}
+    </ul>
+    {% endif %}
+    {% endfor %}
+  </article>
+  {% endfor %}
+</section>
+{% endfor %}
+{% endblock %}

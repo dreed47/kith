@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% from "_macros.html" import person_link %}
+{% from "_anniv_filters.html" import filters with context %}
+{% block title %}Dates and anniversaries · {{ super() }}{% endblock %}
+{% block content %}
+<h1>Dates and anniversaries</h1>
+<div class="tabs"><strong aria-current="page">List</strong><a href="{{ url_for('main.anniversary_calendar', month=month, kind=kinds) }}">Calendar</a></div>
+{{ filters(url_for('main.anniversaries'), true) }}
+<h2>{{ day ~ " " if day }}{{ month_names[month] }} <span class="muted small">{{ total }} event{{ "s" if total != 1 }}</span></h2>
+{% if total > limit %}<p class="muted">Showing the first {{ limit }}. Pick a day, or use the calendar.</p>{% endif %}
+{% if events %}
+<section class="card">
+  {% for day_events in events|groupby("day") %}
+  {% if not day %}<h3>{{ (day_events.grouper ~ " " ~ month_names[month]) if day_events.grouper else "Day not known" }}</h3>{% endif %}
+  <ul class="people">
+    {% for e in day_events.list %}
+    <li><span class="tag">{{ e.label }}</span>
+      {% if e.person %}{{ person_link(e.person) }}{% else %}{{ person_link(e.spouses[0]) }}{% if e.spouses[0] and e.spouses[1] %} &amp; {% endif %}{{ person_link(e.spouses[1]) }}
+        <a class="small" href="{{ url_for('main.family', fid=e.family.familyID) }}">family</a>{% endif %}
+      <span class="muted">{{ e.date|d }}{% if e.place %}, {{ e.place }}{% endif %} · {{ e.years }} year{{ "s" if e.years != 1 }} ago</span></li>
+    {% endfor %}
+  </ul>
+  {% endfor %}
+</section>
+{% else %}<p class="muted">Nothing recorded for that date.</p>{% endif %}
+{% endblock %}

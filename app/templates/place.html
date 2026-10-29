@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% from "_macros.html" import person_link %}
+{% block title %}{{ name }} · {{ super() }}{% endblock %}
+{% block content %}
+<h1>{{ name }}</h1>
+{% if g.user.allow_edit == 1 %}<p class="actions"><a href="{{ url_for('edit.place', name=name) }}">Edit place</a></p>{% endif %}
+{% if parents|length > 1 %}<p><a href="{{ url_for('places.places', within=', '.join(parents[1:])) }}">{{ ', '.join(parents[1:]) }}</a></p>{% endif %}
+{% if info and (info.latitude or info.notes) %}
+<section class="card">
+  {% if info.latitude and info.longitude %}<p><a href="https://www.openstreetmap.org/?mlat={{ info.latitude }}&amp;mlon={{ info.longitude }}#map=14/{{ info.latitude }}/{{ info.longitude }}" rel="noopener">Map</a></p>{% endif %}
+  {% if info.notes %}<div class="pre">{{ info.notes }}</div>{% endif %}
+</section>
+{% endif %}
+{% if hits %}
+<table class="facts">
+  {% for h in hits|sort(attribute="label") %}
+  <tr><th>{{ h.label }}</th><td>{{ h.date|d if (h.person and rights(h.person).both) or (h.family and rights(h.family).both) }}</td>
+    <td>{% if h.person %}{{ person_link(h.person) }}{% else %}<a href="{{ url_for('main.family', fid=h.family.familyID) }}">{{ pname(spouses.get(h.family.husband)) }} &amp; {{ pname(spouses.get(h.family.wife)) }}</a>{% endif %}</td></tr>
+  {% endfor %}
+</table>
+{% else %}<p>No events recorded here.</p>{% endif %}
+{% endblock %}

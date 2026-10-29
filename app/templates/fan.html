@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% from "_macros.html" import gens_picker, lifespan %}
+{% from "_chart_tabs.html" import chart_tabs %}
+{% block title %}Fan chart: {{ pname(root) }} · {{ super() }}{% endblock %}
+{% block content %}
+<h1>Fan chart: {{ pname(root) }}</h1>
+{{ chart_tabs(root.personID, "main.fan_chart") }}
+{{ gens_picker(choices, gens) }}
+<div class="fan">
+<svg viewBox="{{ -size - 5 }} {{ -size - 5 }} {{ 2 * size + 10 }} {{ size + 10 }}" role="img" aria-label="Fan chart of {{ pname(root) }}'s ancestors">
+  {% for s in sectors %}
+  {% if s.person %}<a href="{{ url_for('main.fan_chart', pid=s.person.personID, gens=gens) }}"><title>{{ pname(s.person) }}</title>{% endif %}
+  <path d="{{ s.path }}" class="fan-slice{% if not s.person %} empty{% elif s.n % 2 %} mother{% endif %}"/>
+  {% if s.person %}<text x="{{ s.x }}" y="{{ s.y }}" transform="rotate({{ s.rotate }} {{ s.x }} {{ s.y }})" class="fan-name">{{ s.label }}</text></a>{% endif %}
+  {% endfor %}
+  <a href="{{ url_for('main.person', pid=root.personID) }}"><path d="M-60,0 A60,60 0 0 1 60,0 Z" class="fan-slice root"/>
+    <text y="-30" class="fan-name root-name">{{ pname(root)|truncate(18, True, "…") }}</text>
+    <text y="-14" class="fan-name small">{{ lifespan(root)|striptags }}</text></a>
+</svg>
+</div>
+<p class="muted small">Father's side on the left, mother's on the right. Click someone to centre the fan on them.</p>
+{% endblock %}

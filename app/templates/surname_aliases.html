@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}Surname spellings · {{ super() }}{% endblock %}
+{% block content %}
+<h1>Surname spellings</h1>
+<p class="muted">Record that two spellings are the same family name, such as Schmidt and Schmitt. Everyone keeps the spelling on their own record; search and the Surnames page treat the linked spellings as one surname, listed under the second one you type. Search already includes long names one letter apart on its own; link names here when they are further apart (Smith and Smyth) or to make the Surnames page show them as one.</p>
+<form method="post" class="card">
+  <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+  <p><label>Spelling <input name="name" required maxlength="127"></label>
+    <label>is the same surname as <input name="main" required maxlength="127"></label>
+    <button>Link</button></p>
+</form>
+<section class="card">
+  <h2 class="card-title">Linked spellings <span class="muted">{{ groups|length }}</span></h2>
+  {% for main, others in groups %}
+  <form method="post" class="small">
+    <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+    <strong><a href="{{ url_for('main.surname', name=main) }}">{{ main }}</a></strong> <span class="muted">({{ counts.get(main.upper(), 0) }})</span>
+    {% for o in others %} · {{ o }} <span class="muted">({{ counts.get(o.upper(), 0) }})</span> <button name="remove" value="{{ o }}" class="secondary" aria-label="Unlink {{ o }}">unlink</button>{% endfor %}
+  </form>
+  {% else %}<p class="muted">None yet.</p>{% endfor %}
+</section>
+{% endblock %}

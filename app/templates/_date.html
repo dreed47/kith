@@ -1,0 +1,14 @@
+{# A free-text genealogy date with a calendar helper and a live "how it's understood" hint (static/dates.js). #}
+{% macro date_input(name, value, label, id="") %}
+{%- set id = "date-" ~ (id or name) %}
+<span class="date-field">
+  <span class="date-row">
+    <input id="{{ id }}" name="{{ name }}" value="{{ value or '' }}" maxlength="50" aria-label="{{ label }} date"
+           placeholder="Date" data-date="{{ url_for('edit.date_hint') }}" aria-describedby="{{ id }}-hint">
+    <button type="button" id="{{ id }}-pick" class="small-button secondary" hidden
+            aria-label="Pick {{ label|lower }} date from a calendar">Calendar</button>
+    <input type="date" id="{{ id }}-picker" class="visually-hidden" tabindex="-1" aria-hidden="true">
+  </span>
+  <small id="{{ id }}-hint" class="date-hint muted" aria-live="polite"></small>
+</span>
+{% endmacro %}

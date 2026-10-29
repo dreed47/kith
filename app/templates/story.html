@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+{% from "_macros.html" import person_link, longtext, icon, avatar %}
+{% block title %}Life story: {{ pname(p) }} · {{ super() }}{% endblock %}
+{#- Everything here is written from the record as it is now (see reports.story); nothing is stored. -#}
+{% set he = {"M": "He", "F": "She"}.get(p.sex) or p.firstname or pname(p) %}
+{% macro at_age(age) %}{% if age %}, at {{ "about age " ~ age[6:] if age.startswith("about ") else "age " ~ age }}{% endif %}{% endmacro %}
+{% macro ww(x) %}{% set w = when_where(x.date, x.place) %}{{ " " ~ w if w }}{% endmacro %}
+{#- Occupations take "an" before a, e, i, o only: "a union man". -#}
+{% macro stop(text) %}{{ text }}{{ "" if text[-1:] in ".!?" else "." }}{% endmacro %}
+{% macro names(people) %}{% for c in people %}{{ person_link(c) }}{{ ", " if loop.revindex > 2 else " and " if loop.revindex == 2 }}{% endfor %}{% endmacro %}
+{% macro children(f, they) %}
+{%- set cs = kids.get(f.familyID, []) %}
+{%- if cs %} {{ they }} had {{ in_words(cs|length) }} {{ "child" if cs|length == 1 else "children" }}: {{ names(cs) }}.{% endif %}
+{%- endmacro %}
+{% block content %}
+<section class="card person-head">
+  {% if photo %}<a class="person-photo" href="{{ url_for('media.show', media_id=photo.mediaID) }}">
+    <img src="{{ url_for('media.face', media_id=photo.mediaID, tag_id=photo_tag.id, shape='portrait') if photo_tag else url_for('media.thumb', media_id=photo.mediaID, s=600) }}" alt="Photo of {{ pname(p) }}"></a>
+  {% else %}<div class="person-portrait">{{ avatar(p, "xl") }}</div>{% endif %}
+  <div class="person-summary">
+    <h1>Life story: {{ pname(p) }}</h1>
+    <p><a href="{{ url_for('main.person', pid=p.personID) }}">Back to {{ pname(p) }}'s page</a></p>
+    <p class="muted small">Written from the facts in the tree each time you open it, so it is only as complete as the record.
+      {% if g.user.allow_edit == 1 %}To change it, <a href="{{ url_for('edit.person', pid=p.personID) }}">edit the facts</a> or add a biography.{% endif %}</p>
+  </div>
+</section>
+
+<section class="card story">
+  {% set dad = folks.get(pf.husband) if pf else None %}
+  {% set mom = folks.get(pf.wife) if pf else None %}
+  {% set place, total = birth_order %}
+  {% set birth = timeline|selectattr("key", "equalto", "BIRT")|first %}
+  {% set told = namespace(any=false, fams=[]) %}
+  <p>
+  {%- if birth or dad or mom %}{% set told.any = true %}{{ pname(p) }}
+    {%- if birth %} was born{{ ww(birth) }}{% endif %}
+    {%- if dad or mom %}{{ "," if birth else " was" }}
+      {% if total > 1 %}{{ "the " ~ in_words(place, true) if place else "one" }} of {{ in_words(total) }} children{% else %}the {{ {"M": "son", "F": "daughter"}.get(p.sex, "child") }}{% endif %}
+      of {{ person_link(dad) }}{{ " and " if dad and mom }}{{ person_link(mom) }}{% endif %}.
+  {%- endif %}
+  {%- for x in timeline if x.group == 0 and x.key != "BIRT" %}{% set told.any = true %}
+    {{ he }} was {{ "baptized" if x.key == "BAPM" else "christened" }}{{ ww(x) }}.
+  {%- endfor -%}
+  </p>
+  <p>
+  {%- for x in life %}{% set told.any = true %}
+    {%- set e = x.event %}
+    {%- if x.family %}
+      {%- if x.label == "Marriage" %}{% set told.fams = told.fams + [x.family.familyID] %}
+        {{ he }} married {{ person_link(x.spouse) or "an unknown spouse" }}{{ ww(x) }}{{ at_age(x.age) }}.{{ children(x.family, "They") }}
+      {%- else %}
+        {{ he }} and {{ person_link(x.spouse) or "their spouse" }} divorced{{ ww(x) }}.
+      {%- endif %}
+    {%- else %}
+      {%- set verb = verbs.get(e.tag) %}
+      {%- set info = x.info|truncate(200) %}
+      {%- if x.years|length > 1 %}
+        {{ he }} {{ verb }} in {% for y in x.years %}{{ y }}{{ ", " if loop.revindex > 2 else " and " if loop.revindex == 2 }}{% endfor %}.
+      {%- elif x.job %}
+        {{ he }} {{ verb }} {{ "" if x.job.startswith(("a ", "an ", "the ")) else "an " if x.job[:1] in "aeio" else "a " }}{{ x.job }}{{ ww(x) }}{{ at_age(x.age) }}.
+      {%- elif verb %}
+        {{ he }} {{ verb[:-3] if verb.endswith(" as") else verb }}{{ ww(x) }}{{ at_age(x.age) }}.{% if info %} {{ stop(info) }}{% endif %}
+      {%- else %}
+        {{ e.display }}{{ ww(x) }}{% if info %}: {{ stop(info) }}{% else %}.{% endif %}
+      {%- endif %}
+    {%- endif %}
+  {%- endfor %}
+  {%- for f in spouse_fams if f.familyID not in told.fams %}
+    {%- set s = folks.get(f.wife if f.husband == p.personID else f.husband) %}
+    {%- if s %}{% set told.any = true %}
+      {{ he }} had a family with {{ person_link(s) }}.{{ children(f, "They") }}
+    {%- elif kids.get(f.familyID) %}{% set told.any = true %}{{ children(f, he) }}
+    {%- endif %}
+  {%- endfor -%}
+  </p>
+  <p>
+  {%- for x in timeline if x.group == 2 %}{% set told.any = true %}
+    {%- if x.key == "DEAT" %}
+      {{ he }} died{{ ww(x) }}{{ at_age(x.age) }}.
+    {%- else %}
+      {{ he }} was {{ "cremated" if x.label == "Cremation" else "buried" }}{{ ww(x) }}.
+    {%- endif %}
+  {%- endfor -%}
+  </p>
+  {% if not told.any %}<p class="muted">There isn't enough in the record yet to tell {{ pname(p) }}'s story.</p>{% endif %}
+</section>
+
+{% for title, notes in (("Biography", biography), ("Obituary", obituary)) if notes %}
+<section class="card"><h2>{{ title }}</h2>
+  {% for n in notes %}<div class="note">{{ longtext(n.note, 15, 2000) }}</div>{% endfor %}
+</section>
+{% endfor %}
+{% endblock %}

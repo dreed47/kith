@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% from "_picker.html" import picker %}
+{% block title %}Timeline · {{ super() }}{% endblock %}
+{% block content %}
+<h1>Timeline</h1>
+<form class="card edit-form" method="get">
+  {% for pid in ids %}<input type="hidden" name="p" value="{{ pid }}">{% endfor %}
+  <div>{{ picker("p", "Add someone", "", None, url_for('main.find')) }}</div>
+  <div class="form-actions"><button>Add</button>{% if ids %}<a href="{{ url_for('main.timeline') }}">Start over</a>{% endif %}
+    <span class="muted small">Up to {{ max_people }} people.</span></div>
+</form>
+{% if bars %}
+<section class="card timeline-chart">
+  <div class="tl-axis">{% for y, left in ticks %}<span style="left: {{ left }}%">{{ y }}</span>{% endfor %}</div>
+  {% for b in bars %}
+  <div class="tl-row">
+    <a class="tl-name" href="{{ url_for('main.person', pid=b.p.personID) }}">{{ pname(b.p) }}</a>
+    <div class="tl-track">
+      <div class="tl-bar{% if b.open %} open{% endif %}" style="left: {{ b.left }}%; width: {{ b.width }}%"
+           title="{{ b.start }} – {{ '' if b.open else b.end }}"><span>{{ b.start }}{% if not b.open %} – {{ b.end }}{% endif %}</span></div>
+      {% for m in b.marks %}<span class="tl-mark" style="left: {{ m }}%" title="Married"></span>{% endfor %}
+      <form method="get" class="tl-remove">{% for pid in ids if pid != b.p.personID %}<input type="hidden" name="p" value="{{ pid }}">{% endfor %}<button class="linklike small" aria-label="Remove {{ pname(b.p) }}">×</button></form>
+    </div>
+  </div>
+  {% endfor %}
+  {% if history %}<div class="tl-layer">{% for h in history %}
+    <div class="tl-history" style="left: {{ h.left }}%" title="{{ h.evdetail }}"><span>{{ h.evyear }} {{ h.evtitle }}</span></div>
+  {% endfor %}</div>{% endif %}
+</section>
+<p class="muted small">Bars run from birth to death; a faded end means no death date is recorded. Dots are marriages.{% if not history and g.user.role == "admin" %} Historical events can be added under <a href="{{ url_for('admin.history_events') }}">Admin → Historical events</a>.{% endif %}</p>
+{% elif not left_out %}<p class="muted">Add people to compare their lifetimes.</p>{% endif %}
+{% if left_out %}<p class="muted small">Not shown (no birth year, or private): {% for p in left_out %}{{ pname(p) }}{{ ", " if not loop.last }}{% endfor %}.</p>{% endif %}
+<script src="{{ url_for('static', filename='picker.js') }}" defer></script>
+{% endblock %}

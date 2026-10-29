@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% from "_macros.html" import gens_picker, person_link %}
+{% from "_chart_tabs.html" import chart_tabs %}
+{% block title %}Descendants: {{ pname(root) }} · {{ super() }}{% endblock %}
+{% block content %}
+<h1>Descendants: {{ pname(root) }}</h1>
+{{ chart_tabs(root.personID, "main.descendant_table") }}
+{{ gens_picker(choices, gens) }}
+<div class="table-scroll card">
+<table class="facts desc-table">
+  <tr><th>Gen.</th><th>Name</th><th>Born</th><th>Died</th><th>Spouse(s)</th><th>Child of</th></tr>
+  {% for r in rows %}
+  {% set p = r.person %}
+  <tr><td>{{ r.generation }}</td><td>{{ person_link(p) }}</td>
+    <td>{% if rights(p).both %}{{ p.birthdate|d }}{% endif %}</td><td>{% if rights(p).both %}{{ p.deathdate|d }}{% endif %}</td>
+    <td>{% for s in r.spouses %}{{ person_link(s) or "unknown" }}{{ ", " if not loop.last }}{% endfor %}</td>
+    <td>{{ person_link(r.parent) }}</td></tr>
+  {% endfor %}
+</table>
+</div>
+{% endblock %}

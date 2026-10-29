@@ -1,0 +1,152 @@
+{#- The rest of a person's edit page: family, life events, notes and media, each with a short form for adding
+    one more without leaving the page (for typing in what a relative remembers). Links pass back=edit so
+    saving comes back here. -#}
+{% from "_date.html" import date_input %}
+{% from "_macros.html" import avatar, person_link, thumb %}
+{% macro relative(x) -%}
+<li>{{ avatar(x) }} {{ person_link(x) }}{% if rights(x).both and (x.birthdate or x.deathdate) %} <span class="muted small">{{ x.birthdate|d or "?" }} – {{ x.deathdate|d }}</span>{% endif %}
+  {% if g.user.allow_edit == 1 %}<span class="row-actions small"><a href="{{ url_for('edit.person', pid=x.personID) }}" aria-label="Edit {{ pname(x) }}">Edit</a></span>{% endif %}</li>
+{%- endmacro %}
+{% set pf = parent_fams[0] if parent_fams else None %}
+
+<section class="card" id="family"><h2>Family</h2>
+  {% for f in parent_fams %}
+  <h3>Parents</h3>
+  <ul class="child-list">{% for x in (folks.get(f.husband), folks.get(f.wife)) if x %}{{ relative(x) }}{% endfor %}</ul>
+  {% if siblings.get(f.familyID) %}<h3>Brothers and sisters</h3>
+  <ul class="child-list">{% for x in siblings[f.familyID] %}{{ relative(x) }}{% endfor %}</ul>{% endif %}
+  {% endfor %}
+  {% for f in spouse_fams %}
+  {% set spouse = folks.get(f.wife if f.husband == p.personID else f.husband) %}
+  <h3>{% if spouse %}Spouse{% else %}Family{% endif %}{% if g.user.allow_edit == 1 %} <a class="small" href="{{ url_for('edit.family', fid=f.familyID) }}">Edit family, marriage</a>{% endif %}</h3>
+  {% if spouse %}<ul class="child-list">{{ relative(spouse) }}</ul>{% endif %}
+  {% if kids.get(f.familyID) %}<h4>Children{% if spouse %} with {{ pname(spouse) }}{% endif %}</h4>
+  <ul class="child-list">{% for x in kids[f.familyID] %}{{ relative(x) }}{% endfor %}</ul>{% endif %}
+  {% endfor %}
+  {% if not parent_fams and not spouse_fams %}<p class="muted">No family recorded yet.</p>{% endif %}
+
+  {% if g.user.allow_add == 1 %}
+  <form method="post" action="{{ url_for('edit.new_person', back='edit') }}" class="edit-form add-child">
+    <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+    <input type="hidden" name="return_to" value="{{ p.personID }}">
+    <fieldset><legend>Add a relative</legend>
+      <div class="grid">
+        <label>Who they are
+          <select name="relation" required>
+            {% if not pf or not pf.husband %}<option value="husband:{{ p.personID }}">Father</option>{% endif %}
+            {% if not pf or not pf.wife %}<option value="wife:{{ p.personID }}">Mother</option>{% endif %}
+            {% for f in parent_fams %}<option value="child_of:{{ f.familyID }}">Brother or sister{% if parent_fams|length > 1 %} ({% for x in (f.husband, f.wife) %}{{ pname(folks.get(x)) if folks.get(x) else "?" }}{{ " & " if loop.first }}{% endfor %}){% endif %}</option>{% endfor %}
+            <option value="spouse_of:{{ p.personID }}">Spouse</option>
+            {% for f in spouse_fams %}{% set spouse = folks.get(f.wife if f.husband == p.personID else f.husband) %}
+            <option value="child_of:{{ f.familyID }}">Child{% if spouse %} with {{ pname(spouse) }}{% endif %}</option>{% endfor %}
+          </select>
+        </label>
+        <label>First / given names <input name="firstname" maxlength="127"></label>
+        <label>Last name <input name="lastname" maxlength="127"></label>
+        <label>Sex
+          <select name="sex"><option value="">From who they are</option><option value="M">Male</option><option value="F">Female</option><option value="U">Unknown</option></select>
+        </label>
+        <div><label for="date-rel-birthdate">Born</label> {{ date_input("birthdate", "", "Birth", id="rel-birthdate") }}</div>
+        <label>Birth place <input name="birthplace" maxlength="248" data-places="{{ url_for('edit.place_hint') }}"></label>
+        <div><label for="date-rel-deathdate">Died</label> {{ date_input("deathdate", "", "Death", id="rel-deathdate") }}</div>
+        <label>Death place <input name="deathplace" maxlength="248" data-places="{{ url_for('edit.place_hint') }}"></label>
+      </div>
+      <label class="check"><input type="checkbox" name="living" value="1" checked> Living</label>
+    </fieldset>
+    <div class="form-actions"><button>Add relative</button>
+      <span class="small muted">Only a name is needed. For a brother or sister, add a parent first; for a child, add the other parent as Spouse first.</span></div>
+  </form>
+  <p class="small card-links">
+    <a href="{{ url_for('edit.new_family', **{('wife' if p.sex == 'F' else 'husband'): p.personID}) }}">Spouse already in the tree</a>
+    {% if not parent_fams %}<a href="{{ url_for('edit.new_family', child=p.personID) }}">Parents already in the tree</a>{% endif %}
+  </p>
+  {% endif %}
+</section>
+
+{% if r.both %}
+<section class="card" id="events"><h2>Life events</h2>
+  {% if timeline %}<ul class="child-list">
+    {% for x in timeline %}
+    <li><strong>{{ x.label }}</strong> {{ x.date|d }}{% if x.place %} · {{ x.place }}{% endif %}{% if x.event and x.event.info %} <span class="muted small">{{ x.event.info|truncate(80) }}</span>{% endif %}
+      {% if x.notes %}<span class="muted small">({{ x.notes|length }} note{{ "s" if x.notes|length > 1 }})</span>{% endif %}
+      <span class="row-actions small">
+        {% if g.user.allow_edit == 1 %}<a href="{{ url_for('edit.event', eid=x.event.eventID, back='edit') if x.event else url_for('edit.family', fid=x.family.familyID) ~ '#marriage' if x.family else '#event-' ~ x.field }}" aria-label="Edit {{ x.label }}">Edit</a>{% endif %}
+        {% if x.event and g.user.allow_delete == 1 %}<a class="danger-link" href="{{ url_for('edit.delete_event', eid=x.event.eventID, back='edit') }}" aria-label="Delete {{ x.label }}">Delete</a>{% endif %}
+        {% if not x.family and g.user.allow_add == 1 %}<a href="{{ url_for('edit.new_note', for=p.personID, about=x.key, back='edit') }}" aria-label="Add a note about {{ x.label }}">Add note</a>{% endif %}
+      </span></li>
+    {% endfor %}
+  </ul>{% else %}<p class="muted">None yet.</p>{% endif %}
+  {% if g.user.allow_add == 1 %}
+  <form method="post" action="{{ url_for('edit.new_event', for=p.personID, back='edit') }}" class="edit-form add-child">
+    <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+    <fieldset><legend>Add a life event</legend>
+      <div class="grid">
+        <label>Event type
+          <select name="eventtypeID" required><option value="">Choose…</option>
+            {% for t in event_types %}<option value="{{ t.eventtypeID }}">{{ t.display }}</option>{% endfor %}
+          </select>
+        </label>
+        <div><label for="date-eventdate">Date</label> {{ date_input("eventdate", "", "Event") }}</div>
+        <label>Place <input name="eventplace" maxlength="248" data-places="{{ url_for('edit.place_hint') }}"></label>
+      </div>
+      <label>Details <textarea name="info" rows="2"></textarea></label>
+    </fieldset>
+    <div class="form-actions"><button>Add event</button>
+      <a class="small" href="{{ url_for('edit.new_event', for=p.personID, back='edit') }}">More fields (address, age, cause)</a></div>
+  </form>
+  {% endif %}
+</section>
+
+<section class="card" id="notes"><h2>Biography, obituary and notes</h2>
+  {% for label, group in (("Biography", biography), ("Obituary", obituary), ("", notes)) %}{% for n in group %}
+  <div class="note">{% if label or n.about %}<p class="small muted">{{ label or "About: " ~ n.about }}</p>{% endif %}
+    <div class="pre">{{ n.note|truncate(300) }}</div>
+    <p class="small muted">{% if n.secret %}Private note{% endif %}
+      {% if g.user.allow_edit == 1 %}<a href="{{ url_for('edit.note', link_id=n.ID, back='edit') }}">Edit</a>{% endif %}
+      {% if g.user.allow_delete == 1 %}<a class="danger-link" href="{{ url_for('edit.delete_note', link_id=n.ID, back='edit') }}">Delete</a>{% endif %}</p>
+  </div>{% endfor %}{% endfor %}
+  {% if not (biography or obituary or notes) %}<p class="muted">None yet. Notes about one event are listed with it, above.</p>{% endif %}
+  {% if g.user.allow_add == 1 %}
+  <form method="post" action="{{ url_for('edit.new_note', for=p.personID, back='edit') }}" class="edit-form add-child">
+    <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+    <label>Add a note <textarea name="note" rows="4" required placeholder="Stories, memories, where they worked…"></textarea></label>
+    <label class="check"><input type="checkbox" name="secret" value="1"> Private</label>
+    <label class="check"><input type="checkbox" name="bio" value="1"> Biography: show at the top of their page{% if biography %} (replaces the current one){% endif %}</label>
+    <div class="form-actions"><button>Add note</button>
+      <a class="small" href="{{ url_for('edit.new_note', for=p.personID, about='DEAT', back='edit') }}">Add obituary</a></div>
+  </form>
+  {% endif %}
+</section>
+
+<section class="card" id="media"><h2>Photos and documents</h2>
+  {% if media %}<div class="thumbs">{% for m in media %}{{ thumb(m) }}{% endfor %}</div>{% else %}<p class="muted">None yet.</p>{% endif %}
+  {% if g.user.allow_add == 1 %}
+  <form method="post" action="{{ url_for('edit.new_media', for=p.personID, back='edit') }}" class="edit-form add-child" enctype="multipart/form-data">
+    <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+    <div class="grid">
+      <label>File <input type="file" name="file" required></label>
+      <label>Collection
+        <select name="collection">{% for c in collections %}<option {% if c == "photos" %}selected{% endif %}>{{ c }}</option>{% endfor %}</select>
+      </label>
+      <label>Description <input name="description" maxlength="255"></label>
+    </div>
+    <div class="form-actions"><button>Upload</button>
+      <a class="small" href="{{ url_for('edit.new_media', for=p.personID, back='edit') }}">More fields</a>
+      {% if media and g.user.allow_edit == 1 %}<a class="small" href="{{ url_for('edit.arrange_media', persfam_id=p.personID, back='edit') }}">Arrange, choose the main picture</a>{% endif %}</div>
+  </form>
+  {% endif %}
+</section>
+{% endif %}
+
+<p><a class="btn primary" href="{{ url_for('main.person', pid=p.personID) }}">← Done: return to {{ pname(p) }}</a></p>
+
+<script>
+// The details form above saves separately: warn before a quick add or link leaves its changes unsaved.
+(() => {
+  const details = document.getElementById("details");
+  let dirty = false;
+  details.addEventListener("input", () => { dirty = true; });
+  details.addEventListener("submit", () => { dirty = false; });
+  window.addEventListener("beforeunload", (e) => { if (dirty) e.preventDefault(); });
+})();
+</script>

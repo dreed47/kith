@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% from "_macros.html" import person_link %}
+{% block title %}User accounts · {{ super() }}{% endblock %}
+{% block content %}
+<h1>User accounts</h1>
+<div class="tabs">
+  {% for key, label in [("all", "All"), ("pending", "Waiting for approval"), ("disabled", "Disabled")] %}
+  <a href="{{ url_with(show=key) }}"{% if show == key %} aria-current="page"{% endif %}>{{ label }}</a>
+  {% endfor %}
+  <form class="inline-form" role="search">
+    <input type="hidden" name="show" value="{{ show }}">
+    <input name="q" value="{{ q }}" placeholder="Name, username or email" aria-label="Find an account">
+    <button class="small-button">Find</button>
+  </form>
+  <a href="{{ url_for('admin.new_user') }}">Add account</a>
+</div>
+{% if show == "pending" and rows %}
+<p class="muted">People who asked for an account. Open one to choose what they may see and approve it, or tick the ones that are spam and delete them.</p>
+<form method="post" action="{{ url_for('admin.reject_registrations') }}" id="reject"><input type="hidden" name="csrf" value="{{ csrf_token() }}"></form>
+{% endif %}
+<section class="card">
+  {% if rows %}
+  <table class="facts users">
+    <tr>{% if show == "pending" %}<th><span class="visually-hidden">Select</span></th>{% endif %}<th>Username</th><th>Name and email</th><th>Role</th><th>Linked to</th><th>Last seen</th></tr>
+    {% for r in rows %}
+    <tr>
+      {% if show == "pending" %}<td><input type="checkbox" name="uid" value="{{ r.userID }}" form="reject" aria-label="Select {{ r.username }}"></td>{% endif %}
+      <td><a href="{{ url_for('admin.user', uid=r.userID) }}">{{ r.username }}</a>
+        {% if r.allow_living == pending %}<span class="tag">waiting</span>{% endif %}{% if r.disabled %}<span class="tag">disabled</span>{% endif %}</td>
+      <td>{{ r.realname }}{% if r.email %}<div class="muted small">{{ r.email }}</div>{% endif %}
+        {% if r.allow_living == pending and (r.description or r.notes) %}<div class="small pre">{{ r.description }}{% if r.notes %}: {{ r.notes|truncate(200) }}{% endif %}</div>{% endif %}</td>
+      <td>{{ roles.get(r.role, r.role) }}</td>
+      <td>{{ person_link(people.get(r.personID)) or r.personID }}</td>
+      <td class="small">{{ r.last_seen|ago or r.lastlogin|day or ("never" ~ (", registered " ~ r.dt_registered|day if r.dt_registered|day else "")) }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+  {% if show == "pending" %}<p><button class="danger" form="reject">Delete ticked registrations</button></p>{% endif %}
+  {% else %}<p class="muted">No accounts here.</p>{% endif %}
+</section>
+{% endblock %}

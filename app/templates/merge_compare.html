@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% from "_macros.html" import person_link %}
+{% block title %}Merge {{ b.personID }} into {{ a.personID }} · {{ super() }}{% endblock %}
+{% macro show(p, fields) -%}
+{%- if fields[0].endswith("date") -%}{{ p[fields[0]]|d }}{% if p[fields[0]] and p[fields[2]] %}, {% endif %}{{ p[fields[2]] }}
+{%- elif fields[0] in ("living", "private") -%}{{ "Yes" if p[fields[0]] else "No" }}
+{%- else -%}{{ p[fields[0]] }}{%- endif -%}
+{%- endmacro %}
+{% block content %}
+<h1>Merge two records</h1>
+{% if problem %}<p class="card error" role="alert">{{ problem }}</p>{% endif %}
+<form method="post" class="card edit-form">
+  <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+  <input type="hidden" name="keep" value="{{ a.personID }}"><input type="hidden" name="merge" value="{{ b.personID }}">
+  <p class="muted small">For each line, choose which value to keep. Everything attached to the duplicate (families, events, notes, sources, photos) moves to the kept record either way.</p>
+  <table class="facts merge">
+    <tr><th></th><th>Keep: {{ person_link(a) }} <span class="muted small">{{ a.personID }}</span></th><th>Duplicate: {{ person_link(b) }} <span class="muted small">{{ b.personID }}</span></th></tr>
+    {% for key, (label, fields) in choices.items() %}
+    {% set va, vb = show(a, fields), show(b, fields) %}
+    {% if va|trim or vb|trim %}
+    <tr{% if va|trim != vb|trim %} class="differs"{% endif %}><th>{{ label }}</th>
+      {% for side, value in (("a", va), ("b", vb)) %}
+      <td><label class="check"><input type="radio" name="{{ key }}" value="{{ side }}"{% if defaults[key] == side %} checked{% endif %}> {{ value or "—" }}</label></td>
+      {% endfor %}</tr>
+    {% endif %}
+    {% endfor %}
+    {% for label in sizes.a %}
+    <tr><th>{{ label }}</th><td>{{ sizes.a[label] }}</td><td>{{ sizes.b[label] }} <span class="muted small">(will move)</span></td></tr>
+    {% endfor %}
+  </table>
+  <p class="muted small">If both were married to the same spouse, their two families become one. A full copy of everything removed is kept in the activity log.</p>
+  <div class="form-actions">
+    <button class="danger"{% if problem %} disabled{% endif %}>Merge {{ b.personID }} into {{ a.personID }}</button>
+    <a href="{{ url_for('edit.merge_page', keep=b.personID, merge=a.personID) }}">Swap which one to keep</a>
+    <a href="{{ url_for('edit.merge_page') }}">Cancel</a>
+  </div>
+</form>
+{% endblock %}

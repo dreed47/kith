@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% from "_macros.html" import person_link, lifespan, thumb %}
+{% block title %}{{ c.cemname }} · {{ super() }}{% endblock %}
+{% block content %}
+<h1>{{ c.cemname }}</h1>
+{% if g.user.allow_edit == 1 %}<p class="actions"><a href="{{ url_for('edit.cemetery', cid=c.cemeteryID) }}">Edit cemetery</a></p>{% endif %}
+<section class="card">
+  <p>{{ [c.city, c.county, c.state, c.country]|select|join(", ") }}</p>
+  {% if c.latitude and c.longitude %}<p><a href="https://www.openstreetmap.org/?mlat={{ c.latitude }}&amp;mlon={{ c.longitude }}#map=16/{{ c.latitude }}/{{ c.longitude }}" rel="noopener">Map</a></p>{% endif %}
+  {% if c.maplink and c.maplink.startswith(("http://", "https://")) %}<p><a href="{{ c.maplink }}" rel="noopener">Directions / map link</a></p>{% endif %}
+  {% if c.place %}<p><a href="{{ url_for('places.place', name=c.place) }}">All events at this place</a></p>{% endif %}
+  {% if c.notes %}<div class="pre">{{ c.notes }}</div>{% endif %}
+</section>
+{% if pins %}
+<section class="card">
+  <link rel="stylesheet" href="{{ url_for('static', filename='leaflet/leaflet.css') }}">
+  <div id="cemetery-map" class="cemetery-map" role="region" aria-label="Map of {{ c.cemname }}" data-pins='{{ pins|tojson }}'></div>
+  <script src="{{ url_for('static', filename='leaflet/leaflet.js') }}" defer></script>
+  <script src="{{ url_for('static', filename='cemeterymap.js') }}" defer></script>
+</section>
+{% endif %}
+{% if media %}<section class="card"><h2>Headstones and media</h2><div class="thumbs">{% for m in media %}{{ thumb(m) }}{% endfor %}</div></section>{% endif %}
+{% if buried %}<section class="card"><h2>Buried here</h2><ul class="people">{% for p in buried %}<li>{{ person_link(p) }} {{ lifespan(p) }}</li>{% endfor %}</ul></section>{% endif %}
+{% endblock %}

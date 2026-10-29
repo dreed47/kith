@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% from "_macros.html" import person_link, lifespan, facts, extras, icon, person_row %}
+{% block content %}
+<h1>{{ pname(husband) }}{% if husband and wife %} &amp; {% endif %}{{ pname(wife) }}</h1>
+<p class="actions button-row">
+  <a class="btn" href="{{ url_for('main.group_sheet', fid=f.familyID) }}">{{ icon("note") }}Group sheet</a>
+  <a class="btn" href="{{ url_for('main.family_chart', fid=f.familyID) }}">{{ icon("chart") }}Family chart</a>
+  {% if g.user.allow_edit == 1 %}<a class="btn" href="{{ url_for('edit.family', fid=f.familyID) }}">{{ icon("edit") }}Edit family</a>{% endif %}
+  {% if g.user.allow_delete == 1 %}<a class="btn danger-link" href="{{ url_for('edit.delete_family', fid=f.familyID) }}">Delete family</a>{% endif %}
+</p>
+<section class="card">
+  <ul class="people-list couple">{% for x in (husband, wife) if x %}{{ person_row(x) }}{% endfor %}</ul>
+  {% if r.both %}{{ facts(vitals, events, f.familyID) }}{% else %}<p class="muted">Details for this family are private.</p>{% endif %}
+</section>
+{% if children or g.user.allow_add == 1 %}
+<section class="card"><h2>Children</h2>
+  <ul class="people-list cols">{% for c in children %}{{ person_row(c) }}{% endfor %}</ul>
+  {% if g.user.allow_add == 1 %}<a href="{{ url_for('edit.new_person', child_of=f.familyID) }}">Add child</a>{% endif %}
+</section>
+{% endif %}
+{% if r.both %}{{ extras(notes, citations, media, f.familyID) }}{% endif %}
+{% endblock %}

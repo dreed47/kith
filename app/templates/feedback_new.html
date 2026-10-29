@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}Feedback · {{ super() }}{% endblock %}
+{% block content %}
+<h1>Send feedback</h1>
+<p class="muted">Tell us about a problem, an idea or a question. We'll see which page you were on, so you don't need to explain where.</p>
+{% if errors %}<div class="card error" role="alert"><ul>{% for x in errors %}<li>{{ x }}</li>{% endfor %}</ul></div>{% endif %}
+<form method="post" enctype="multipart/form-data" class="card edit-form feedback-form">
+  <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+  <input type="hidden" name="from" value="{{ page }}">
+  <input type="hidden" name="screen" id="feedback-screen">
+  <fieldset><legend>What kind?</legend>
+    {% for k, label in kinds.items() %}
+    <label class="check"><input type="radio" name="kind" value="{{ k }}" {% if v.kind == k %}checked{% endif %}> {{ label }}</label>
+    {% endfor %}
+  </fieldset>
+  <label>What happened, or what would you like?
+    <textarea name="message" rows="6" required placeholder="e.g. When I saved Walter's marriage date, the page showed an error.">{{ v.message }}</textarea></label>
+  <label>Screenshot (optional)
+    <input type="file" name="screenshot" id="feedback-shot" accept="image/*"></label>
+  <p class="small muted" id="feedback-paste-hint">On a computer you can also paste a screenshot here with Ctrl+V.</p>
+  <div class="form-actions">
+    <button>Send</button>
+    <a href="{{ page }}">Cancel</a>
+  </div>
+</form>
+<script src="{{ url_for('static', filename='feedback.js') }}" defer></script>
+{% endblock %}

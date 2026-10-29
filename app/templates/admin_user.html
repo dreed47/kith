@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% from "_picker.html" import picker %}
+{% set waiting = u and u.allow_living == pending %}
+{% block title %}{{ ("Account " ~ u.username) if u else "Add account" }} · {{ super() }}{% endblock %}
+{% block content %}
+<h1>{% if waiting %}Approve registration: {{ u.username }}{% elif u %}Account: {{ u.username }}{% else %}Add account{% endif %}</h1>
+{% if waiting %}<p class="card flash">Signed up {{ u.dt_registered|day or "earlier" }}. Check who they are, choose what they may see, then approve.
+  {% if u.notes %}<br>They wrote: <span class="pre">{{ u.notes }}</span>{% endif %}</p>{% endif %}
+{% if errors %}<div class="card error" role="alert"><ul>{% for e in errors %}<li>{{ e }}</li>{% endfor %}</ul></div>{% endif %}
+<form method="post" class="card edit-form" autocomplete="off">
+  <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+  <fieldset><legend>Who</legend>
+    <div class="grid">
+      <label>Username <input name="username" value="{{ v.username or '' }}" maxlength="100" required></label>
+      <label>Full name <input name="realname" value="{{ v.realname or '' }}" maxlength="50"></label>
+      <label>Email <input type="email" name="email" value="{{ v.email or '' }}" maxlength="50"></label>
+      <label>Phone <input name="phone" value="{{ v.phone or '' }}" maxlength="30"></label>
+      <label>Short description <input name="description" value="{{ v.description or '' }}" maxlength="50"></label>
+      <label>{{ "New password (leave empty to keep)" if u else "Password" }}
+        <input type="password" name="password" minlength="8" autocomplete="new-password"></label>
+    </div>
+    <div>{{ picker("personID", "This account is the person", v.personID, person) }}</div>
+    <p class="muted small">Linked people always see their own record and how they're related to everyone.</p>
+    {% if not u and mail %}<label class="check"><input type="checkbox" name="invite" value="1"{% if request.form.invite %} checked{% endif %}> Email them an invitation to choose their own password (then leave Password empty)</label>{% endif %}
+  </fieldset>
+  <fieldset><legend>What they may do</legend>
+    <label>Role <select name="role">{% for key, label in roles.items() %}<option value="{{ key }}"{% if v.role == key %} selected{% endif %}>{{ label }}</option>{% endfor %}</select></label>
+    <p class="muted small">The role is only a label, except Admin: admins can open these admin pages. The ticks below decide what the account can actually do.</p>
+    {% for key, label in rights.items() %}<label class="check"><input type="checkbox" name="{{ key }}" value="1"{% if v[key] == 1 %} checked{% endif %}> {{ label }}</label>{% endfor %}
+  </fieldset>
+  <fieldset><legend>Notes</legend>
+    <textarea name="notes" rows="3" aria-label="Notes">{{ v.notes or '' }}</textarea>
+    {% if u %}<label class="check"><input type="checkbox" name="disabled" value="1"{% if v.disabled %} checked{% endif %}> Disabled (can't log in)</label>{% endif %}
+  </fieldset>
+  <div class="form-actions">
+    <button>{{ "Approve" if waiting else ("Save" if u else "Add account") }}</button>
+    <a href="{{ url_for('admin.users', show='pending' if waiting else None) }}">Cancel</a>
+    {% if u and u.userID != g.user.userID %}<a class="danger" href="{{ url_for('admin.delete_user', uid=u.userID) }}">{{ "Reject and delete" if waiting else "Delete account" }}</a>{% endif %}
+  </div>
+</form>
+{% if u and mail and u.email and not waiting %}
+<form method="post" action="{{ url_for('admin.send_link', uid=u.userID) }}" class="card">
+  <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+  <button class="secondary">Email {{ u.username }} a link to set a new password</button>
+  <span class="muted small">Works for an hour, at {{ u.email }}.</span>
+</form>
+{% endif %}
+<script src="{{ url_for('static', filename='picker.js') }}" defer></script>
+{% endblock %}

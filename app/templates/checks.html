@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% from "_macros.html" import person_link %}
+{% block title %}Data checks · {{ super() }}{% endblock %}
+{% block content %}
+<h1>Data checks</h1>
+<p class="muted">Things in the tree that can't all be right: usually a typo in a date or a person linked to the wrong family. Open a person to fix them. Unreadable dates are on <a href="{{ url_for('main.dates_to_fix') }}">Dates to fix</a>; living/not-living mix-ups on <a href="{{ url_for('edit.living_flags') }}">Living flags</a>.</p>
+<p><strong>{{ total }}</strong> finding{{ "s" if total != 1 }}.</p>
+{% for key, label, found in results %}
+<section class="card" id="{{ key }}">
+  <details{% if found and found|length <= 20 %} open{% endif %}>
+    <summary><strong>{{ label }}</strong> <span class="muted">{{ found|length }}</span></summary>
+    {% if found %}
+    <table class="facts">
+      {% for r in found[:shown] %}
+      <tr><td>{% if r.person %}{{ person_link(r.person) }} <span class="muted small">{{ r.pid }}</span>{% endif %}
+        {% if r.family %}<a class="small" href="{{ url_for('main.family', fid=r.fid) }}">family {{ r.fid }}</a>{% endif %}</td>
+        <td class="small">{{ r.detail }}</td></tr>
+      {% endfor %}
+    </table>
+    {% if found|length > shown %}<p class="muted small">Showing the first {{ shown }}.</p>{% endif %}
+    {% else %}<p class="muted">None.</p>{% endif %}
+  </details>
+</section>
+{% endfor %}
+{% endblock %}

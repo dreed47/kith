@@ -1,0 +1,24 @@
+{#- One entry of What's new (app/news.py): a picture, who did what, when, and for comments their start. -#}
+{% from "_macros.html" import person_link, avatar %}
+{% macro photo_link(m) %}<a href="{{ url_for('media.show', media_id=m.mediaID) }}">{{ m.description or m.path }}</a>{% endmacro %}
+{% macro names(people) %}{% for x in people[:5] %}{{ person_link(x) }}{{ ", " if not loop.last }}{% endfor %}{% if people|length > 5 %} and {{ people|length - 5 }} more{% endif %}{% endmacro %}
+{% macro news_item(e, chars) %}
+{% set n = e.group|length %}
+<li class="recent-comment">
+  {% if e.type == "tag" %}<a href="{{ url_for('media.show', media_id=e.media.mediaID) }}"><img class="comment-thumb" src="{{ url_for('media.face', media_id=e.media.mediaID, tag_id=e.tag_id) }}" alt="" loading="lazy"></a>
+  {% elif e.media %}<a href="{{ url_for('media.show', media_id=e.media.mediaID) }}"><img class="comment-thumb" src="{{ url_for('media.thumb', media_id=e.media.mediaID) }}" alt="" loading="lazy"></a>
+  {% else %}{{ avatar(e.person) }}{% endif %}
+  <div>
+    <p class="small"><strong>{{ e.who }}</strong>
+    {% if e.type == "comment" %} commented on {% if e.person %}{{ person_link(e.person) }}{% else %}{{ photo_link(e.media) }}{% endif %}
+    {% elif e.type == "person" %} added {% if n == 1 %}{{ person_link(e.person) }}{% else %}{{ n }} people: {{ names(e.group|map(attribute="person")|list) }}{% endif %}
+    {% elif e.type == "photo" %} added {% if n == 1 %}a photo: {{ photo_link(e.media) }}{% else %}{{ n }} photos{% endif %}
+    {% else %} tagged {% if n == 1 %}{{ person_link(e.person) }} in {{ photo_link(e.media) }}{% else %}{{ n }} faces: {{ names(e.group|map(attribute="person")|unique(attribute="personID")|list) }}{% endif %}
+    {% endif %}<span class="muted"> · {{ e.ago }}</span></p>
+    {% if e.type == "comment" %}<p>{{ e.comment.body|truncate(chars) }}
+      <a class="small" href="{{ url_for('main.person', pid=e.person.personID, _anchor='comments') if e.person else url_for('media.show', media_id=e.media.mediaID, _anchor='comments') }}">Read and reply</a></p>
+    {% elif e.type == "photo" and n > 1 %}<p class="news-thumbs">{% for x in e.group[:8] %}<a href="{{ url_for('media.show', media_id=x.media.mediaID) }}"><img class="comment-thumb" src="{{ url_for('media.thumb', media_id=x.media.mediaID) }}" alt="{{ x.media.description }}" loading="lazy"></a>{% endfor %}{% if n > 8 %} <span class="muted small">and {{ n - 8 }} more</span>{% endif %}</p>
+    {% endif %}
+  </div>
+</li>
+{% endmacro %}

@@ -1,0 +1,35 @@
+{% if g.user %}
+{% from "_macros.html" import icon, initials %}
+{% macro item(endpoint, label, glyph) %}{% set href = url_for(endpoint, **kwargs) %}<a href="{{ href }}"{% if request.path == href or (href != "/" and request.path.startswith(href.rstrip("/") ~ "/")) %} aria-current="page"{% endif %}>{{ icon(glyph) }}{{ label }}</a>{% endmacro %}
+<form class="header-search" action="{{ url_for('main.search') }}" role="search">
+  {{ icon("search") }}
+  <input name="q" aria-label="Search people" placeholder="Search people by name" list="header-search-list"
+         data-find="{{ url_for('main.find') }}" data-go="{{ url_for('main.person', pid='ID') }}" autocomplete="off">
+  <datalist id="header-search-list"></datalist>
+</form>
+<script src="{{ url_for('static', filename='quicksearch.js') }}" defer></script>
+<details class="menu account-menu">
+  <summary aria-label="Account menu for {{ g.user.username }}">{% if avatar_url() %}<img class="avatar sm" src="{{ avatar_url() }}" alt="">{% else %}<span class="avatar sm">{{ initials(g.user.realname or g.user.username) }}</span>{% endif %}<span class="account-name">{{ g.user.username }}</span>{{ icon("chevron") }}</summary>
+  <ul>
+    <li class="menu-head"><strong>{{ g.user.realname or g.user.username }}</strong><span class="small muted">{{ g.user.username }}</span></li>
+    <li><a href="{{ url_for('account.profile') }}">{{ icon("settings") }}Your account</a></li>
+    {% if g.user.personID %}<li><a href="{{ url_for('main.person', pid=g.user.personID) }}">{{ icon("user") }}Your page</a></li>{% endif %}
+    <li><a href="{{ url_for('feedback.new', **{'from': request.full_path.rstrip('?')}) }}">{{ icon("message") }}Send feedback</a></li>
+    {% if g.user.allow_edit == 1 %}<li><a href="{{ url_for('feedback.index') }}">{{ icon("inbox") }}Reports</a></li>{% else %}<li><a href="{{ url_for('feedback.mine') }}">{{ icon("inbox") }}My feedback</a></li>{% endif %}
+    <li><form method="post" action="{{ url_for('auth.logout') }}"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><button class="linklike">{{ icon("logout") }}Log out</button></form></li>
+  </ul>
+</details>
+<nav class="site-nav" aria-label="Main">
+  {{ item('main.search', 'Search', 'search') }}
+  {{ item('main.tree_home', 'Tree', 'tree') }}
+  {{ item('main.surnames', 'Surnames', 'names') }}
+  {{ item('places.places', 'Places', 'place') }}
+  {{ item('main.anniversaries', 'Dates', 'calendar') }}
+  {{ item('places.cemeteries', 'Cemeteries', 'stone') }}
+  {{ item('media.browse', 'Media', 'photo') }}
+  {{ item('main.relationship_page', 'Relationship', 'link') }}
+  {% if g.user.personID %}{{ item('main.person', 'Me', 'user', pid=g.user.personID) }}{% endif %}
+  {% if g.user.allow_edit == 1 %}{% set n = pending_link_requests() %}{% if n %}{{ item('me.requests', 'Requests (%d)' % n, 'users') }}{% endif %}{% endif %}
+  {% if g.user.role == "admin" %}{% set n = admin_waiting() %}{{ item('admin.home', 'Admin (%d)' % n if n else 'Admin', 'shield') }}{% endif %}
+</nav>
+{% endif %}

@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}Kinds of event · {{ super() }}{% endblock %}
+{% block content %}
+<h1>Kinds of event</h1>
+<p class="muted">The choices in "Add event". Hidden kinds aren't offered for new events; events that already have them keep them.</p>
+<form method="post" class="card edit-form">
+  <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+  <h2>Add a kind of event</h2>
+  <div class="grid">
+    <label>Name <input name="name" maxlength="100" required placeholder="e.g. Military service, Ship arrival"></label>
+    <label>For <select name="type">{% for key, label in kinds.items() %}<option value="{{ key }}">{{ label }}</option>{% endfor %}</select></label>
+  </div>
+  <div class="form-actions"><button>Add</button></div>
+</form>
+{% for key, label in kinds.items() %}
+<section class="card"><h2>{{ label }} events</h2>
+  <table class="facts">
+    {% for r in rows if r.type == key %}
+    <tr><th><a href="{{ url_for('admin.event_type', tid=r.eventtypeID) }}">{{ r.name }}</a></th>
+      <td class="muted small">{{ r.tag }}</td>
+      <td class="small">{{ r.n }} event{{ "s" if r.n != 1 }}</td>
+      <td>{% if not r.keep %}<span class="tag">hidden</span>{% endif %}</td></tr>
+    {% endfor %}
+  </table>
+</section>
+{% endfor %}
+{% endblock %}

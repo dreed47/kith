@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}Search notes · {{ super() }}{% endblock %}
+{% from "_macros.html" import search_tabs %}
+{% block content %}
+<h1>Search notes</h1>
+{{ search_tabs("edit.search_notes") }}
+<form class="tabs" role="search">
+  <input name="q" value="{{ q }}" placeholder="Words in the note" aria-label="Words in the note" autofocus>
+  <button class="small-button">Search</button>
+  {% if q %}<span class="muted small">{{ total }} note{{ "s" if total != 1 }}</span>{% endif %}
+</form>
+{% if rows %}
+<section class="card"><ul class="child-list note-results">
+  {% for r in rows %}
+  <li><div>
+    <a href="{{ r.url }}">{{ owner_name(r.persfamID) }}</a>{% if r.about %} <span class="muted small">about: {{ r.about }}</span>{% endif %}
+    {% if r.secret %}<span class="tag">private</span>{% endif %}
+    <div class="small pre">{{ r.parts[0] }}<mark>{{ r.parts[1] }}</mark>{{ r.parts[2] }}</div>
+  </div>
+  <span class="row-actions small"><a href="{{ url_for('edit.note', link_id=r.ID) }}">Edit</a></span></li>
+  {% endfor %}
+</ul></section>
+{% elif q %}<p class="muted">No notes contain “{{ q }}”.</p>{% endif %}
+{% if pages > 1 %}<p class="pager">
+  {% if page > 1 %}<a href="{{ url_with(page=page - 1) }}">Previous</a>{% endif %}
+  <span>Page {{ page }} of {{ pages }}</span>
+  {% if page < pages %}<a href="{{ url_with(page=page + 1) }}">Next</a>{% endif %}
+</p>{% endif %}
+{% endblock %}

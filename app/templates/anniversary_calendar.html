@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% from "_anniv_filters.html" import filters with context %}
+{% block title %}Calendar: {{ month_names[month] }} · {{ super() }}{% endblock %}
+{% block content %}
+<h1>Dates and anniversaries</h1>
+<div class="tabs"><a href="{{ url_for('main.anniversaries', month=month, kind=kinds) }}">List</a><strong aria-current="page">Calendar</strong></div>
+{{ filters(url_for('main.anniversary_calendar'), false) }}
+<p class="pager">
+  <a href="{{ url_for('main.anniversary_calendar', month=(month - 2) % 12 + 1, kind=kinds) }}">← {{ month_names[(month - 2) % 12 + 1] }}</a>
+  <strong>{{ month_names[month] }}</strong>
+  <a href="{{ url_for('main.anniversary_calendar', month=month % 12 + 1, kind=kinds) }}">{{ month_names[month % 12 + 1] }} →</a>
+</p>
+<table class="calendar card">
+  <tr>{% for d in ("Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat") %}<th scope="col">{{ d }}</th>{% endfor %}</tr>
+  {% for week in weeks %}
+  <tr>{% for d in week %}
+    <td{% if d and month == today.month and d == today.day %} class="today"{% endif %}>
+      {% if d %}<a class="cal-day" href="{{ url_for('main.anniversaries', month=month, day=d, kind=kinds) }}">{{ d }}</a>
+      {% for key, n in counts.get(d, {}).items() %}<span class="cal-count">{{ n }} {{ all_kinds[key][0]|lower }}{{ "s" if n != 1 }}</span>{% endfor %}{% endif %}
+    </td>
+  {% endfor %}</tr>
+  {% endfor %}
+</table>
+{% endblock %}

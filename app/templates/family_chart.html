@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% from "_macros.html" import lifespan %}
+{% block title %}Family chart · {{ super() }}{% endblock %}
+{% macro box(p, label) %}
+<div class="fc-box{% if not p %} empty{% endif %}"><span class="muted small">{{ label }}</span>
+  {% if p %}<a href="{{ url_for('main.person', pid=p.personID) }}">{{ pname(p) }}</a>{{ lifespan(p) }}{% else %}<span class="muted">unknown</span>{% endif %}</div>
+{% endmacro %}
+{% block content %}
+<h1>Family chart: {{ pname(couple[0]) or "?" }} &amp; {{ pname(couple[1]) or "?" }}</h1>
+<p class="action-row"><a href="{{ url_for('main.family', fid=f.familyID) }}">Family page</a><a href="{{ url_for('main.group_sheet', fid=f.familyID) }}">Group sheet</a></p>
+<div class="family-chart">
+  <div class="fc-row fc-elders">
+    {% for side in above %}<div class="fc-pair">{{ box(side[0], "Father") }}{{ box(side[1], "Mother") }}</div>{% endfor %}
+  </div>
+  <div class="fc-row fc-couple">
+    {{ box(couple[0], "Husband") }}
+    <div class="fc-marriage small">{% if show_marriage and (f.marrdate or f.marrplace) %}married<br>{{ f.marrdate|d }}{% if f.marrplace %}<br>{{ f.marrplace }}{% endif %}{% else %}&amp;{% endif %}</div>
+    {{ box(couple[1], "Wife") }}
+  </div>
+  <div class="fc-row fc-children">
+    {% for c in children %}{{ box(c, "Child " ~ loop.index) }}{% else %}<p class="muted">No children recorded.</p>{% endfor %}
+  </div>
+</div>
+{% endblock %}

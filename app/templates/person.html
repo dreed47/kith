@@ -1,0 +1,177 @@
+{% extends "base.html" %}
+{% from "_comments.html" import comments_section %}
+{% from "_macros.html" import person_link, lifespan, extras, place_link, longtext, fact_notes, add_fact_note, icon, avatar, person_row, address_lines, event_details, scans %}
+{% block title %}{{ pname(p) }} · {{ super() }}{% endblock %}
+{% macro long_notes(title, notes, add_url) %}
+{#- Biography and Obituary: notes shown in full under their own heading. -#}
+{% if notes or g.user.allow_add == 1 %}
+<section class="card" id="{{ title|lower }}"><h2>{{ title }}</h2>
+  {% for n in notes %}<div class="note">{{ longtext(n.note, 15, 2000) }}
+    {% if n.secret or g.user.allow_edit == 1 %}<p class="small muted">{% if n.secret %}Private note{% endif %}
+      {% if g.user.allow_edit == 1 %}<a href="{{ url_for('edit.note', link_id=n.ID) }}">Edit</a>{% endif %}</p>{% endif %}</div>{% endfor %}
+  {% if g.user.allow_add == 1 and not (title == "Biography" and notes) %}<p class="small"><a href="{{ add_url }}">Add {{ title|lower }}</a></p>{% endif %}
+</section>
+{% endif %}
+{% endmacro %}
+{% macro year(tr) %}{{ tr|string|truncate(4, true, "") if tr and (tr|string)[:4] != "0000" else "" }}{% endmacro %}
+{% block content %}
+<section class="card person-head">
+  {% if photo %}<a class="person-photo" href="{{ url_for('media.show', media_id=photo.mediaID) }}">
+    <img src="{{ url_for('media.face', media_id=photo.mediaID, tag_id=photo_tag.id, shape='portrait') if photo_tag else url_for('media.thumb', media_id=photo.mediaID, s=600) }}" alt="Photo of {{ pname(p) }}"></a>
+  {% else %}<div class="person-portrait">{{ avatar(p, "xl") }}</div>{% endif %}
+  <div class="person-summary">
+    <h1>{{ pname(p) }}</h1>
+    {% if r.both %}
+      {% if p.nickname %}<p class="muted">Known as {{ p.nickname }}</p>{% endif %}
+      {% set born, died = year(p.birthdatetr), year(p.deathdatetr) %}
+      {% if born or died %}<p class="lifespan">{{ born or "?" }} – {{ died }}{% if age_at_death %} <span class="muted">(age {{ age_at_death }})</span>{% endif %}</p>{% endif %}
+    {% endif %}
+    {% if rel %}
+      <p class="relation-line"><span class="badge">{{ icon("link") }}<strong>{{ rel_phrase(rel, "your")|capitalize }}</strong></span>
+        · <a href="{{ url_for('main.relationship_page', a=g.user.personID, b=p.personID) }}">show how</a></p>
+    {% elif g.user.personID and g.user.personID != p.personID %}
+      <p class="relation-line muted small">No relationship to you found. <a href="{{ url_for('main.relationship_page', b=p.personID) }}">Compare</a></p>
+    {% elif not g.user.personID %}
+      {% set my_request = my_link_request() %}
+      {% if my_request and my_request.personID == p.personID %}
+      <p class="relation-line muted small">Your request to be linked to this person is waiting for an editor.</p>
+      {% elif not my_request %}
+      <form method="post" action="{{ url_for('me.request_link', pid=p.personID) }}" class="relation-line">
+        <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+        <button class="small-button secondary" title="Ask an editor to link your account to this person">This is me</button>
+      </form>
+      {% endif %}
+    {% endif %}
+    {% if r.both %}
+      <dl class="summary-facts">
+        {% if p.birthdate or p.birthplace %}<div><dt>Born</dt><dd>{{ p.birthdate|d }}{% if p.birthplace %}{% if p.birthdate %}, {% endif %}{{ place_link(p.birthplace) }}{% endif %}</dd></div>{% endif %}
+        {% if p.deathdate or p.deathplace %}<div><dt>Died</dt><dd>{{ p.deathdate|d }}{% if p.deathplace %}{% if p.deathdate %}, {% endif %}{{ place_link(p.deathplace) }}{% endif %}</dd></div>{% endif %}
+        {% if p.burialplace %}<div><dt>{{ "Cremated" if p.burialtype == 1 else "Buried" }}</dt><dd>{{ place_link(p.burialplace) }}</dd></div>{% endif %}
+      </dl>
+    {% else %}
+      <p class="muted">Details for this person are private.</p>
+    {% endif %}
+    <div class="actions button-row">
+      <a class="btn" href="{{ url_for('main.pedigree', pid=p.personID) }}">{{ icon("chart") }}Pedigree</a>
+      <a class="btn" href="{{ url_for('main.descendants', pid=p.personID) }}">{{ icon("tree") }}Descendants</a>
+      {% if r.both %}<a class="btn" href="{{ url_for('main.story', pid=p.personID) }}">{{ icon("note") }}Life story</a>{% endif %}
+      <a class="btn" href="{{ url_for('main.register', pid=p.personID) }}">{{ icon("book") }}Register</a>
+      <a class="btn" href="{{ url_for('main.timeline', around=p.personID) }}">{{ icon("clock") }}Timeline</a>
+      {% if g.user.allow_edit == 1 %}<a class="btn" href="{{ url_for('edit.person', pid=p.personID) }}">{{ icon("edit") }}Edit</a>{% endif %}
+      {% if r.both %}<form method="post" action="{{ url_for('watch.toggle', pid=p.personID) }}" class="inline">
+        <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+        <button class="btn secondary" title="{{ 'Stop the emails about this person' if watching else 'Get an email when someone changes this person' }}">{{ icon("inbox") }}{{ "Stop watching" if watching else "Watch" }}</button></form>{% endif %}
+      {% if g.user.allow_add == 1 %}
+      <details class="menu"><summary class="btn">{{ icon("plus") }}Add…</summary><ul>
+          <li><a href="{{ url_for('edit.new_event', for=p.personID) }}">Event</a></li>
+          <li><a href="{{ url_for('edit.new_note', for=p.personID) }}">Note</a></li>
+          <li><a href="{{ url_for('edit.new_media', for=p.personID) }}">Photo or document</a></li>
+          {% set pf = parent_fams[0] if parent_fams else None %}
+          {% if not pf or not pf.husband %}<li><a href="{{ url_for('edit.new_person', parent_of=p.personID, role='husband', return_to=p.personID) }}">Father</a></li>{% endif %}
+          {% if not pf or not pf.wife %}<li><a href="{{ url_for('edit.new_person', parent_of=p.personID, role='wife', return_to=p.personID) }}">Mother</a></li>{% endif %}
+          {% if pf %}<li><a href="{{ url_for('edit.new_person', child_of=pf.familyID, return_to=p.personID) }}">Brother or sister</a></li>{% endif %}
+          <li><a href="{{ url_for('edit.new_person', spouse_of=p.personID, return_to=p.personID) }}">New spouse</a></li>
+          {% if spouse_fams|length == 1 %}<li><a href="{{ url_for('edit.new_person', child_of=spouse_fams[0].familyID, return_to=p.personID) }}">Child</a></li>{% endif %}
+          <li><a href="{{ url_for('edit.new_family', **{('wife' if p.sex == 'F' else 'husband'): p.personID}) }}">Family with existing spouse</a></li>
+          {% if not parent_fams %}<li><a href="{{ url_for('edit.new_family', child=p.personID) }}">Parents already in the tree</a></li>{% endif %}
+        </ul></details>
+      {% endif %}
+      {% if g.user.allow_delete == 1 %}<a class="btn danger-link" href="{{ url_for('edit.delete_person', pid=p.personID) }}">Delete</a>{% endif %}
+    </div>
+  </div>
+</section>
+
+{% if r.both %}{{ long_notes("Biography", biography, url_for('edit.new_note', for=p.personID, bio=1)) }}{% endif %}
+
+{% if parent_fams or spouse_fams %}
+<section class="card family-glance">
+  <div>
+    {% for f in parent_fams %}
+    <h2>Parents</h2>
+    <ul class="people-list">
+      {% for x in (folks.get(f.husband), folks.get(f.wife)) if x %}{{ person_row(x) }}{% endfor %}
+    </ul>
+    {% if g.user.allow_add == 1 %}{% for x in (folks.get(f.husband), folks.get(f.wife)) if x and not x.famc %}
+    <p class="small muted">{{ pname(x) }}'s parents: <a href="{{ url_for('edit.new_person', parent_of=x.personID, role='husband', return_to=p.personID) }}">add father</a>
+      · <a href="{{ url_for('edit.new_person', parent_of=x.personID, role='wife', return_to=p.personID) }}">add mother</a></p>
+    {% endfor %}{% endif %}
+    {% if siblings.get(f.familyID) %}
+    <h3>Siblings</h3>
+    <ul class="people-list">{% for s in siblings[f.familyID] %}{{ person_row(s) }}{% endfor %}</ul>
+    {% endif %}
+    <p class="small card-links"><a href="{{ url_for('main.family', fid=f.familyID) }}">Family</a>
+      {% if g.user.allow_add == 1 %}· <a href="{{ url_for('edit.new_person', child_of=f.familyID, return_to=p.personID) }}">Add brother or sister</a>{% endif %}</p>
+    {% else %}
+    <h2>Parents</h2>
+    <p class="muted">No parents recorded.</p>
+    {% if g.user.allow_add == 1 %}<p class="small card-links"><a href="{{ url_for('edit.new_person', parent_of=p.personID, role='husband', return_to=p.personID) }}">Add father</a>
+      · <a href="{{ url_for('edit.new_person', parent_of=p.personID, role='wife', return_to=p.personID) }}">Add mother</a>
+      · <a href="{{ url_for('edit.new_family', child=p.personID) }}">Parents already in the tree</a></p>{% endif %}
+    {% endfor %}
+  </div>
+  <div>
+    {% for f in spouse_fams %}
+    {% set spouse = folks.get(f.wife if f.husband == p.personID else f.husband) %}
+    <h2>{% if spouse %}Spouse{% else %}Family{% endif %}</h2>
+    {% if spouse %}<ul class="people-list">{{ person_row(spouse) }}</ul>{% endif %}
+    {% if rights(f).both and (f.marrdate or f.marrplace) %}<p class="muted married">{{ icon("heart") }}Married {{ f.marrdate|d }}{% if f.marrplace %}, {{ f.marrplace }}{% endif %}</p>{% endif %}
+    {% if kids.get(f.familyID) %}
+    <h3>Children</h3>
+    <ul class="people-list">{% for c in kids[f.familyID] %}{{ person_row(c) }}{% endfor %}</ul>
+    {% endif %}
+    <p class="small card-links"><a href="{{ url_for('main.family', fid=f.familyID) }}">Family</a>
+      {% if g.user.allow_add == 1 %}· <a href="{{ url_for('edit.new_person', child_of=f.familyID, return_to=p.personID) }}">Add child</a>{% endif %}</p>
+    {% else %}
+    <h2>Spouse</h2>
+    <p class="muted">No spouse or children recorded.</p>
+    {% if g.user.allow_add == 1 %}<p class="small card-links"><a href="{{ url_for('edit.new_person', spouse_of=p.personID, return_to=p.personID) }}">Add spouse</a>
+      · <a href="{{ url_for('edit.new_family', **{('wife' if p.sex == 'F' else 'husband'): p.personID}) }}">Spouse already in the tree</a></p>{% endif %}
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+
+{% if r.both and timeline %}
+<section class="card"><h2>Life events</h2>
+  <ol class="timeline">
+    {% for x in timeline %}
+    <li{% if x.event and x.event.empty %} class="empty-event"{% endif %}>
+      <div class="when">{{ x.date|d }}{% if x.event and x.event.empty %}<span class="muted small">(empty)</span>{% endif %}
+        {% if x.age %}<span class="age">age {{ x.age }}</span>{% endif %}</div>
+      <div class="what">
+        <strong>{{ x.label }}</strong>{% if x.family %} {{ "to" if x.label == "Marriage" else "from" }} {% if x.spouse %}{{ person_link(x.spouse) }}{% else %}<a href="{{ url_for('main.family', fid=x.family.familyID) }}">unknown spouse</a>{% endif %}{% endif %}{% if x.household %} with <a href="{{ url_for('main.family', fid=x.household.familyID) }}">family</a>{% endif %}{% if x.place %} · {{ place_link(x.place) }}{% endif %}
+        {% if x.event %}{{ event_details(x.event) }}{% endif %}
+        {{ address_lines(x.address) }}
+        {% if x.info %}{{ longtext(x.info) }}{% endif %}
+        {{ scans(x.scans) }}
+        {{ fact_notes(x.notes) }}
+      </div>
+      <span class="row-edit small">{% if g.user.allow_edit == 1 %}<a href="{{ url_for('edit.event', eid=x.event.eventID) if x.event else url_for('edit.family', fid=x.family.familyID) ~ '#marriage' if x.family else url_for('edit.person', pid=p.personID) ~ '#event-' ~ x.field }}" aria-label="Edit {{ x.label }}">Edit</a>{% if not x.family and not x.household %} · {% endif %}{% endif %}{% if not x.family and not x.household %}{{ add_fact_note(p.personID, x.key, x.label) }}{% endif %}</span>
+    </li>
+    {% endfor %}
+  </ol>
+  {% if g.user.allow_add == 1 %}<p class="small"><a href="{{ url_for('edit.new_event', for=p.personID) }}">Add event</a></p>{% endif %}
+</section>
+{% endif %}
+
+{% if r.both and pins %}
+<section class="card"><h2>Map</h2>
+  <link rel="stylesheet" href="{{ url_for('static', filename='leaflet/leaflet.css') }}">
+  <div id="person-map" class="person-map" role="region" aria-label="Map of {{ pname(p) }}'s life events" data-pins='{{ pins|tojson }}'></div>
+  <p class="muted small">Where the places in the life events are. A faint, dashed circle is approximate: only the town or county in the place name could be found. Places without coordinates aren't shown.</p>
+  <script src="{{ url_for('static', filename='leaflet/leaflet.js') }}" defer></script>
+  <script src="{{ url_for('static', filename='personmap.js') }}" defer></script>
+</section>
+{% endif %}
+
+{% if r.both %}{{ long_notes("Obituary", obituary, url_for('edit.new_note', for=p.personID, about='DEAT')) }}
+{{ extras(notes, citations, media, p.personID) }}
+{{ comments_section(comments, "person", p.personID) }}{% endif %}
+
+{% if search_links %}
+<section class="card"><h2>Search other sites</h2>
+  <p class="small muted">Looks for {{ pname(p) }} on these sites, with name and years filled in. They open in a new tab.</p>
+  <p class="button-row">{% for site, url in search_links %}<a class="btn" href="{{ url }}" target="_blank" rel="noopener noreferrer">{{ site }}</a>{% endfor %}</p>
+</section>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}{{ "Edit " ~ c.cemname if c else "Add cemetery" }} · {{ super() }}{% endblock %}
+{% block content %}
+<h1>{{ "Edit " ~ c.cemname if c else "Add cemetery" }}</h1>
+{% if errors %}<div class="card error" role="alert"><ul>{% for e in errors %}<li>{{ e }}</li>{% endfor %}</ul></div>{% endif %}
+<form method="post" class="card edit-form">
+  <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+  <label>{{ labels.cemname }} <input name="cemname" value="{{ v.cemname or '' }}" maxlength="64" required></label>
+  <label>{{ labels.place }} <input name="place" value="{{ v.place or '' }}" maxlength="248" data-places="{{ url_for('edit.place_hint') }}"></label>
+  <p class="muted small">The cemetery page lists everyone whose burial place is exactly this.</p>
+  <div class="grid">
+    {% for k in ("city", "county", "state", "country") %}<label>{{ labels[k] }} <input name="{{ k }}" value="{{ v[k] or '' }}" maxlength="64"></label>{% endfor %}
+    <label>Latitude <input name="latitude" value="{{ v.latitude or '' }}" maxlength="22" inputmode="decimal"></label>
+    <label>Longitude <input name="longitude" value="{{ v.longitude or '' }}" maxlength="22" inputmode="decimal"></label>
+  </div>
+  <label>{{ labels.maplink }} <input type="url" name="maplink" value="{{ v.maplink or '' }}" maxlength="255" placeholder="https://..."></label>
+  <label>Notes <textarea name="notes" rows="4">{{ v.notes or '' }}</textarea></label>
+  <div class="form-actions">
+    <button>{{ "Save" if c else "Add cemetery" }}</button>
+    <a href="{{ url_for('places.cemetery', cid=c.cemeteryID) if c else url_for('places.cemeteries') }}">Cancel</a>
+    {% if c and g.user.allow_delete == 1 %}<a class="danger-link" href="{{ url_for('edit.delete_cemetery', cid=c.cemeteryID) }}">Delete cemetery…</a>{% endif %}
+  </div>
+</form>
+<script src="{{ url_for('static', filename='places.js') }}" defer></script>
+{% endblock %}

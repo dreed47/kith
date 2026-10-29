@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}Restore a backup · {{ super() }}{% endblock %}
+{% block content %}
+<div class="account">
+<h1>Restore {{ nice(b.stamp) }}?</h1>
+<div class="card callout">
+  <p>This puts the family tree back the way it was at <strong>{{ nice(b.stamp) }}</strong>. Every change made since then
+    (people, families, events, notes, accounts, settings) is undone.</p>
+  <p>First, a new backup of how everything is right now is made, so you can undo this by restoring that one.
+    The site is offline for a minute or two while it runs.</p>
+</div>
+{% if error %}<p class="card error" role="alert">{{ error }}</p>{% endif %}
+<form method="post" class="card edit-form">
+  <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+  {% if b.media %}<label class="check"><input type="checkbox" name="media" value="1"> Also put back photos and documents
+    (uploads since then are removed)</label>{% else %}<p class="muted small">This backup has the database only.</p>{% endif %}
+  <label>Type {{ confirm }} to go ahead <input name="confirm" autocomplete="off" required></label>
+  <div class="form-actions"><button class="danger">Restore</button><a href="{{ url_for('admin.backups') }}">Cancel</a></div>
+</form>
+</div>
+{% endblock %}

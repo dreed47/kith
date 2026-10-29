@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% from "_macros.html" import person_link, lifespan %}
+{% block title %}Link requests · {{ super() }}{% endblock %}
+{% block content %}
+<h1>"This is me" requests</h1>
+<p class="muted">A linked user always sees their own record, even when it's marked living, and sees how they're related to everyone. Only approve when you know who they are.</p>
+{% if rows %}
+<section class="card"><ul class="child-list">
+  {% for r in rows %}
+  <li>
+    <span><strong>{{ r.username }}</strong>{% if r.realname %} ({{ r.realname }}){% endif %}{% if r.email %} <span class="muted">{{ r.email }}</span>{% endif %}
+      says they are {{ person_link(r.person) or r.personID }} {{ lifespan(r.person) }}</span>
+    <span class="row-actions">
+      {% for action, label in [("approve", "Approve"), ("reject", "Reject")] %}
+      <form method="post" action="{{ url_for('me.decide', rid=r.id) }}">
+        <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+        <button name="action" value="{{ action }}" class="small-button{% if action == 'reject' %} secondary{% endif %}">{{ label }}</button>
+      </form>
+      {% endfor %}
+    </span>
+  </li>
+  {% endfor %}
+</ul></section>
+{% else %}<p>No requests waiting.</p>{% endif %}
+{% endblock %}

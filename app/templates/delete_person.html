@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}Delete {{ pname(p) }} · {{ super() }}{% endblock %}
+{% block content %}
+<h1>Delete {{ pname(p) }}?</h1>
+<section class="card">
+  <p>This removes <strong>{{ pname(p) }}</strong> ({{ p.personID }}{% if p.birthdate or p.deathdate %}, {{ p.birthdate|d or "?" }} – {{ p.deathdate|d }}{% endif %}) and:</p>
+  <ul>
+    {% set fams = links.families %}
+    {% if links.children %}<li>their place as a child in {{ links.children|length }} famil{{ "y" if links.children|length == 1 else "ies" }}</li>{% endif %}
+    {% if fams %}<li>their place as a spouse in {{ fams|length }} famil{{ "y" if fams|length == 1 else "ies" }} (the other spouse and children stay; a family left with nothing in it is removed)</li>{% endif %}
+    {% if links.events %}<li>{{ links.events|length }} event(s)</li>{% endif %}
+    {% if links.notelinks %}<li>{{ links.notelinks|length }} note(s)</li>{% endif %}
+    {% if links.citations %}<li>{{ links.citations|length }} source citation(s)</li>{% endif %}
+    {% if links.medialinks %}<li>{{ links.medialinks|length }} media link(s) (the media itself stays)</li>{% endif %}
+    {% if not (links.children or fams or links.events or links.notelinks or links.citations or links.medialinks) %}<li>nothing else; this person has no links</li>{% endif %}
+  </ul>
+  <p class="muted">A full copy is kept in the edit history.</p>
+  <form method="post" class="form-actions">
+    <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+    <button class="danger">Delete</button>
+    <a href="{{ url_for('main.person', pid=p.personID) }}">Cancel</a>
+  </form>
+</section>
+{% endblock %}

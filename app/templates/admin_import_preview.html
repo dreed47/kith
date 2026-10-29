@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% from "_macros.html" import person_link, lifespan %}
+{% block title %}Import {{ filename }} · {{ super() }}{% endblock %}
+{% block content %}
+<h1>Import {{ filename }}?</h1>
+{% if warning %}<p class="card flash">{{ warning }}</p>{% endif %}
+<section class="card">
+  <p><strong>{{ by.INDI|length }}</strong> people, <strong>{{ by.FAM|length }}</strong> families, <strong>{{ by.SOUR|length }}</strong> sources and <strong>{{ by.NOTE|length }}</strong> shared notes will be added as new records.</p>
+  {% if skipped %}<p class="muted small">Left out: {% for tag, n in skipped %}{{ tag }} ({{ n }}){{ ", " if not loop.last }}{% endfor %}. (Photos and documents, repositories, LDS data and kinds of event this tree doesn't have.)</p>{% endif %}
+  <form method="post" action="{{ url_for('admin.confirm_import', token=token) }}" class="form-actions">
+    <input type="hidden" name="csrf" value="{{ csrf_token() }}"><input type="hidden" name="filename" value="{{ filename }}">
+    <button>Import them</button><a href="{{ url_for('admin.import_gedcom') }}">Cancel</a>
+  </form>
+</section>
+{% if dupes %}
+<section class="card"><h2>Possibly already in the tree ({{ dupes|length }})</h2>
+  <p class="muted small">Same name and birth year as someone here. After importing, use Merge duplicate people to combine them.</p>
+  <ul class="people">{% for v, hit in dupes %}<li>{{ v.firstname }} {{ v.lastname }} ({{ v.birthdate }}) · already here: {{ person_link(hit) }} {{ lifespan(hit) }}</li>{% endfor %}</ul>
+</section>
+{% endif %}
+<section class="card"><h2>People in the file{% if by.INDI|length > people|length %} (first {{ people|length }}){% endif %}</h2>
+  <ul class="people">{% for v in people %}<li>{{ v.firstname }} {{ v.lastname }}{% if v.suffix %}, {{ v.suffix }}{% endif %}
+    <span class="muted">{{ v.birthdate or "" }}{% if v.birthdate or v.deathdate %} – {% endif %}{{ v.deathdate or "" }}</span>{% if v.living %} <span class="tag">living</span>{% endif %}</li>{% endfor %}</ul>
+</section>
+{% endblock %}

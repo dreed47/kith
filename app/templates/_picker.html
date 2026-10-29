@@ -1,0 +1,10 @@
+{# A person ID box with name lookup. Args: name, label, value, person (current person row or None), find_url (lookup endpoint, editors' by default). #}
+{% macro picker(name, label, value, person, find_url=None) %}
+<label for="pick-{{ name }}">{{ label }}</label>
+<div class="picker">
+  <input id="pick-{{ name }}" name="{{ name }}" value="{{ value or '' }}" list="pick-{{ name }}-list"
+         data-find="{{ find_url or url_for('edit.find') }}" placeholder="Type a name or ID" autocomplete="off">
+  <datalist id="pick-{{ name }}-list"></datalist>
+  <span id="pick-{{ name }}-name" class="muted">{% if person %}{{ pname(person) }} ({{ person.birthdate|d or "?" }} – {{ person.deathdate|d }}){% endif %}</span>
+</div>
+{% endmacro %}

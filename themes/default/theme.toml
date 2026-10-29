@@ -1,0 +1,10 @@
+name = "Modern"
+description = "Navy and teal with a touch of gold; a refined serif for names, crisp sans-serif for reading."
+swatches = ["#14213d", "#0e6a87", "#e3a72f", "#f5f3ef"]
+site_title = "Our Family History"
+
+# Public welcome page (shown before logging in). No family data appears there.
+welcome_title = "Family History"
+welcome = """This is a private family history site.
+Family members can log in to browse the tree, photos, documents and stories."""
+# contact = "Ask the site's admin for an account: you@example.com"

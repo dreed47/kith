@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>{{ within or "Places" }}</h1>
+{% if within %}<p><a href="{{ url_for('places.places', within=within.split(',', 1)[1].strip() if ',' in within else None) }}">Up one level</a></p>{% endif %}
+{% if exact %}<p><a href="{{ url_for('places.place', name=exact) }}">Events in {{ exact }}</a>{% if g.user.allow_edit == 1 %} · <a href="{{ url_for('edit.place', name=exact) }}">Edit place</a>{% endif %}</p>{% endif %}
+<ul class="surnames">
+  {% for g, n in groups %}<li><a href="{{ url_for('places.places', within=g) }}">{{ g.split(',', 1)[0] }}</a> <span class="muted">{{ n }}</span></li>{% endfor %}
+</ul>
+{% endblock %}

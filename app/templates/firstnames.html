@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block title %}First names · {{ super() }}{% endblock %}
+{% block content %}
+<h1>First names</h1>
+<p class="small"><a href="{{ url_for('main.surnames') }}">Surnames instead</a></p>
+{% if top %}
+<section class="card">
+  <h2>Most common</h2>
+  <ol class="surnames top-names">{% for r in top %}<li><a href="{{ url_for('main.firstname', name=r.name) }}">{{ r.name }}</a> <span class="muted">{{ r.n }}</span></li>{% endfor %}</ol>
+</section>
+<p class="letters">{% for letter in letters %}<a href="#letter-{{ letter }}">{{ letter }}</a> {% endfor %}</p>
+{% for letter, names in letters.items() %}
+<section class="card" id="letter-{{ letter }}">
+  <h2>{{ letter }}</h2>
+  <ul class="surnames">{% for r in names %}<li><a href="{{ url_for('main.firstname', name=r.name) }}">{{ r.name }}</a> <span class="muted">{{ r.n }}</span></li>{% endfor %}</ul>
+</section>
+{% endfor %}
+{% else %}<p class="muted">No first names to show.</p>{% endif %}
+{% endblock %}

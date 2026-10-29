@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% from "_macros.html" import person_link %}
+{% block title %}Living flags · {{ super() }}{% endblock %}
+{% block content %}
+<h1>Living flags</h1>
+<p class="muted">Whether someone is marked living decides what guests can see. These people's flags don't match their dates. Tick the ones to fix and use the button under each list.</p>
+{% for key, title, why, people, fix in groups %}
+<section class="card" id="{{ key }}">
+  <h2>{{ title }} <span class="muted small">{{ people|length }}</span></h2>
+  <p class="muted small">{{ why }}</p>
+  {% if people %}
+  <form method="post">
+    <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+    <input type="hidden" name="living" value="{{ fix }}">
+    <p class="small"><button type="button" class="tick-all" data-on="1">Tick all</button> <button type="button" class="tick-all" data-on="">Untick all</button></p>
+    <div class="scroll-list"><table class="facts">
+      {% for p in people[:shown] %}
+      <tr><td><input type="checkbox" name="pid" value="{{ p.personID }}" aria-label="Select {{ pname(p) }}"{% if key != "recent" %} checked{% endif %}></td>
+        <td>{{ person_link(p) }} <span class="muted small">{{ p.personID }}</span></td>
+        <td class="small">{% if p.birthdate %}b. {{ p.birthdate|d }}{% elif p.latest %}born by {{ p.latest }} at the latest{% endif %}
+          {% if p.deathdate or p.burialdate %} · {{ "d. " ~ (p.deathdate|d) if p.deathdate else "buried " ~ (p.burialdate|d or p.burialplace) }}{% elif p.deathplace or p.burialplace %} · died or buried at {{ p.deathplace or p.burialplace }}{% endif %}</td></tr>
+      {% endfor %}
+    </table></div>
+    {% if people|length > shown %}<p class="muted small">Showing the first {{ shown }}; fix these and the rest appear.</p>{% endif %}
+    <div class="form-actions sticky-actions"><button>{{ "Mark ticked people living" if fix else "Mark ticked people not living" }}</button></div>
+  </form>
+  {% else %}<p>Nothing to fix.</p>{% endif %}
+</section>
+{% endfor %}
+<script>
+document.querySelectorAll(".tick-all").forEach((b) => b.addEventListener("click", () => {
+  b.form.querySelectorAll('input[name="pid"]').forEach((c) => { c.checked = !!b.dataset.on; });
+}));
+</script>
+{% endblock %}

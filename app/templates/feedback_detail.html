@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}Feedback #{{ fb.id }} · {{ super() }}{% endblock %}
+{% block content %}
+<h1>Feedback #{{ fb.id }} <span class="muted small">{{ kinds[fb.kind] }} · {{ statuses[fb.status] }}</span></h1>
+<section class="card">
+  <div class="pre">{{ fb.message }}</div>
+  <p class="muted small">From {{ fb.username }} on {{ (fb.created_at|local).strftime("%-d %b %Y %H:%M") }}{% if fb.page %} · page <a href="{{ fb.page }}">{{ fb.page }}</a>{% endif %}</p>
+  {% if fb.screenshot %}<a href="{{ url_for('feedback.screenshot', fid=fb.id) }}"><img class="feedback-shot" src="{{ url_for('feedback.screenshot', fid=fb.id) }}" alt="Screenshot attached to this feedback"></a>{% endif %}
+  {% if fb.reply %}<h2>Reply</h2><div class="pre">{{ fb.reply }}</div>{% endif %}
+</section>
+<section class="card" id="comments">
+  <h2>Comments</h2>
+  {% for c in comments %}<div class="note"><p class="small muted">{{ c.username }} · {{ (c.created_at|local).strftime("%-d %b %Y %H:%M") }}</p>
+    <div class="pre">{{ c.body }}</div></div>
+  {% else %}<p class="muted">None yet.</p>{% endfor %}
+  <form method="post" class="edit-form add-child">
+    <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+    <label>Add a comment <textarea name="body" rows="3" required maxlength="10000"></textarea></label>
+    <div class="form-actions"><button name="action" value="comment">Add comment</button></div>
+  </form>
+  {% if author and fb.status not in closed %}
+  <form method="post" class="form-actions">
+    <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+    <button name="action" value="close" class="secondary">Close: this is sorted</button>
+  </form>
+  {% endif %}
+</section>
+{% if g.user.allow_edit == 1 %}
+<section class="card">
+  <h2>Details</h2>
+  <table class="facts">
+    {% for k, val in ctx.items() %}<tr><th>{{ k|replace("_", " ")|capitalize }}</th><td>{% if val is string %}{{ val }}{% else %}{{ val|join("; ") }}{% endif %}</td></tr>{% endfor %}
+    <tr><th>GitHub</th><td>
+      {% if fb.github_issue %}<a href="https://github.com/{{ repo }}/issues/{{ fb.github_issue }}" rel="noopener">Issue #{{ fb.github_issue }}</a>
+      {% elif not github %}Not set up
+      {% else %}<span class="error">Not copied{% if fb.github_error %}: {{ fb.github_error }}{% endif %}</span>
+        <form method="post" class="inline"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><button name="action" value="retry" class="small-button secondary">Retry</button></form>
+      {% endif %}</td></tr>
+  </table>
+</section>
+<form method="post" class="card edit-form">
+  <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+  <h2>Update</h2>
+  <label>Status
+    <select name="status">{% for k, label in statuses.items() %}<option value="{{ k }}" {% if fb.status == k %}selected{% endif %}>{{ label }}</option>{% endfor %}</select>
+  </label>
+  <label>Reply to {{ fb.username }} <textarea name="reply" rows="3">{{ fb.reply or "" }}</textarea></label>
+  <button>Save</button>
+</form>
+{% endif %}
+<p><a href="{{ url_for('feedback.index') if g.user.allow_edit == 1 else url_for('feedback.mine') }}">Back to the list</a></p>
+{% endblock %}

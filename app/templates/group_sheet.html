@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% from "_macros.html" import person_link %}
+{% set title = (pname(spouses[0]) ~ (" & " ~ pname(spouses[1]) if spouses|length > 1 else "")) if spouses else f.familyID %}
+{% block title %}Group sheet: {{ title }} · {{ super() }}{% endblock %}
+{% block content %}
+<h1>Family group sheet: {{ title }}</h1>
+<p class="action-row no-print"><a href="{{ url_for('main.family', fid=f.familyID) }}">Back to family</a><span class="muted">Your browser's Print leaves out the menus.</span></p>
+
+{% macro row(label, date, place) %}{% if date or place %}<tr><th>{{ label }}</th><td>{{ date|d }}</td><td>{{ place }}</td></tr>{% endif %}{% endmacro %}
+{% macro vitals(p, parents=True) %}
+{% if rights(p).both %}
+  {{ row("Born", p.birthdate, p.birthplace) }}
+  {{ row(alt_birth.get(p.altbirthtype, "Christened"), p.altbirthdate, p.altbirthplace) }}
+  {{ row("Died", p.deathdate, p.deathplace) }}
+  {{ row("Cremated" if p.burialtype == 1 else "Buried", p.burialdate, p.burialplace) }}
+{% else %}<tr><th>Details</th><td colspan="2" class="muted">Private</td></tr>{% endif %}
+{% if parents %}{% set pf = parent_fams.get(p.famc) %}
+  <tr><th>Father</th><td colspan="2">{{ person_link(others.get(pf.husband)) if pf }}</td></tr>
+  <tr><th>Mother</th><td colspan="2">{{ person_link(others.get(pf.wife)) if pf }}</td></tr>
+{% endif %}
+{% endmacro %}
+
+{% for p in spouses %}
+<section class="card">
+  <h2>{{ "Husband" if p.personID == f.husband else "Wife" }}: {{ person_link(p) }}</h2>
+  <table class="facts sheet">{{ vitals(p) }}</table>
+</section>
+{% endfor %}
+
+<section class="card">
+  <h2>Marriage</h2>
+  <table class="facts sheet">
+  {% if rights(f).both and (f.marrdate or f.marrplace or f.divdate or f.divplace) %}
+    {{ row("Married", f.marrdate, f.marrplace) }}
+    {{ row("Divorced", f.divdate, f.divplace) }}
+  {% elif rights(f).both %}<tr><td class="muted">Nothing recorded.</td></tr>
+  {% else %}<tr><th>Details</th><td colspan="2" class="muted">Private</td></tr>{% endif %}
+  </table>
+</section>
+
+<section class="card">
+  <h2>Children</h2>
+  {% for c in children %}
+  <h3>{{ loop.index }}. {{ person_link(c) }}{% if c.sex in ("M", "F") %} <span class="muted small">({{ c.sex }})</span>{% endif %}</h3>
+  <table class="facts sheet">
+    {{ vitals(c, parents=False) }}
+    {% for cf in child_fams.get(c.personID, []) %}
+    <tr><th>Spouse</th><td colspan="2">{{ person_link(others.get(cf.wife if cf.husband == c.personID else cf.husband)) }}
+      {%- if rights(cf).both and (cf.marrdate or cf.marrplace) %}, married {{ cf.marrdate|d }}{% if cf.marrdate and cf.marrplace %}, {% endif %}{{ cf.marrplace }}{% endif %}</td></tr>
+    {% endfor %}
+  </table>
+  {% else %}<p class="muted">No children recorded.</p>
+  {% endfor %}
+</section>
+{% endblock %}

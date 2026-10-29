@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% from "_picker.html" import picker %}
+{% from "_macros.html" import person_link, lifespan %}
+{% block title %}Relationship · {{ super() }}{% endblock %}
+{% macro chain(ids, people) %}
+<ol class="chain">{% for pid in ids %}<li>{{ person_link(people.get(pid)) }} {{ lifespan(people.get(pid)) }}</li>{% endfor %}</ol>
+{% endmacro %}
+{% block content %}
+<h1>How are they related?</h1>
+<form class="card edit-form" action="{{ url_for('main.relationship_page') }}">
+  <div class="grid">
+    <div>{{ picker("a", "First person", a, pa, url_for('main.find')) }}</div>
+    <div>{{ picker("b", "Second person", b, pb, url_for('main.find')) }}</div>
+  </div>
+  <button>Find relationship</button>
+</form>
+{% if asked %}
+<section class="card">
+  {% if not (pa and pb) %}
+  <p>Choose two people from the list (or enter their IDs).</p>
+  {% elif not rel %}
+  <p>No relationship found between {{ person_link(pa) }} and {{ person_link(pb) }} in this tree.</p>
+  {% elif rel.kind == "self" %}
+  <p>That's the same person.</p>
+  {% else %}
+  {% set before, after = rel_phrase(rel, "@@").split("@@ ") %}
+  <p class="relation-answer">{{ person_link(pb) }} is {{ before }}{{ person_link(pa) }}'s <strong>{{ after }}</strong>.</p>
+  {% if rel.kind == "blood" or rel.kind == "marriage" %}
+    {% if rel.kind == "marriage" %}<p class="muted">Through {{ "the spouse" if rel.side == "theirs" else "the marriage of" }} {{ person_link(rel.people.get(rel.via)) }}.</p>{% endif %}
+    <p class="muted">Common ancestor{{ "s" if rel.common|length > 1 else "" }}:
+      {% for c in rel.common %}{{ person_link(rel.people.get(c)) }}{{ " & " if not loop.last }}{% endfor %}</p>
+    <div class="grid relation-paths">
+      {% set left = rel.via if rel.kind == "marriage" and rel.side == "theirs" else a %}
+      {% set right = rel.via if rel.kind == "marriage" and rel.side == "mine" else b %}
+      <div><h2>From {{ person_link(rel.people.get(left)) }}</h2>{{ chain(rel.path_a, rel.people) }}</div>
+      <div><h2>From {{ person_link(rel.people.get(right)) }}</h2>{{ chain(rel.path_b, rel.people) }}</div>
+    </div>
+  {% endif %}
+  {% endif %}
+</section>
+{% endif %}
+<script src="{{ url_for('static', filename='picker.js') }}" defer></script>
+{% endblock %}

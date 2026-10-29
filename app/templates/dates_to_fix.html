@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% from "_macros.html" import person_link %}
+{% block title %}Dates to fix · {{ super() }}{% endblock %}
+{% block content %}
+<h1>Dates to fix</h1>
+<p class="muted">{{ "{:,}".format(total) }} date{{ "" if total == 1 else "s" }} can't be read as a date, so they don't sort and don't count toward ages, or are typed as numbers that could mean more than one day. Fixing one removes it from this list.</p>
+{% if rows %}
+<div class="table-wrap"><table class="results">
+  <thead><tr><th>Date as entered</th><th>What it's for</th><th>Who</th><th></th></tr></thead>
+  <tbody>
+  {% for r in rows %}
+  <tr>
+    <td data-label="Date"><strong>{{ r.date }}</strong>{% if r.hint %}<div class="muted small">{{ r.hint }}</div>{% endif %}</td>
+    <td data-label="For">{{ r.label }}</td>
+    <td data-label="Who">{% if r.person %}{{ person_link(r.person) }}{% elif r.family %}{% for x in r.spouses if x %}{{ person_link(x) }}{% if not loop.last %} &amp; {% endif %}{% endfor %}{% endif %}</td>
+    <td>
+      {% for value, how in r.fixes %}
+      <form method="post" class="inline"><input type="hidden" name="csrf" value="{{ csrf_token() }}">
+        <input type="hidden" name="kind" value="{{ r.edit[0] }}"><input type="hidden" name="id" value="{{ r.edit[1] }}">
+        <input type="hidden" name="field" value="{{ r.field }}"><input type="hidden" name="old" value="{{ r.date }}">
+        <input type="hidden" name="page" value="{{ page }}">
+        <button name="new" value="{{ value }}" class="small-button">Save as {{ value | d }}</button>{% if how %} <span class="muted small">{{ how }}</span>{% endif %}
+      </form>{% if not loop.last %}<br>{% endif %}
+      {% endfor %}
+      <a href="{{ url_for('edit.' ~ r.edit[0], **{('pid' if r.edit[0] == 'person' else 'fid' if r.edit[0] == 'family' else 'eid'): r.edit[1]}) }}">{{ "Edit" if r.fixes else "Fix" }}</a>
+    </td>
+  </tr>
+  {% endfor %}
+  </tbody>
+</table></div>
+{% if pages > 1 %}
+<nav class="pager">
+  {% if page > 1 %}<a href="{{ url_with(page=page - 1) }}">Previous</a>{% endif %}
+  <span>Page {{ page }} of {{ pages }}</span>
+  {% if page < pages %}<a href="{{ url_with(page=page + 1) }}">Next</a>{% endif %}
+</nav>
+{% endif %}
+{% else %}<p>Nothing to fix.</p>{% endif %}
+{% endblock %}

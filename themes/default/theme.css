@@ -1,0 +1,60 @@
+/* Modern: warm paper white, navy header, teal links, a gold accent; Fraunces for names, Inter for reading. */
+@font-face { font-family: "Fraunces"; src: url("../static/fonts/fraunces-latin-wght-normal.woff2") format("woff2"); font-weight: 100 900; font-display: swap; }
+@font-face { font-family: "Inter"; src: url("../static/fonts/inter-latin-wght-normal.woff2") format("woff2"); font-weight: 100 900; font-display: swap; }
+
+:root {
+  color-scheme: light dark;
+  --font-body: Inter, system-ui, sans-serif;
+  --font-heading: Inter, system-ui, sans-serif;
+  --font-display: Fraunces, Georgia, serif;
+  --font-size: 100%;
+  --radius: 10px;
+  --radius-lg: 16px;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --link-underline: 35%;
+
+  --bg: #f5f3ef;
+  --surface: #ffffff;
+  --surface-2: #f2efe9;
+  --border: #e4dfd6;
+  --shadow: 0 14px 34px rgb(20 33 61 / 0.18);
+  --shadow-card: 0 1px 2px rgb(20 33 61 / 0.05), 0 4px 16px rgb(20 33 61 / 0.05);
+  --text: #1d2329;
+  --text-muted: #5f6871;
+  --heading: #14213d;
+  --link: #0e6a87;
+  --accent: #0e6a87;
+  --accent-text: #ffffff;
+  --accent-soft: #dcecf1;
+  --highlight: #e3a72f;
+  --danger: #b42318;
+  --header-bg: #14213d;
+  --header-text: #f7f5f0;
+  --hero-bg: linear-gradient(115deg, #14213d 0%, #1b4766 55%, #0e6a87 100%);
+  --hero-text: #f7f5f0;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0f141b;
+    --surface: #161d26;
+    --surface-2: #1d2631;
+    --border: #2a3441;
+    --shadow: 0 14px 34px rgb(0 0 0 / 0.55);
+    --shadow-card: 0 1px 2px rgb(0 0 0 / 0.3);
+    --text: #e6e9ee;
+    --text-muted: #9ba6b2;
+    --heading: #f2f4f7;
+    --link: #6cc3dd;
+    --accent: #5bb8d6;
+    --accent-text: #0a1620;
+    --accent-soft: #163241;
+    --highlight: #e8b34a;
+    --danger: #f97066;
+    --header-bg: #0a0f15;
+    --header-text: #eef1f4;
+    --hero-bg: linear-gradient(115deg, #101d2d 0%, #123247 60%, #0f4a5f 100%);
+    --hero-text: #eef1f4;
+  }
+}

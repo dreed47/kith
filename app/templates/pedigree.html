@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% from "_macros.html" import chart_face, gens_picker, lifespan, photos_toggle, vital_lines %}
+{% from "_chart_tabs.html" import chart_tabs %}
+{% block title %}Pedigree: {{ pname(root) }} · {{ super() }}{% endblock %}
+{% block content %}
+<h1>Pedigree: {{ pname(root) }}</h1>
+{{ chart_tabs(root.personID, "main.pedigree") }}
+<div class="chart-options">{{ gens_picker(choices, gens) }}{{ photos_toggle(photos) }}</div>
+{% if children %}<p class="small">Children (step forward):
+  {% for c in children %}<a href="{{ url_for('main.pedigree', pid=c.personID, gens=gens) }}">{{ pname(c) }}</a>{{ " · " if not loop.last }}{% endfor %}
+</p>{% endif %}
+{% macro pop_row(label, date, place) %}{% if date or place %}<div><dt>{{ label }}</dt><dd>{{ date|d }}{% if date and place %}, {% endif %}{{ place }}</dd></div>{% endif %}{% endmacro %}
+{#- Every slot is drawn to full depth, unknown ones invisible, so each parent pair stays centered on its child. -#}
+{% macro node(n, level) %}
+{% set p = slots.get(n) %}
+<div class="ped-node{% if not p %} empty{% endif %}">
+  <div class="ped-box{% if p and photos is not none %} with-face{% endif %}">
+    {% if p %}
+    <a href="{{ url_for('main.pedigree', pid=p.personID, gens=gens) }}">{{ pname(p) }}</a>
+    {% if level < 4 %}{{ vital_lines(p) }}{% else %}{{ lifespan(p) }}{% endif %}{# deep columns: dates only, the card has the rest #}
+    <a class="ped-details muted small" href="{{ url_for('main.person', pid=p.personID) }}" aria-describedby="pop{{ n }}">details</a>
+    <div class="ped-pop{% if level == depth - 1 %} leftward{% endif %}" id="pop{{ n }}" role="tooltip">
+      <strong>{{ pname(p) }}</strong>
+      {% if rights(p).both %}
+      <dl>
+        {{ pop_row("Born", p.birthdate, p.birthplace) }}
+        {{ pop_row(alt_birth.get(p.altbirthtype, "Christened"), p.altbirthdate, p.altbirthplace) }}
+        {{ pop_row("Died", p.deathdate, p.deathplace) }}
+        {{ pop_row("Cremated" if p.burialtype == 1 else "Buried", p.burialdate, p.burialplace) }}
+        {% set fam = parents.get(n // 2) %}
+        {% if fam and rights(fam).both %}{{ pop_row("Married", fam.marrdate, fam.marrplace) }}{% endif %}
+      </dl>
+      {% else %}<p class="muted">Details are private.</p>{% endif %}
+    </div>
+    {{ chart_face(p, photos) }}
+    {% if n in more %}<a class="ped-more" href="{{ url_for('main.pedigree', pid=p.personID, gens=gens) }}" aria-label="Earlier generations of {{ pname(p) }}" title="Earlier generations">
+      <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path d="M6 3l5 5-5 5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></a>{% endif %}
+    {% endif %}
+  </div>
+  {% if level < depth - 1 %}
+  <div class="ped-parents{% if not (slots.get(2 * n) or slots.get(2 * n + 1)) %} none{% endif %}">{{ node(2 * n, level + 1) }}{{ node(2 * n + 1, level + 1) }}</div>
+  {% endif %}
+</div>
+{% endmacro %}
+<div class="pedigree ped-cols-{{ depth }}">{{ node(1, 0) }}</div>
+{% endblock %}

@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% from "_macros.html" import thumb %}
+{% block content %}
+<h1>Media</h1>
+<nav class="tabs">
+  <a href="{{ url_for('media.browse') }}" {% if not mtype %}aria-current="page"{% endif %}>All</a>
+  {% for t in types %}<a href="{{ url_for('media.browse', type=t.mediatypeID) }}" {% if mtype == t.mediatypeID %}aria-current="page"{% endif %}>{{ t.mediatypeID|capitalize }}</a>{% endfor %}
+</nav>
+<div class="thumbs">{% for m in items %}{{ thumb(m) }}{% endfor %}</div>
+{% if pages > 1 %}
+<nav class="pager">
+  {% if page > 1 %}<a href="{{ url_for('media.browse', type=mtype or None, page=page-1) }}">Previous</a>{% endif %}
+  <span>Page {{ page }} of {{ pages }}</span>
+  {% if page < pages %}<a href="{{ url_for('media.browse', type=mtype or None, page=page+1) }}">Next</a>{% endif %}
+</nav>
+{% endif %}
+{% endblock %}

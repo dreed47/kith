@@ -1,0 +1,11 @@
+name = "Heritage"
+description = "An old family bible: parchment, oxblood ink, gold rules and Garamond type."
+swatches = ["#3b2215", "#8a3412", "#c9a227", "#f1e8d5"]
+site_title = "Our Family History"
+tagline = "Our family history"
+
+# Public welcome page (shown before logging in). No family data appears there.
+welcome_title = "Family History"
+welcome = """This is a private family history site.
+Family members can log in to browse the tree, photos, documents and stories."""
+# contact = "Ask the site's admin for an account: you@example.com"

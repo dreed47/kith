@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% from "_macros.html" import icon %}
+{% block title %}Backups · {{ super() }}{% endblock %}
+{% block head %}{% if busy %}<meta http-equiv="refresh" content="15">{% endif %}{% endblock %}
+{% block content %}
+<h1>Backups</h1>
+{% if not status %}
+<section class="card">
+  <p>Backups aren't set up on this machine, so there is nothing to show. On the server they run every night at about
+    03:30 (<code>deploy/backup.sh</code>, installed by <code>update.sh</code>).</p>
+</section>
+{% else %}
+{% if status.last %}
+<p class="card notice{% if not status.last.ok %} error{% endif %}" role="status">
+  <strong>{{ "Done" if status.last.ok else "Failed" }}:</strong> {{ pretty(status.last.message) }}
+  <span class="muted small">({{ status.last.finished }})</span></p>
+{% endif %}
+<section class="card">
+  <h2 class="card-title">{{ icon("shield") }}Back up now</h2>
+  <p>Each backup holds the whole database and all photos and documents; {{ status.backups|length }} backup{{ "" if status.backups|length == 1 else "s" }} on the server now.
+    {% if status.remote %}Each night's copy also goes to the backup machine.
+    {% elif offsite %}This server is also backed up by {{ offsite }}.
+    {% else %}<strong>They are only on this server</strong>, so they wouldn't survive it failing; set
+    <code>KITH_BACKUP_REMOTE</code> to copy them elsewhere, or <code>KITH_BACKUP_OFFSITE</code> to say what else backs it up.{% endif %}</p>
+  {% if status.running %}<p class="badge">{{ icon("clock") }}{{ "Backing up" if status.running == "backup" else "Restoring" }} now…</p>
+  {% elif pending %}<p class="badge">{{ icon("clock") }}Waiting to start…</p>
+  {% else %}
+  <form method="post" action="{{ url_for('admin.backup_now') }}"><input type="hidden" name="csrf" value="{{ csrf_token() }}">
+    <button>Back up now</button> <span class="muted small">before a big change, such as a GEDCOM import or a merge</span></form>
+  {% endif %}
+</section>
+{% set sch = status.schedule or {"enabled": true, "time": "03:30", "keep_days": 30} %}
+<section class="card">
+  <h2 class="card-title">{{ icon("calendar") }}Schedule</h2>
+  <p>{% if sch.enabled %}Every night at <strong>{{ sch.time }}</strong>{% if sch.timezone %} ({{ sch.timezone }}, the server's time){% endif %},
+    keeping <strong>{{ sch.keep_days }} days</strong> of backups.{% if sch.next %} <span class="muted small">Next: {{ sch.next }}</span>{% endif %}
+    {% else %}<strong>Nightly backups are off.</strong> Back up now still works, and a backup is always made before a restore.
+    Backups older than {{ sch.keep_days }} days are removed when one is made.{% endif %}</p>
+  <form method="post" action="{{ url_for('admin.schedule') }}" class="edit-form schedule-form">
+    <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+    <label class="check"><input type="checkbox" name="enabled" value="1"{% if sch.enabled %} checked{% endif %}> Back up every night</label>
+    <label>At <input type="time" name="time" value="{{ sch.time }}" required></label>
+    <label>Keep for <input type="number" name="keep_days" value="{{ sch.keep_days }}" min="1" max="{{ max_keep }}" required> days</label>
+    <button{% if busy %} disabled{% endif %}>Save schedule</button>
+  </form>
+</section>
+<section class="card">
+  <h2 class="card-title">{{ icon("clock") }}Backups on the server</h2>
+  {% if status.backups %}
+  <div class="table-wrap"><table class="results">
+    <thead><tr><th>Made</th><th>Database</th><th>Photos and documents</th><th></th></tr></thead>
+    <tbody>{% for b in status.backups %}
+    <tr><td data-label="Made">{{ nice(b.stamp) }}{% if b.note %}<span class="small muted note-line">{{ pretty(b.note) }}</span>{% endif %}</td><td data-label="Database">{{ (b.db_bytes / 1048576)|round(1) }} MB</td>
+      <td data-label="Photos and documents">{{ "Yes" if b.media else "No" }}</td>
+      <td class="row-actions">{% if not busy %}<a class="btn" href="{{ url_for('admin.restore', stamp=b.stamp) }}">Restore…</a>
+        {% if status.backups|length > 1 %}<a class="btn danger-link" href="{{ url_for('admin.delete', stamp=b.stamp) }}">Delete…</a>{% endif %}{% endif %}</td></tr>
+    {% endfor %}</tbody>
+  </table></div>
+  {% else %}<p class="muted">None yet.</p>{% endif %}
+  <p class="muted small">Status as of {{ status.updated }}.{% if busy %} This page reloads itself until the work is done.{% endif %}</p>
+</section>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% from "_picker.html" import picker %}
+{% from "_date.html" import date_input %}
+{% block title %}{{ "Edit media" if m else "Upload media" }} · {{ super() }}{% endblock %}
+{% block content %}
+<h1>{% if m %}Edit {{ m.description or m.path }}{% else %}Upload media <span class="muted small">for {{ owner_name(owner_id) }}{% if citation %}, as a scan of a source{% endif %}</span>{% endif %}</h1>
+{% if errors %}<div class="card error" role="alert"><ul>{% for x in errors %}<li>{{ x }}</li>{% endfor %}</ul></div>{% endif %}
+<form method="post" class="card edit-form" enctype="multipart/form-data">
+  <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+  {% if not m %}
+  <input type="hidden" name="for" value="{{ owner_id }}">{% if citation %}<input type="hidden" name="citation" value="{{ citation }}">{% endif %}
+  <label>File <input type="file" name="file" required></label>
+  <label>Collection
+    <select name="collection">{% for c in collections %}<option value="{{ c }}" {% if c == collection %}selected{% endif %}>{{ c|capitalize }}</option>{% endfor %}</select>
+  </label>
+  {% else %}
+  <p class="muted">{{ m.mediatypeID|capitalize }} · {{ m.path }}</p>
+  {% endif %}
+  <label>Description <input name="description" value="{{ v.description or '' }}" maxlength="255"></label>
+  <div class="grid">
+    <div><label for="date-datetaken">Date taken</label> {{ date_input("datetaken", v.datetaken, "Taken") }}</div>
+    <label>Place taken <input name="placetaken" value="{{ v.placetaken or '' }}" maxlength="248" data-places="{{ url_for('edit.place_hint') }}"></label>
+  </div>
+  <label>Notes <textarea name="notes" rows="4">{{ v.notes or '' }}</textarea></label>
+  <div class="grid">
+    <label>Cemetery (headstones)
+      <select name="cemeteryID"><option value="">None</option>
+        {% for c in cemeteries %}<option value="{{ c.cemeteryID }}" {% if v.cemeteryID == c.cemeteryID %}selected{% endif %}>{{ c.cemname }}{% if c.city %}, {{ c.city }}{% endif %}</option>{% endfor %}
+      </select>
+    </label>
+    <label>Plot <input name="plot" value="{{ v.plot or '' }}" maxlength="255"></label>
+  </div>
+  <label class="check"><input type="checkbox" name="alwayson" value="1" {% if v.alwayson %}checked{% endif %}> Always show, even when linked to living people</label>
+  <div class="form-actions">
+    <button>{{ "Save" if m else "Upload" }}</button>
+    <a href="{{ back }}">Cancel</a>
+    {% if m and g.user.allow_delete == 1 %}<a class="danger-link" href="{{ url_for('edit.delete_media', mid=m.mediaID) }}">Delete media…</a>{% endif %}
+  </div>
+</form>
+{% if m %}
+<section class="card" id="links"><h2>Linked to</h2>
+  {% if links %}<ul class="child-list">{% for l in links %}
+    <li><a href="{{ l.url }}">{{ l.name or l.personID }}</a> <span class="muted">{{ l.personID }}</span>
+      {% if g.user.allow_edit == 1 %}<span class="row-actions"><form method="post" action="{{ url_for('edit.media_link_action', mid=m.mediaID) }}">
+        <input type="hidden" name="csrf" value="{{ csrf_token() }}"><input type="hidden" name="personID" value="{{ l.personID }}">
+        <button name="action" value="remove" class="small-button secondary" aria-label="Unlink {{ l.name or l.personID }}">Unlink</button>
+      </form></span>{% endif %}</li>{% endfor %}</ul>
+  {% else %}<p class="muted">Not linked to anyone.</p>{% endif %}
+  {% if g.user.allow_add == 1 %}
+  <form method="post" action="{{ url_for('edit.media_link_action', mid=m.mediaID) }}" class="edit-form add-child">
+    <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+    {{ picker("personID", "Link to a person (name or ID) or a family (family ID, e.g. F123)", "", None) }}
+    <button name="action" value="add">Link</button>
+  </form>
+  {% endif %}
+</section>
+{% endif %}
+<script src="{{ url_for('static', filename='picker.js') }}" defer></script>
+<script src="{{ url_for('static', filename='dates.js') }}" defer></script>
+<script src="{{ url_for('static', filename='places.js') }}" defer></script>
+{% endblock %}

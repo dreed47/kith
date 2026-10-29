@@ -1,0 +1,8 @@
+# Copies of live data: personal info + user password hashes. Never commit.
+data/
+.venv/
+__pycache__/
+.pytest_cache/
+instance/
+.coverage
+docker/.env

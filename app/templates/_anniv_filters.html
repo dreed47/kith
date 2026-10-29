@@ -1,0 +1,13 @@
+{# Month / day / event-kind form shared by the anniversaries list and calendar (imported with context). #}
+{% macro filters(action, with_day) %}
+<form class="card edit-form anniv-form" action="{{ action }}">
+  <div class="anniv-row">
+    <label>Month <select name="month">{% for m in range(1, 13) %}<option value="{{ m }}"{% if m == month %} selected{% endif %}>{{ month_names[m] }}</option>{% endfor %}</select></label>
+    {% if with_day %}<label>Day <select name="day"><option value="">Whole month</option>{% for d in range(1, 32) %}<option{% if d == day %} selected{% endif %}>{{ d }}</option>{% endfor %}</select></label>{% endif %}
+    <fieldset class="anniv-kinds"><legend class="visually-hidden">Events</legend>
+      {% for key, (label, _) in all_kinds.items() %}<label class="check"><input type="checkbox" name="kind" value="{{ key }}"{% if key in kinds %} checked{% endif %}> {{ label }}s</label>{% endfor %}
+    </fieldset>
+    <button>Show</button>
+  </div>
+</form>
+{% endmacro %}

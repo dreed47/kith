@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}Site settings · {{ super() }}{% endblock %}
+{% block content %}
+<h1>Site settings</h1>
+{% if errors %}<div class="card error" role="alert"><ul>{% for e in errors %}<li>{{ e }}</li>{% endfor %}</ul></div>{% endif %}
+<form method="post" class="card edit-form">
+  <input type="hidden" name="csrf" value="{{ csrf_token() }}">
+  <fieldset>
+    <legend>Look</legend>
+    <label>Theme for everyone who hasn't chosen their own
+      <select name="theme">{% for name, meta in themes.items() %}<option value="{{ name }}"{% if v.theme == name %} selected{% endif %}>{{ meta.name or name }}</option>{% endfor %}</select>
+    </label>
+    <p class="muted small">Also used on the welcome and login pages. Anyone can pick their own under Your account.</p>
+  </fieldset>
+  <fieldset>
+    <legend>Wording</legend>
+  <p class="muted small">Leave a box empty to use the theme's default, shown in grey.</p>
+  {% for key, (label, n, multiline) in fields.items() %}
+  <label>{{ label }}
+    {% if multiline %}<textarea name="{{ key }}" rows="5" maxlength="{{ n }}" placeholder="{{ defaults.get(key, '') }}">{{ v.get(key, '') }}</textarea>
+    {% else %}<input name="{{ key }}" value="{{ v.get(key, '') }}" maxlength="{{ n }}" placeholder="{{ defaults.get(key, '') }}">{% endif %}
+  </label>
+  {% endfor %}
+  </fieldset>
+  <div class="form-actions"><button>Save</button><a href="{{ url_for('admin.home') }}">Cancel</a></div>
+</form>
+{% endblock %}
