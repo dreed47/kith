@@ -14,14 +14,14 @@
   --space-4: 1.25rem;
   --link-underline: 30%;
 
-  --bg: #eef3ec;
+  --bg: #d9e3d6;
   --surface: #ffffff;
-  --surface-2: #f0f5ee;
-  --border: #d5e0d3;
+  --surface-2: #e2eadf;
+  --border: #9fb39b;
   --shadow: 0 16px 36px rgb(25 60 40 / 0.16);
-  --shadow-card: 0 2px 4px rgb(25 60 40 / 0.04), 0 8px 24px rgb(25 60 40 / 0.06);
-  --text: #1c2a23;
-  --text-muted: #5a6b61;
+  --shadow-card: 0 2px 4px rgb(25 60 40 / 0.08), 0 8px 24px rgb(25 60 40 / 0.08);
+  --text: #142019;
+  --text-muted: #46564c;
   --heading: #1f4d3a;
   --link: #1f6e4d;
   --accent: #2b7556;
