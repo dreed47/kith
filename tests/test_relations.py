@@ -201,6 +201,22 @@ def test_this_is_me_flow(app, admin):
     sql(app, "UPDATE users SET personID = '' WHERE username = 'fx_guest'")
 
 
+def test_unlink_yourself(app):
+    sql(app, "UPDATE users SET personID = 'XGMA', mygedcom = 'tree1' WHERE username = 'fx_guest'")
+    me = client_for(app, "fx_guest")
+    page = text(me.get("/account/"))
+    assert "Your account is linked to" in page and "/person/XGMA" in page and "/me/unlink" in page
+    r = me.post("/me/unlink", data={"csrf": "t"})
+    assert r.status_code == 302 and "Unlinked." in text(me.get(r.location))
+    assert sql(app, "SELECT personID, mygedcom FROM users WHERE username = 'fx_guest'")[0] == {"personID": "", "mygedcom": ""}
+    assert sql(app, "SELECT 1 FROM app_audit WHERE action = 'unlink user'")
+    assert "Not linked to anyone" in text(me.get("/account/")) and "This is me" in text(me.get("/person/XGPA"))
+    assert me.post("/me/unlink", data={"csrf": "t"}).status_code == 400  # nothing to unlink
+    sql(app, "UPDATE users SET personID = 'XGONE' WHERE username = 'fx_guest'")  # a person since deleted
+    assert "XGONE <span class=\"muted\">(no longer in the tree)" in text(me.get("/account/"))
+    sql(app, "UPDATE users SET personID = '', mygedcom = '' WHERE username = 'fx_guest'")
+
+
 def test_reject_bad_requests_and_permissions(app, admin):
     sql(app, "UPDATE users SET personID = '' WHERE username = 'fx_adder'")
     me = client_for(app, "fx_adder")

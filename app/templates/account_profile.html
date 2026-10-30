@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "_macros.html" import initials, person_row %}
+{% from "_macros.html" import initials, person_link, person_row %}
 {% block title %}Your account · {{ super() }}{% endblock %}
 {# A theme's main colors, from its theme.toml, so it can be recognised before trying it. #}
 {% macro swatches(meta) %}{% if meta.swatches %}<span class="swatches">{% for c in meta.swatches %}<i style="background: {{ c }}"></i>{% endfor %}</span>{% endif %}{% endmacro %}
@@ -46,6 +46,14 @@
   </fieldset>
   <div class="form-actions"><button>Save</button></div>
 </form>
+<div class="card">
+  <h2>You in the tree</h2>
+  {% if g.user.personID %}
+  <p>Your account is linked to {% if me %}{{ person_link(me) }}{% else %}{{ g.user.personID }} <span class="muted">(no longer in the tree)</span>{% endif %}.</p>
+  <form method="post" action="{{ url_for('me.unlink') }}" class="inline"><input type="hidden" name="csrf" value="{{ csrf_token() }}"><button class="secondary">Unlink</button></form>
+  <p class="muted small">Linked to the wrong person? Unlink, then press <strong>This is me</strong> on the right person's page. An editor confirms it.</p>
+  {% else %}<p class="muted">Not linked to anyone. Press <strong>This is me</strong> on your own page in the tree; an editor confirms it.</p>{% endif %}
+</div>
 <div class="card">
   <h2>People you watch</h2>
   {% if watched %}<p class="muted small">You get an email when someone else changes one of them, at most once a day each.</p>

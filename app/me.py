@@ -1,5 +1,6 @@
 """'This is me': a user asks to be linked to their own person record; an editor approves or rejects.
-Linking matters for privacy (you can always see your own record, even when living), hence the approval."""
+Linking matters for privacy (you can always see your own record, even when living), hence the approval.
+Unlinking needs no approval: it only takes that away. A user linked to the wrong person unlinks, then asks again."""
 from flask import Blueprint, abort, flash, g, redirect, render_template, request, url_for
 
 from .db import execute, query, update
@@ -30,6 +31,16 @@ def request_link(pid):
             (g.user["userID"], pid))
     flash("Thanks. An editor will confirm it's you, then this site can show how you're related to everyone.")
     return redirect(url_for("main.person", pid=pid))
+
+
+@bp.post("/unlink")
+def unlink():
+    if not g.user["personID"]:
+        abort(400)
+    update("users", {"personID": "", "mygedcom": ""}, {"userID": g.user["userID"]})
+    audit("unlink user", "users", str(g.user["userID"]), {"personID": g.user["personID"]}, {"personID": ""})
+    flash("Unlinked. To link to someone else, press \"This is me\" on their page.")
+    return redirect(url_for("account.profile"))
 
 
 @bp.get("/requests")

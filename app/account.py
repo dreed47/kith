@@ -18,7 +18,7 @@ from PIL import Image, ImageOps, UnidentifiedImageError
 from . import mail
 from .auth import allow, can_log_in, check_password, password_fields
 from .db import execute, insert, query, update
-from .edit import audit, now
+from .edit import audit, get_person, now
 from .settings import default_theme, site_settings
 from .views import one
 from .watch import watched
@@ -326,7 +326,7 @@ def profile():
         return redirect(url_for("account.profile"))
     default = default_theme()
     return render_template("account_profile.html", themes=themes, chosen=chosen_theme(), default=default,
-                           modes=MODES, mode=chosen_mode(),
+                           modes=MODES, mode=chosen_mode(), me=g.user["personID"] and get_person(g.user["personID"]),
                            site=themes[default], watched=watched())
 
 
