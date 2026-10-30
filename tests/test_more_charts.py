@@ -110,6 +110,8 @@ def test_hourglass(app, admin):
     where = [chart.index(f"/hourglass/{ids[k]}?gens=2") for k in ("Granddad", "Dad", "Kid")]
     assert where == sorted(where)  # ancestors above, the person, descendants below
     assert 'aria-current="page">Hourglass' in html and "hg-root" in chart and "chartlines.js" in html
+    assert f'm. <a href="/hourglass/{ids["Mom"]}?gens=2">' in chart  # the spouse beside the person
+    assert f"/hourglass/{ids['Dad']}" in text(admin.get(f"/person/{ids['Dad']}"))
     assert 'data-key="a1" data-from="a2 a3"' in chart and f'data-key="d{ids["Kid"]}" data-from="a1"' in chart
     loop = make(app, ("Loopy", "M", 0), ("Loopwife", "F", 0), family=("Loopy", "Loopwife"), kids=("Loopy",))
     below = text(admin.get(f"/hourglass/{loop['Loopy']}")).split("hg-root")[1]

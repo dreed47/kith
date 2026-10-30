@@ -5,9 +5,15 @@
 <h1>{{ name }}</h1>
 {% if g.user.allow_edit == 1 %}<p class="actions"><a href="{{ url_for('edit.place', name=name) }}">Edit place</a></p>{% endif %}
 {% if parents|length > 1 %}<p><a href="{{ url_for('places.places', within=', '.join(parents[1:])) }}">{{ ', '.join(parents[1:]) }}</a></p>{% endif %}
-{% if info and (info.latitude or info.notes) %}
+{% if pins or info and info.notes %}
 <section class="card">
-  {% if info.latitude and info.longitude %}<p><a href="https://www.openstreetmap.org/?mlat={{ info.latitude }}&amp;mlon={{ info.longitude }}#map=14/{{ info.latitude }}/{{ info.longitude }}" rel="noopener">Map</a></p>{% endif %}
+  {% if pins %}{% set pin = pins[0] %}
+  <link rel="stylesheet" href="{{ url_for('static', filename='leaflet/leaflet.css') }}">
+  <div id="person-map" class="person-map" role="region" aria-label="Map of {{ name }}" data-pins='{{ pins|tojson }}'></div>
+  <p class="small">{% if pin.approx %}<span class="muted">Approximate: near {{ pin.approx }}.</span> {% endif %}<a href="https://www.openstreetmap.org/?mlat={{ pin.lat }}&amp;mlon={{ pin.lon }}#map=14/{{ pin.lat }}/{{ pin.lon }}" rel="noopener">Open in OpenStreetMap</a></p>
+  <script src="{{ url_for('static', filename='leaflet/leaflet.js') }}" defer></script>
+  <script src="{{ url_for('static', filename='personmap.js') }}" defer></script>
+  {% endif %}
   {% if info.notes %}<div class="pre">{{ info.notes }}</div>{% endif %}
 </section>
 {% endif %}

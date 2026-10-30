@@ -19,4 +19,16 @@
   </form>
   {% else %}<p class="muted">None yet.</p>{% endfor %}
 </section>
+<section class="card">
+  <h2 class="card-title">Maybe the same surname</h2>
+  <p class="muted small">Spellings that sound alike and are a letter or two apart, most used first. Only guesses: some are different families. Link adds the first to the second.</p>
+  {% for rare, common in suggested %}
+  <form method="post" class="small">
+    <input type="hidden" name="csrf" value="{{ csrf_token() }}"><input type="hidden" name="name" value="{{ rare }}"><input type="hidden" name="main" value="{{ common }}">
+    <a href="{{ url_for('main.surname', name=rare) }}">{{ rare }}</a> <span class="muted">({{ counts.get(rare.upper(), 0) }})</span> and
+    <a href="{{ url_for('main.surname', name=common) }}">{{ common }}</a> <span class="muted">({{ counts.get(common.upper(), 0) }})</span>
+    <button class="secondary small-button" aria-label="Link {{ rare }} to {{ common }}">Link</button>
+  </form>
+  {% else %}<p class="muted">None found.</p>{% endfor %}
+</section>
 {% endblock %}

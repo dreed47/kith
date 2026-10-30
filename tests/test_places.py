@@ -32,7 +32,8 @@ def test_place_with_no_events_and_unknown_place(admin):
 
 def test_place_map_and_notes(app, admin):
     p = sql(app, "SELECT place FROM places WHERE latitude <> '' AND longitude <> '' LIMIT 1")[0]["place"]
-    assert "openstreetmap.org" in admin.get(f"/place?name={quote(p)}").get_data(as_text=True)
+    html = admin.get(f"/place?name={quote(p)}").get_data(as_text=True)
+    assert "openstreetmap.org" in html and 'id="person-map"' in html and "personmap.js" in html
 
 
 def test_place_hides_living_from_guest(app, guest, admin):

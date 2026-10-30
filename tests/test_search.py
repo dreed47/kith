@@ -189,18 +189,29 @@ def test_married_name(app, admin, guest):
     assert "/person/XW3" not in results(guest, q="Greta Wedlocke")     # living husband: no leak
 
 
-def test_surname_aliases(app, admin, guest, names):
+def test_soundex():
+    from app.surname_aliases import soundex
+    assert [soundex(n) for n in ("Reed", "Reid", "Robert", "Rupert", "Ashcraft", "Tymczak", "Pfister", "O'Hara", "--")] \
+        == ["R300", "R300", "R163", "R163", "A261", "T522", "P236", "O600", ""]
+
+
+def test_surname_aliases(app, admin, guest, names, monkeypatch):
     with app.app_context():
         for pid, last in (("XA1", "ZUBE"), ("XA2", "ZOOBY"), ("XA3", "ZOOBIE")):
             insert("people", {"gedcom": "tree1", "personID": pid, "firstname": "Al", "lastname": last})
         search_mod.invalidate()
     assert "/person/XA2" not in results(admin, q="Zube")  # too short for the one-letter guess, and two letters off
     assert guest.get("/edit/surnames").status_code == 403
+    from app import surname_aliases
+    monkeypatch.setattr(surname_aliases, "SUGGESTED", 10 ** 6)  # the dev tree's real names come first
+    suggest = text(admin.get("/edit/surnames"))
+    assert 'name="name" value="ZOOBIE"><input type="hidden" name="main" value="ZOOBY">' in suggest  # Z100, 2 apart
     page = lambda **f: text(admin.post("/edit/surnames", data={"csrf": CSRF, **f}, follow_redirects=True))
     assert "No one has the surname NOPE" in page(name="nope", main="zube")
     assert "ZOOBY is now listed with ZUBE" in page(name="zooby", main="Zube")
     assert "ZOOBIE is now listed with ZUBE" in page(name="zoobie", main="zooby")  # joins zooby's group, under ZUBE
     assert "already one surname" in page(name="zube", main="zoobie")
+    assert 'name="name" value="ZOOBIE"><input' not in text(admin.get("/edit/surnames"))  # linked: no longer suggested
     html = results(admin, q="Zube")
     assert "/person/XA2" in html and "/person/XA3" in html and "including similar spellings: ZOOBIE, ZOOBY" in html
     assert "/person/XA2" not in results(admin, q="Zube", exact="1")  # exact spelling leaves linked ones out too

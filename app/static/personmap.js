@@ -24,7 +24,7 @@
         line.append(" · ");
       }
       line.appendChild(document.createElement("strong")).textContent = e.label;
-      line.append(`${e.date ? " · " + e.date : ""} · ${e.place}`);
+      line.append(`${e.date ? " · " + e.date : ""}${e.place ? " · " + e.place : ""}`);
     }
     if (p.approx) box.appendChild(document.createElement("div")).textContent = `Approximate: near ${p.approx}`;
     L.circleMarker([p.lat, p.lon], {

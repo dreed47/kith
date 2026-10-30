@@ -3,7 +3,8 @@
 {% from "_chart_tabs.html" import chart_tabs %}
 {% block title %}Hourglass: {{ pname(root) }} · {{ super() }}{% endblock %}
 {% macro box(p, key, up, extra="") %}
-<div class="vped-box{{ extra }}{% if not p %} empty{% endif %}"{% if p %} data-key="{{ key }}" data-from="{{ up }}"{% endif %}>{% if p %}<a href="{{ url_for('main.hourglass', pid=p.personID, gens=gens) }}">{{ pname(p) }}</a>{{ lifespan(p) }}{{ chart_face(p, photos) }}{% endif %}</div>
+<div class="vped-box{{ extra }}{% if not p %} empty{% endif %}"{% if p %} data-key="{{ key }}" data-from="{{ up }}"{% endif %}>{% if p %}<a href="{{ url_for('main.hourglass', pid=p.personID, gens=gens) }}">{{ pname(p) }}</a>{{ lifespan(p) }}{{ chart_face(p, photos) }}
+  {%- if key == "a1" and spouses %}<span class="small hg-spouses">m. {% for s in spouses %}<a href="{{ url_for('main.hourglass', pid=s.personID, gens=gens) }}">{{ pname(s) }}</a>{{ ", " if not loop.last }}{% endfor %}</span>{% endif %}{% endif %}</div>
 {% endmacro %}
 {% macro node(p, key, up, extra="") %}
 <div class="hg-node">{{ box(p, key, up, extra) }}{% if kids_of[p.personID] %}<div class="hg-kids">{% for c in kids_of[p.personID] %}{{ node(c, "d" ~ c.personID, key) }}{% endfor %}</div>{% endif %}</div>

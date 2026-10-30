@@ -54,6 +54,7 @@
     <div class="actions button-row">
       <a class="btn" href="{{ url_for('main.pedigree', pid=p.personID) }}">{{ icon("chart") }}Pedigree</a>
       <a class="btn" href="{{ url_for('main.descendants', pid=p.personID) }}">{{ icon("tree") }}Descendants</a>
+      <a class="btn" href="{{ url_for('main.hourglass', pid=p.personID) }}">{{ icon("chart") }}Hourglass</a>
       {% if r.both %}<a class="btn" href="{{ url_for('main.story', pid=p.personID) }}">{{ icon("note") }}Life story</a>{% endif %}
       <a class="btn" href="{{ url_for('main.register', pid=p.personID) }}">{{ icon("book") }}Register</a>
       <a class="btn" href="{{ url_for('main.timeline', around=p.personID) }}">{{ icon("clock") }}Timeline</a>

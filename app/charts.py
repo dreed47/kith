@@ -66,8 +66,9 @@ def hourglass(pid):
     below = descendant_rows(root, gens)
     everyone = [root, *(p for row in above for _, p in row), *(c for row in below for _, cs in row for c in cs)]
     kids_of = {parent["personID"]: kids for row in below for parent, kids in row}
+    folks = people_by_id([f["wife"] if f["husband"] == pid else f["husband"] for f in families_of([pid]).get(pid, [])])
     return render_template("hourglass.html", root=root, above=above, kids_of=kids_of, gens=gens,
-                           choices=HOURGLASS_GENS, photos=chart_photos(everyone))
+                           choices=HOURGLASS_GENS, photos=chart_photos(everyone), spouses=list(folks.values()))
 
 
 def point(r, degrees):

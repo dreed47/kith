@@ -4,7 +4,7 @@ from flask import flash, redirect, render_template, request, url_for
 
 from .db import execute, query
 from .edit import audit, bp, require
-from .search import aliases, surnames
+from .search import aliases, distance, surnames
 from .views import tree
 
 
@@ -14,6 +14,42 @@ def groups():
     for name, main in aliases().items():
         out.setdefault(main, []).append(surnames().get(name, name))
     return sorted(((surnames().get(m, m), sorted(names)) for m, names in out.items()), key=lambda g: g[0].upper())
+
+
+SOUNDEX = {c: str(d) for d, letters in enumerate(("", "BFPV", "CGJKQSXZ", "DT", "L", "MN", "R")) for c in letters}
+SUGGESTED = 50
+
+
+def soundex(name):
+    """The American Soundex code of a surname ("Reed", "Reid" and "Read" are all R300)."""
+    letters = [c for c in name.upper() if c.isalpha()]
+    if not letters:
+        return ""
+    code, last = letters[0], SOUNDEX.get(letters[0], "")
+    for c in letters[1:]:
+        d = SOUNDEX.get(c, "")
+        if d and d != last:
+            code += d
+        if c not in "HW":  # H and W don't separate two letters with the same code; vowels do
+            last = d
+    return (code + "000")[:4]
+
+
+def suggestions(counts):
+    """Spelling pairs that may be one surname: they sound alike (Soundex) and are at most two letters apart
+    (Reed and Reid, Smith and Smyth). Only guesses: an editor links the ones that are. Pairs already linked are
+    left out; the most used first, at most SUGGESTED. [(less used, more used)]."""
+    by_sound = {}
+    for name in surnames():
+        by_sound.setdefault(soundex(name), []).append(name)
+    pairs = []
+    for names in by_sound.values():
+        for i, a in enumerate(names):
+            for b in names[i + 1:]:
+                if aliases().get(a, a) != aliases().get(b, b) and distance(a, b, 2) <= 2:
+                    rare, common = sorted((a, b), key=lambda x: (counts.get(x, 0), x))
+                    pairs.append((counts.get(a, 0) + counts.get(b, 0), surnames()[rare], surnames()[common]))
+    return [(rare, common) for _, rare, common in sorted(pairs, key=lambda x: (-x[0], x[1]))[:SUGGESTED]]
 
 
 @bp.route("/surnames", methods=["GET", "POST"])
@@ -46,4 +82,4 @@ def surname_aliases():
         return redirect(url_for("edit.surname_aliases"))
     counts = {r["lastname"].upper(): r["n"] for r in query(
         "SELECT lastname, COUNT(*) AS n FROM people WHERE gedcom = %s GROUP BY lastname", (tree(),))}
-    return render_template("surname_aliases.html", groups=groups(), counts=counts)
+    return render_template("surname_aliases.html", groups=groups(), counts=counts, suggested=suggestions(counts))

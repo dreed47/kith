@@ -4,7 +4,7 @@ from flask import Blueprint, abort, render_template, request, url_for
 
 from .db import query
 from .privacy import families_filter, media_filter, people_filter
-from .views import people_by_id, tree
+from .views import coordinates, people_by_id, tree
 
 bp = Blueprint("places", __name__)
 
@@ -79,8 +79,11 @@ def place():
     spouses = people_by_id([x for h in hits if h.get("family") for x in (h["family"]["husband"], h["family"]["wife"])])
     if not hits and not info:
         abort(404)
+    spot = coordinates([name]).get(name.lower())
+    pins = [{"lat": spot[0], "lon": spot[1], "approx": spot[2], "events": [{"label": name, "date": "", "place": ""}]}
+            ] if spot else []
     return render_template("place.html", name=name, info=info[0] if info else None, hits=hits, spouses=spouses,
-                           parents=segments(name))
+                           parents=segments(name), pins=pins)
 
 
 def buried_in(cids):
