@@ -1,11 +1,14 @@
 import os
+import re
 import secrets
 import subprocess
 import tomllib
 from pathlib import Path
+from urllib.parse import quote
 
 from flask import Flask, abort, g, request, send_from_directory, url_for
 from werkzeug.middleware.proxy_fix import ProxyFix
+from markupsafe import Markup, escape
 from jinja2 import ChoiceLoader, FileSystemLoader, PrefixLoader
 
 from . import db, privacy
@@ -51,6 +54,15 @@ def load_theme(name):
     if (theme_dir / "theme.toml").is_file():
         meta = tomllib.loads((theme_dir / "theme.toml").read_text())
     return theme_dir, meta
+
+
+EMAIL = re.compile(r"[\w.+-]+@[\w-]+(?:\.[\w-]+)+")
+ASK = "?subject=" + quote("Account request") + "&body=" + quote("Hi, I'd like an account on the family tree. My name is ")
+
+
+def mailto(text):
+    """Text with each email address made a link that opens a ready-made account request."""
+    return Markup(EMAIL.sub(lambda m: f'<a href="mailto:{m[0]}{ASK}">{m[0]}</a>', str(escape(text))))
 
 
 def create_app(config=None):
@@ -131,6 +143,7 @@ def create_app(config=None):
     app.jinja_env.filters["d"] = display_date
     from .localtime import local
     app.jinja_env.filters["local"] = local
+    app.jinja_env.filters["mailto"] = mailto
     from .auth import csrf_token
     from .edit import owner_name
     from .media import is_image, is_url

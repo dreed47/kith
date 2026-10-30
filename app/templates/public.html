@@ -7,7 +7,7 @@
     <h1>{{ theme.welcome_title or theme.site_title or "Family Tree" }}</h1>
     {% if theme.tagline %}<p class="lead">{{ theme.tagline }}</p>{% endif %}
     <div class="pre">{{ theme.welcome or "This is a private family history site. Family members can log in to browse the family tree, photos and stories." }}</div>
-    {% if theme.contact %}<p class="muted">Family member without an account? {{ theme.contact }}</p>{% endif %}
+    {% if theme.contact %}<p class="muted">Family member without an account? {{ theme.contact|mailto }}</p>{% endif %}
   </section>
   {% include "_login_form.html" %}
 </div>

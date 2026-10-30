@@ -265,8 +265,14 @@ def test_public_page_contact_and_defaults(tmp_path, monkeypatch):
     (tmp_path / "plain" / "theme.toml").write_text('site_title = "Smith Tree"\ntagline = "Since 1700"\ncontact = "Email jo@example.com"\n')
     monkeypatch.setattr(app_module, "THEMES_DIR", tmp_path)
     html = text(create_app({"THEME": "plain", "SECRET_KEY": "x"}).test_client().get("/"))
-    assert "<h1>Smith Tree</h1>" in html and "Since 1700" in html and "Email jo@example.com" in html
+    assert "<h1>Smith Tree</h1>" in html and "Since 1700" in html and "Email <a href" in html
     assert "This is a private family history site" in html
+    assert '<a href="mailto:jo@example.com?subject=Account%20request&body=Hi' in html
+
+
+def test_mailto_escapes():
+    from app import mailto
+    assert mailto("<b>x</b> a.b@c.org") == '&lt;b&gt;x&lt;/b&gt; <a href="mailto:a.b@c.org' + __import__("app").ASK + '">a.b@c.org</a>'
 
 
 def test_editor_home_order(admin):
