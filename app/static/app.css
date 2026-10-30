@@ -676,3 +676,5 @@ label.theme-choice:has(input:checked) { border-color: var(--accent); box-shadow:
 .scroll-list { max-height: 45vh; overflow-y: auto; border: 1px solid var(--border); border-radius: var(--radius); }
 .sticky-actions { position: sticky; bottom: 0; background: var(--bg); padding: var(--space-3) 0; }
 .person-map, .cemetery-map { height: 340px; border-radius: var(--radius); margin-bottom: var(--space-3); z-index: 0; }
+.migration-map { height: 70vh; min-height: 340px; }
+.leaflet-popup-content { max-height: 16rem; overflow-y: auto; }

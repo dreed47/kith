@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% from "_macros.html" import gens_picker %}
+{% from "_chart_tabs.html" import chart_tabs %}
+{% set title = "Descendants of " ~ pname(root) if root else surname ~ " family" %}
+{% block title %}Map: {{ title }} · {{ super() }}{% endblock %}
+{% block content %}
+<h1>Map: {{ title }}</h1>
+{% if root %}{{ chart_tabs(root.personID, "main.migration_map") }}{{ gens_picker(choices, gens) }}
+{% else %}<p><a href="{{ url_for('main.surname', name=surname) }}">Back to the {{ surname }} list</a></p>{% endif %}
+<form class="card edit-form search-form">
+  {% if root %}<input type="hidden" name="pid" value="{{ root.personID }}"><input type="hidden" name="gens" value="{{ gens }}">
+  {% else %}<input type="hidden" name="surname" value="{{ surname }}">{% endif %}
+  <div class="grid">
+    <label>Born from (year) <input name="born_from" value="{{ born_from or '' }}" inputmode="numeric" maxlength="4"></label>
+    <label>Born to (year) <input name="born_to" value="{{ born_to or '' }}" inputmode="numeric" maxlength="4"></label>
+  </div>
+  <button>Show</button>
+</form>
+<section class="card">
+  {% if pins %}
+  <link rel="stylesheet" href="{{ url_for('static', filename='leaflet/leaflet.css') }}">
+  <div id="person-map" class="person-map migration-map" role="region" aria-label="Map of where they were born and died"
+       data-pins='{{ pins|tojson }}' data-lines='{{ lines|tojson }}'></div>
+  <p class="muted small">{{ "{:,}".format(people|length) }} {{ "person" if people|length == 1 else "people" }}. A circle is a place where one of them was born, died or was buried; click it for who. A line joins where each person was born to where they died or were buried. A faint, dashed circle is approximate. Places without coordinates aren't shown.</p>
+  <script src="{{ url_for('static', filename='leaflet/leaflet.js') }}" defer></script>
+  <script src="{{ url_for('static', filename='personmap.js') }}" defer></script>
+  {% elif people %}<p class="muted">None of their places have coordinates yet.</p>
+  {% else %}<p class="muted">No one to show.</p>{% endif %}
+</section>
+{% endblock %}

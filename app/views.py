@@ -271,7 +271,7 @@ def search(surname=None, firstname=None):
                            status=status, sort=sort, page=page, pages=max((total + PER_PAGE - 1) // PER_PAGE, 1),
                            total=total, people=people, parents=parents, asked=asked,
                            listing=surname or (f"{firstname} (first name)" if firstname else None),
-                           variants=shown_variants, has_variants=bool(similar))
+                           variants=shown_variants, has_variants=bool(similar), surname=surname)
 
 
 FAMILY_SORTS = {"husband": "h.lastname IS NULL, h.lastname, h.firstname, f.marrdatetr",
@@ -527,12 +527,12 @@ def face_tag(pid, m):
                (tree(), pid, m["mediaID"]))
 
 
-def map_pins(entries):
-    """Pins for the life events whose place has coordinates, one per spot (events in the same town share it).
-    approx is what the lookup matched when only the town or county could be found (app/geocode.py)."""
-    names = list({x["place"] for x in entries if x["place"]})
+def coordinates(names):
+    """{place name, lower case: (lat, lon, approx)} for the names that have coordinates. approx is what the lookup
+    matched when only the town or county could be found (app/geocode.py)."""
+    names = list({n for n in names if n})
     if not names:
-        return []
+        return {}
     spots = {}
     for r in query("SELECT p.place, p.latitude, p.longitude, a.matched FROM places p"
                    " LEFT JOIN app_geocode a ON a.gedcom = p.gedcom AND a.place = p.place AND a.status = 'approximate'"
@@ -543,12 +543,20 @@ def map_pins(entries):
             continue
         if abs(lat) <= 90 and abs(lon) <= 180:
             spots[r["place"].lower()] = (round(lat, 5), round(lon, 5), r["matched"])
+    return spots
+
+
+def map_pins(entries, spots=None):
+    """Pins for the events whose place has coordinates, one per spot (events in the same town share it):
+    [{lat, lon, approx, events: [the entry's label, date, place, and name and url if it has them]}]."""
+    spots = coordinates(x["place"] for x in entries) if spots is None else spots
     pins = {}
     for x in entries:
         spot = spots.get((x["place"] or "").lower())
         if spot:
             pin = pins.setdefault(spot[:2], {"lat": spot[0], "lon": spot[1], "approx": spot[2], "events": []})
-            pin["events"].append({"label": x["label"], "date": display_date(x["date"]), "place": x["place"]})
+            pin["events"].append({"label": x["label"], "date": display_date(x["date"]), "place": x["place"],
+                                  **{k: x[k] for k in ("name", "url") if k in x}})
     return list(pins.values())
 
 

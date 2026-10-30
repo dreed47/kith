@@ -10,9 +10,10 @@ from markupsafe import Markup
 from . import localtime
 from .dates import display as display_date
 from .db import query
-from .privacy import families_filter, people_filter, rights
-from .views import (DESCEND_GENS, bp, children_by_family, families_of, gens_arg, notes_for, one,
-                    people_by_id, person_detail, record_notes, relatives, tree)
+from .privacy import display_name as pname, families_filter, people_filter, rights
+from .search import same_name
+from .views import (DESCEND_GENS, bp, children_by_family, coordinates, families_of, gens_arg, map_pins, notes_for,
+                    one, people_by_id, person_detail, record_notes, relatives, tree, year_arg)
 
 KINDS = {"born": ("Birth", "birthdate"), "christened": ("Christening", "altbirthdate"),
          "died": ("Death", "deathdate"), "buried": ("Burial", "burialdate"), "married": ("Marriage", "marrdate")}
@@ -187,6 +188,46 @@ def book(pid):
         entries.append((n, people[x], Markup(render_template("_story.html", **story_context(people[x], r), number=n))
                         if r["both"] else None))
     return render_template("book.html", root=root, gens=gens, choices=DESCEND_GENS, entries=entries)
+
+
+@bp.get("/map")
+def migration_map():
+    """Where the people of a surname (?surname=), or a person's descendants (?pid=), were born and died, with a line
+    from each one's birthplace to where they died or were buried: the family's moves at a glance. Births can be
+    limited to a span of years. Only places with coordinates show (the nightly geocoder fills them in)."""
+    surname, pid = request.args.get("surname", "").strip(), request.args.get("pid", "").strip()
+    born_from, born_to, gens, root = year_arg("born_from"), year_arg("born_to"), gens_arg(DESCEND_GENS, 4), None
+    if pid:
+        root = one("SELECT * FROM people WHERE gedcom = %s AND personID = %s", (tree(), pid))
+        if not root:
+            abort(404)
+        numbers, lineage = descent(root, gens)[:2]
+        people = [p for x, p in people_by_id([x for x in numbers if len(lineage[x]) < gens]).items()]
+    elif surname:
+        spellings = same_name(surname) or [surname]  # linked spellings are one surname
+        cond, params = people_filter("p")
+        people = query(f"SELECT * FROM people p WHERE p.gedcom = %s AND {cond}"
+                       f" AND p.lastname IN ({','.join(['%s'] * len(spellings))})", [tree(), *params, *spellings])
+    else:
+        abort(404)
+    year = lambda p: int(str(p["birthdatetr"] or "0000")[:4])  # pymysql gives partial/zero dates as str
+    people = [p for p in people if rights(p)["both"] and (not (born_from or born_to) or year(p) and
+                                                          (born_from or 0) <= year(p) <= (born_to or 9999))]
+    spots = coordinates(x for p in people for x in (p["birthplace"], p["deathplace"], p["burialplace"]))
+    entries, lines = [], []
+    for p in sorted(people, key=lambda p: (year(p) or 9999, pname(p))):
+        who = {"name": pname(p), "url": url_for("main.person", pid=p["personID"])}
+        end = p["deathplace"] or p["burialplace"]
+        for label, date, place in (("Born", p["birthdate"], p["birthplace"]), ("Died", p["deathdate"], p["deathplace"]),
+                                   ("Buried", p["burialdate"], p["burialplace"])):
+            if place:
+                entries.append({"label": label, "date": date, "place": place, **who})
+        a, b = spots.get((p["birthplace"] or "").lower()), spots.get((end or "").lower())
+        if a and b and a[:2] != b[:2]:
+            lines.append([a[:2], b[:2]])
+    return render_template("migration.html", surname=surname, root=root, gens=gens, choices=DESCEND_GENS,
+                           born_from=born_from, born_to=born_to, people=people, pins=map_pins(entries, spots),
+                           lines=lines)
 
 
 def dated_events(month, day=None, kinds=DEFAULT_KINDS):

@@ -1,5 +1,6 @@
 """Register report and dates & anniversaries."""
 import datetime
+import re
 
 from conftest import client_for, make, sql
 
@@ -98,6 +99,35 @@ def test_branch_book(app, admin):
     sql(app, "UPDATE people SET living = 1 WHERE personID = %s", (ids["End"],))
     guest = " ".join(text(client_for(app, "fx_guest").get(f"/book/{ids['Top']}?gens=4")).split())
     assert 'id="p4"' in guest and "Details are private." in guest
+
+
+def test_migration_map(app, admin):
+    import json
+    ids = chain(app)
+    sql(app, "UPDATE people SET birthdate = '1850', birthdatetr = '1850-00-00', birthplace = 'Xmigfrom, PA',"
+             " deathplace = 'Xmigto, OH' WHERE personID = %s", (ids["Mid"],))
+    sql(app, "UPDATE people SET birthdatetr = '1880-00-00', burialplace = 'Xmigto, OH', living = 1 WHERE personID = %s",
+        (ids["Low"],))
+    with app.app_context():
+        insert("places", {"gedcom": "tree1", "place": "Xmigfrom, PA", "latitude": "41", "longitude": "-79"})
+        insert("places", {"gedcom": "tree1", "place": "Xmigto, OH", "latitude": "40", "longitude": "-82"})
+    html = text(admin.get(f"/map?pid={ids['Top']}"))
+    lines = json.loads(re.search(r"data-lines='([^']*)'", html)[1])
+    assert lines == [[[41.0, -79.0], [40.0, -82.0]]] and "Map: Descendants of" in html
+    pins = json.loads(re.search(r"data-pins='([^']*)'", html)[1].replace("&#39;", "'"))
+    assert {e["label"] for p in pins for e in p["events"]} == {"Born", "Died", "Buried"}
+    assert f"/map?pid={ids['Top']}" in text(admin.get(f"/register/{ids['Top']}"))
+    guest = client_for(app, "fx_guest")
+    shown = json.loads(re.search(r"data-pins='([^']*)'", text(guest.get(f"/map?pid={ids['Top']}")))[1])
+    assert {e["label"] for p in shown for e in p["events"]} == {"Born", "Died"}  # Low is living: left out
+    tag = sql(app, "SELECT lastname FROM people WHERE personID = %s", (ids["Top"],))[0]["lastname"]
+    assert "data-lines" in text(admin.get(f"/map?surname={tag}&born_from=1840&born_to=1860"))
+    sql(app, "UPDATE people SET birthdatetr = '1900-00-00', birthplace = 'Xnocoords, PA' WHERE personID = %s",
+        (ids["Lowwife"],))
+    assert "None of their places" in text(admin.get(f"/map?surname={tag}&born_from=1895&born_to=1905"))
+    assert "No one to show." in text(admin.get(f"/map?surname={tag}&born_from=1700&born_to=1710"))
+    assert f"/map?surname={tag}" in text(admin.get(f"/surnames/{tag}"))
+    assert admin.get("/map").status_code == 404 and admin.get("/map?pid=NOPE").status_code == 404
 
 
 def test_anniversaries_list(app, admin, monkeypatch):

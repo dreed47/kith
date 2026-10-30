@@ -1,4 +1,5 @@
-// The person page's map: one circle per place in the life events (data-pins, from views.map_pins).
+// The person page's map: one circle per place in the life events (data-pins, from views.map_pins). The family map
+// (migration.html) also names who each event is about and draws a line per person (data-lines: [[from, to]]).
 (() => {
   const el = document.getElementById("person-map");
   if (!el || !window.L) return;
@@ -9,10 +10,19 @@
     maxZoom: 19,
     attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
   }).addTo(map);
+  for (const [from, to] of JSON.parse(el.dataset.lines || "[]")) {
+    L.polyline([from, to], { color: accent, weight: 1.5, opacity: 0.45 }).addTo(map);
+  }
   const spots = pins.map((p) => {
     const box = document.createElement("div");  // built from text nodes: place names are typed by people
     for (const e of p.events) {
       const line = box.appendChild(document.createElement("div"));
+      if (e.url) {
+        const a = line.appendChild(document.createElement("a"));
+        a.href = e.url;
+        a.textContent = e.name;
+        line.append(" · ");
+      }
       line.appendChild(document.createElement("strong")).textContent = e.label;
       line.append(`${e.date ? " · " + e.date : ""} · ${e.place}`);
     }
