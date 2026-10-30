@@ -6,6 +6,10 @@ living people kept private. Free and open source (AGPL), written in Python/Flask
 Kith is a "here's the code" project. It runs a real family's site every day. Pull requests are welcome, but there
 are no support promises.
 
+Kith is built by a veteran, retired IT professional working with AI (Anthropic's Claude). Much of the code is
+AI-written; a person decides what gets built, and reviews and tests every change, and the test suite covers every
+line.
+
 ![A person's page](docs/screenshots/person.png)
 
 | | |
