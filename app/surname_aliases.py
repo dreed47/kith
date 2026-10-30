@@ -36,8 +36,8 @@ def soundex(name):
 
 
 def suggestions(counts):
-    """Spelling pairs that may be one surname: they sound alike (Soundex) and are at most two letters apart
-    (Reed and Reid, Smith and Smyth). Only guesses: an editor links the ones that are. Pairs already linked are
+    """Spelling pairs that may be one surname: they sound alike (Soundex) and are a letter apart (Reed and Reid), or
+    two if both are six letters or more (Stuart and Stewart; two changes make other names of short ones: Hook, Hawk). Only guesses: an editor links the ones that are. Pairs already linked are
     left out; the most used first, at most SUGGESTED. [(less used, more used)]."""
     by_sound = {}
     for name in surnames():
@@ -46,7 +46,8 @@ def suggestions(counts):
     for names in by_sound.values():
         for i, a in enumerate(names):
             for b in names[i + 1:]:
-                if aliases().get(a, a) != aliases().get(b, b) and distance(a, b, 2) <= 2:
+                limit = 2 if min(len(a.strip()), len(b.strip())) >= 6 else 1
+                if aliases().get(a, a) != aliases().get(b, b) and distance(a, b, limit) <= limit:
                     rare, common = sorted((a, b), key=lambda x: (counts.get(x, 0), x))
                     pairs.append((counts.get(a, 0) + counts.get(b, 0), surnames()[rare], surnames()[common]))
     return [(rare, common) for _, rare, common in sorted(pairs, key=lambda x: (-x[0], x[1]))[:SUGGESTED]]

@@ -195,23 +195,30 @@ def test_soundex():
         == ["R300", "R300", "R163", "R163", "A261", "T522", "P236", "O600", ""]
 
 
-def test_surname_aliases(app, admin, guest, names, monkeypatch):
+def test_surname_suggestions(monkeypatch):
+    from app import surname_aliases as sa
+    names = ["REED", "REID", "REEDE", "ROOT", "STUART", "STEWART", "HOOK", "HAWK", "SMITH", "SMYTHE", "BROWN"]
+    monkeypatch.setattr(sa, "surnames", lambda: {n: n.title() for n in names})
+    monkeypatch.setattr(sa, "aliases", lambda: {"REEDE": "REED"})  # already linked
+    counts = {"REED": 50, "REID": 3, "STUART": 2, "STEWART": 9}
+    assert sa.suggestions(counts) == [("Reid", "Reed"), ("Stuart", "Stewart")]  # not Reid/Reede: short, 2 apart
+    monkeypatch.setattr(sa, "SUGGESTED", 1)
+    assert sa.suggestions(counts) == [("Reid", "Reed")]
+
+
+def test_surname_aliases(app, admin, guest, names):
     with app.app_context():
         for pid, last in (("XA1", "ZUBE"), ("XA2", "ZOOBY"), ("XA3", "ZOOBIE")):
             insert("people", {"gedcom": "tree1", "personID": pid, "firstname": "Al", "lastname": last})
         search_mod.invalidate()
     assert "/person/XA2" not in results(admin, q="Zube")  # too short for the one-letter guess, and two letters off
     assert guest.get("/edit/surnames").status_code == 403
-    from app import surname_aliases
-    monkeypatch.setattr(surname_aliases, "SUGGESTED", 10 ** 6)  # the dev tree's real names come first
-    suggest = text(admin.get("/edit/surnames"))
-    assert 'name="name" value="ZOOBIE"><input type="hidden" name="main" value="ZOOBY">' in suggest  # Z100, 2 apart
+    assert "Maybe the same surname" in text(admin.get("/edit/surnames"))
     page = lambda **f: text(admin.post("/edit/surnames", data={"csrf": CSRF, **f}, follow_redirects=True))
     assert "No one has the surname NOPE" in page(name="nope", main="zube")
     assert "ZOOBY is now listed with ZUBE" in page(name="zooby", main="Zube")
     assert "ZOOBIE is now listed with ZUBE" in page(name="zoobie", main="zooby")  # joins zooby's group, under ZUBE
     assert "already one surname" in page(name="zube", main="zoobie")
-    assert 'name="name" value="ZOOBIE"><input' not in text(admin.get("/edit/surnames"))  # linked: no longer suggested
     html = results(admin, q="Zube")
     assert "/person/XA2" in html and "/person/XA3" in html and "including similar spellings: ZOOBIE, ZOOBY" in html
     assert "/person/XA2" not in results(admin, q="Zube", exact="1")  # exact spelling leaves linked ones out too
