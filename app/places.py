@@ -39,6 +39,8 @@ def places():
 @bp.get("/place")
 def place():
     name = request.args.get("name", "")
+    if not name.strip():  # a blank name would list every record with no place: slow, and no use to anyone
+        abort(404)
     info = query("SELECT * FROM places WHERE gedcom = %s AND place = %s", (tree(), name))
     pcond, pparams = people_filter("p")
     fcond, fparams = families_filter("f")

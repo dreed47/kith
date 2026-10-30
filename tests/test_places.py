@@ -26,6 +26,8 @@ def test_place_events_people_and_families(admin):
 def test_place_with_no_events_and_unknown_place(admin):
     assert "No events recorded here" in admin.get("/place?name=Emptyplace, Testshire").get_data(as_text=True)
     assert admin.get("/place?name=Never heard of it").status_code == 404
+    for blank in ("/place", "/place?name=", "/place?name=%20", "/place?place=Synthville"):
+        assert admin.get(blank).status_code == 404, blank
 
 
 def test_place_map_and_notes(app, admin):
