@@ -11,6 +11,9 @@
       <select name="theme">{% for name, meta in themes.items() %}<option value="{{ name }}"{% if v.theme == name %} selected{% endif %}>{{ meta.name or name }}</option>{% endfor %}</select>
     </label>
     <p class="muted small">Also used on the welcome and login pages. Anyone can pick their own under Your account.</p>
+    <label>Picture behind the home page banner and the welcome page
+      <select name="hero_art">{% for file, name in art.items() %}<option value="{{ file }}"{% if v.hero_art == file %} selected{% endif %}>{{ name }}</option>{% endfor %}</select>
+    </label>
   </fieldset>
   <fieldset>
     <legend>Wording</legend>

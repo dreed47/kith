@@ -1,10 +1,10 @@
-/* Midnight: always dark, whatever the device prefers. Ink blue-black, candlelight gold. */
+/* Midnight: ink blue-black and candlelight gold. Light mode keeps the dark header and banner on warm paper. */
 @font-face { font-family: "Fraunces"; src: url("../static/fonts/fraunces-latin-wght-normal.woff2") format("woff2"); font-weight: 100 900; font-display: swap; }
 @font-face { font-family: "Fraunces"; src: url("../static/fonts/fraunces-latin-wght-italic.woff2") format("woff2"); font-weight: 100 900; font-style: italic; font-display: swap; }
 @font-face { font-family: "Inter"; src: url("../static/fonts/inter-latin-wght-normal.woff2") format("woff2"); font-weight: 100 900; font-display: swap; }
 
 :root {
-  color-scheme: dark;
+  color-scheme: light;
   --font-body: Inter, system-ui, sans-serif;
   --font-heading: Fraunces, Georgia, serif;
   --font-display: Fraunces, Georgia, serif;
@@ -15,6 +15,29 @@
   --space-4: 1.1rem;
   --link-underline: 35%;
 
+  --bg: #f4f1ea;
+  --surface: #fffdf8;
+  --surface-2: #efeae0;
+  --border: #ddd5c4;
+  --shadow: 0 14px 34px rgb(13 16 21 / 0.18);
+  --shadow-card: 0 1px 2px rgb(13 16 21 / 0.06), 0 4px 16px rgb(13 16 21 / 0.06);
+  --text: #1a1d23;
+  --text-muted: #5e6268;
+  --heading: #12151b;
+  --link: #85550f;
+  --accent: #85550f;
+  --accent-text: #fffaf0;
+  --accent-soft: #f1e4c9;
+  --highlight: #b9832a;
+  --danger: #b42318;
+  --header-bg: #0d1015;
+  --header-text: #f2ece0;
+  --hero-bg: radial-gradient(circle at 85% 10%, #4a3a1c 0%, #1b1a17 45%, #11141a 100%);
+  --hero-text: #f6efe0;
+}
+
+:root[data-scheme="dark"] {
+  color-scheme: dark;
   --bg: #0d1015;
   --surface: #151a21;
   --surface-2: #1c222b;

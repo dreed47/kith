@@ -217,6 +217,22 @@ def test_site_settings(app):
     assert not sql(app, "SELECT * FROM app_settings WHERE name IN ('site_title', 'contact')")
 
 
+def test_hero_art(app):
+    c = site_admin(app)
+    assert '<option value="fan.svg" selected>Fan chart' in text(c.get("/admin/settings"))
+    assert "--hero-art: url('/static/fan.svg')" in text(app.test_client().get("/"))  # the default, even logged out
+    assert c.post("/admin/settings", data={"csrf": CSRF, "hero_art": "../secret.svg"}).status_code == 400
+    c.post("/admin/settings", data={"csrf": CSRF, "hero_art": "pedigree.svg"})
+    assert "--hero-art: url('/static/pedigree.svg')" in text(app.test_client().get("/"))
+    assert '<option value="pedigree.svg" selected>' in text(c.get("/admin/settings"))
+    c.post("/admin/settings", data={"csrf": CSRF})  # none sent: kept
+    assert sql(app, "SELECT value FROM app_settings WHERE name = 'hero_art'")[0]["value"] == "pedigree.svg"
+    c.post("/admin/settings", data={"csrf": CSRF, "hero_art": "fan.svg"})  # the default: nothing stored
+    assert not sql(app, "SELECT * FROM app_settings WHERE name = 'hero_art'")
+    for f in settings.HERO_ART:
+        assert app.test_client().get(f"/static/{f}").status_code == 200
+
+
 def test_site_settings_without_table(app, monkeypatch):
     def broken(*_):
         raise pymysql.err.ProgrammingError(1146, "Table 'app_settings' doesn't exist")

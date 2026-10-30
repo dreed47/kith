@@ -12,15 +12,30 @@ SITE_TEXT = {"site_title": ("Site title (top of every page)", 60, False),
              "contact": ("How to ask for an account (welcome page)", 200, False)}
 
 
+# Line art behind the home page banner and the welcome page (Site settings): file in static/ -> name in the list.
+HERO_ART = {"fan.svg": "Fan chart", "pedigree.svg": "Pedigree chart", "descendants.svg": "Descendant chart",
+            "tree.svg": "Branching tree"}
+
+
+def stored(name):
+    """One admin choice from app_settings, or None (also before the table exists, or without a database)."""
+    try:
+        rows = query("SELECT value FROM app_settings WHERE name = %s", (name,))
+    except pymysql.err.MySQLError:
+        rows = []
+    return rows[0]["value"] if rows else None
+
+
 def default_theme():
     """The theme for everyone who hasn't picked their own: the admin's choice (Site settings), else
     KITH_THEME. A choice whose theme has since been removed counts as no choice."""
-    try:
-        rows = query("SELECT value FROM app_settings WHERE name = 'theme'")
-    except pymysql.err.MySQLError:
-        rows = []
-    name = rows[0]["value"] if rows else None
+    name = stored("theme")
     return name if name in current_app.extensions["themes"] else current_app.config["THEME"]
+
+
+def hero_art():
+    name = stored("hero_art")
+    return name if name in HERO_ART else "fan.svg"
 
 
 def site_settings():

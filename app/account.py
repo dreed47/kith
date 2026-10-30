@@ -239,16 +239,32 @@ def password():
     return render_template("account_password.html", user=g.user, errors=errors, current=True)
 
 
+MODES = {"": "Same as this device", "light": "Light", "dark": "Dark"}
+
+
+def user_prefs():
+    """The logged-in user's saved look (theme, mode), {} if none. Read once per page."""
+    if not g.get("user"):
+        return {}
+    if "prefs" not in g:
+        try:
+            rows = query("SELECT * FROM app_user_prefs WHERE userID = %s", (g.user["userID"],))
+        except pymysql.err.MySQLError:  # nobody has picked one yet, so the table doesn't exist
+            rows = []
+        g.prefs = rows[0] if rows else {}
+    return g.prefs
+
+
 def chosen_theme():
     """The theme the logged-in user picked, if it's still installed; None means the site's default."""
-    if not g.get("user"):
-        return None
-    try:
-        rows = query("SELECT theme FROM app_user_prefs WHERE userID = %s", (g.user["userID"],))
-    except pymysql.err.MySQLError:  # nobody has picked one yet, so the table doesn't exist
-        return None
-    name = rows[0]["theme"] if rows else None
+    name = user_prefs().get("theme")
     return name if name in current_app.extensions["themes"] else None
+
+
+def chosen_mode():
+    """"light" or "dark" if the logged-in user picked one; "" means follow the device."""
+    mode = user_prefs().get("mode") or ""
+    return mode if mode in MODES else ""
 
 
 def avatar_file(user_id):
@@ -291,8 +307,8 @@ def profile():
     your password."""
     themes = current_app.extensions["themes"]
     if request.method == "POST":
-        choice = request.form.get("theme", "")
-        if choice and choice not in themes:
+        choice, mode = request.form.get("theme", ""), request.form.get("mode", "")
+        if choice and choice not in themes or mode not in MODES:
             abort(400)
         if (upload := request.files.get("avatar")) and upload.filename:
             try:
@@ -302,13 +318,15 @@ def profile():
                 return redirect(url_for("account.profile"))
         elif request.form.get("remove_avatar") == "1":
             avatar_file(g.user["userID"]).unlink(missing_ok=True)
-        execute("REPLACE INTO app_user_prefs (userID, theme) VALUES (%s, %s)", (g.user["userID"], choice or None))
+        execute("REPLACE INTO app_user_prefs (userID, theme, mode) VALUES (%s, %s, %s)",
+                (g.user["userID"], choice or None, mode or None))
         # TNG's own opt-out from mass email, so TNG and this site agree.
         update("users", {"no_email": int(request.form.get("group_email") != "1")}, {"userID": g.user["userID"]})
         flash("Saved.")
         return redirect(url_for("account.profile"))
     default = default_theme()
     return render_template("account_profile.html", themes=themes, chosen=chosen_theme(), default=default,
+                           modes=MODES, mode=chosen_mode(),
                            site=themes[default], watched=watched())
 
 

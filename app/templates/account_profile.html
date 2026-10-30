@@ -35,6 +35,11 @@
     {% endfor %}
   </fieldset>
   <fieldset class="theme-choices">
+    <legend>Light or dark</legend>
+    {% for value, label in modes.items() %}<label class="check"><input type="radio" name="mode" value="{{ value }}"{% if mode == value %} checked{% endif %}> {{ label }}</label>
+    {% endfor %}
+  </fieldset>
+  <fieldset class="theme-choices">
     <legend>Email</legend>
     <label class="check"><input type="checkbox" name="group_email" value="1"{% if not g.user.no_email %} checked{% endif %}>
       Send me the occasional email the site's admins send to everyone, and the weekly &ldquo;This week in family history&rdquo;{% if not g.user.email %} <span class="muted small">(your account has no email address; ask an admin to add one)</span>{% endif %}</label>

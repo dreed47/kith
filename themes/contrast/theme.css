@@ -4,7 +4,7 @@
 @font-face { font-family: "Atkinson Hyperlegible"; src: url("../static/fonts/atkinson-hyperlegible-latin-700-normal.woff2") format("woff2"); font-weight: 700; font-display: swap; }
 
 :root {
-  color-scheme: light dark;
+  color-scheme: light;
   --font-body: "Atkinson Hyperlegible", Verdana, system-ui, sans-serif;
   --font-heading: "Atkinson Hyperlegible", Verdana, system-ui, sans-serif;
   --font-display: "Atkinson Hyperlegible", Verdana, system-ui, sans-serif;
@@ -36,27 +36,26 @@
   --hero-text: #ffffff;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #000000;
-    --surface: #0a0a0a;
-    --surface-2: #1e1e1e;
-    --border: #e6e6e6;
-    --shadow: 0 6px 18px rgb(0 0 0 / 0.9);
-    --text: #ffffff;
-    --text-muted: #e6e6e6;
-    --heading: #ffffff;
-    --link: #ffd84d;
-    --accent: #ffd84d;
-    --accent-text: #000000;
-    --accent-soft: #3a3200;
-    --highlight: #ffd84d;
-    --danger: #ff8a8a;
-    --header-bg: #000000;
-    --header-text: #ffffff;
-    --hero-bg: #000000;
-    --hero-text: #ffffff;
-  }
+:root[data-scheme="dark"] {
+  color-scheme: dark;
+  --bg: #000000;
+  --surface: #0a0a0a;
+  --surface-2: #1e1e1e;
+  --border: #e6e6e6;
+  --shadow: 0 6px 18px rgb(0 0 0 / 0.9);
+  --text: #ffffff;
+  --text-muted: #e6e6e6;
+  --heading: #ffffff;
+  --link: #ffd84d;
+  --accent: #ffd84d;
+  --accent-text: #000000;
+  --accent-soft: #3a3200;
+  --highlight: #ffd84d;
+  --danger: #ff8a8a;
+  --header-bg: #000000;
+  --header-text: #ffffff;
+  --hero-bg: #000000;
+  --hero-text: #ffffff;
 }
 
 :focus-visible { outline-width: 3px; }

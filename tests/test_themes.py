@@ -23,6 +23,19 @@ def test_every_theme_defines_every_token_used():
         assert used <= defined, f"{name} missing {sorted(used - defined)}"
 
 
+def test_every_theme_has_light_and_dark():
+    """Each theme sets its colors twice: light in :root, dark under data-scheme="dark", so any theme works in either.
+    Sizes, fonts and "none" are the same in both."""
+    same = ("--font", "--space", "--radius", "--link-underline")
+    for name in THEMES:
+        css = (THEMES_DIR / name / "theme.css").read_text()
+        light, dark = css.split(':root[data-scheme="dark"] {')
+        colors = {t for t, v in re.findall(r"(--[\w-]+)\s*:\s*([^;]+);", light) if not t.startswith(same) and v != "none"}
+        missing = colors - set(re.findall(r"(--[\w-]+)\s*:", dark.split("}")[0]))
+        assert not missing, f"{name} has no dark {sorted(missing)}"
+        assert "prefers-color-scheme" not in css, name  # base.html decides, from the user's choice or the device
+
+
 @pytest.mark.parametrize("name", THEMES)
 def test_theme_renders(name):
     # The login page needs no DB, so this test runs anywhere.

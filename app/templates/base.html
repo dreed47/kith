@@ -1,9 +1,19 @@
 {% from "_macros.html" import icon %}
 <!doctype html>
-<html lang="en">
+<html lang="en" data-mode="{{ mode }}" style="--hero-art: url('{{ hero_art }}')">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script>
+    // Light or dark: the user's choice (data-mode), else the device's, kept up to date. Before the CSS, so no flash.
+    (() => {
+      const root = document.documentElement, dark = matchMedia("(prefers-color-scheme: dark)");
+      const apply = () => { root.dataset.scheme = root.dataset.mode || (dark.matches ? "dark" : "light"); };
+      apply();
+      dark.addEventListener("change", apply);
+      root.applyScheme = apply;  // Your account changes data-mode as you pick
+    })();
+  </script>
   <title>{% block title %}{{ theme.site_title or "Family Tree" }}{% endblock %}</title>
   <link rel="stylesheet" id="theme-css" href="{{ theme_css }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}">

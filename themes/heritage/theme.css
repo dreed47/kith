@@ -5,7 +5,7 @@
 @font-face { font-family: "EB Garamond"; src: url("../static/fonts/eb-garamond-latin-wght-italic.woff2") format("woff2"); font-weight: 400 800; font-style: italic; font-display: swap; }
 
 :root {
-  color-scheme: light dark;
+  color-scheme: light;
   --font-body: "EB Garamond", Georgia, "Times New Roman", serif;
   --font-heading: "EB Garamond", Georgia, serif;
   --font-display: "Cormorant Garamond", "EB Garamond", Georgia, serif;
@@ -37,28 +37,27 @@
   --hero-text: #f6ead2;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #19130d;
-    --surface: #241b13;
-    --surface-2: #2d2218;
-    --border: #4a3a28;
-    --shadow: 0 12px 30px rgb(0 0 0 / 0.6);
-    --shadow-card: 0 1px 2px rgb(0 0 0 / 0.35);
-    --text: #ecdfc5;
-    --text-muted: #b6a07e;
-    --heading: #f0d9a8;
-    --link: #e3a66a;
-    --accent: #dd9b5a;
-    --accent-text: #1d140c;
-    --accent-soft: #3e2b19;
-    --highlight: #d4af45;
-    --danger: #f08a6c;
-    --header-bg: #110c08;
-    --header-text: #f0d9a8;
-    --hero-bg: linear-gradient(160deg, #1d130b 0%, #3a2414 100%);
-    --hero-text: #f0d9a8;
-  }
+:root[data-scheme="dark"] {
+  color-scheme: dark;
+  --bg: #19130d;
+  --surface: #241b13;
+  --surface-2: #2d2218;
+  --border: #4a3a28;
+  --shadow: 0 12px 30px rgb(0 0 0 / 0.6);
+  --shadow-card: 0 1px 2px rgb(0 0 0 / 0.35);
+  --text: #ecdfc5;
+  --text-muted: #b6a07e;
+  --heading: #f0d9a8;
+  --link: #e3a66a;
+  --accent: #dd9b5a;
+  --accent-text: #1d140c;
+  --accent-soft: #3e2b19;
+  --highlight: #d4af45;
+  --danger: #f08a6c;
+  --header-bg: #110c08;
+  --header-text: #f0d9a8;
+  --hero-bg: linear-gradient(160deg, #1d130b 0%, #3a2414 100%);
+  --hero-text: #f0d9a8;
 }
 
 /* Character beyond the tokens: paper grain, a double gold rule under the header, small-capital headings. */

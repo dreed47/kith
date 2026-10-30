@@ -285,6 +285,22 @@ def test_choose_own_theme(app, monkeypatch):
     assert 'id="theme-css" href="/theme/theme.css"' in text(c.get("/surnames"))
 
 
+def test_light_or_dark(app):
+    c = client_for(app, "fx_guest")
+    page = text(c.get("/account/"))
+    assert 'data-mode=""' in page and 'name="mode" value="" checked' in page  # the device's, until picked
+    assert c.post("/account/", data={"csrf": CSRF, "mode": "dark"}).status_code == 302
+    page = text(c.get("/account/"))
+    assert 'data-mode="dark"' in page and 'name="mode" value="dark" checked' in page
+    assert 'data-mode=""' in text(client_for(app, "fx_admin").get("/search"))  # only for them
+    assert c.post("/account/", data={"csrf": CSRF, "mode": "purple"}).status_code == 400
+    sql(app, "UPDATE app_user_prefs SET mode = 'sepia' WHERE userID = (SELECT userID FROM users WHERE username = 'fx_guest')")
+    assert 'data-mode=""' in text(c.get("/search"))  # a stored value it doesn't know: the device's
+    c.post("/account/", data={"csrf": CSRF, "mode": ""})
+    assert not sql(app, "SELECT mode FROM app_user_prefs WHERE userID = (SELECT userID FROM users"
+                        " WHERE username = 'fx_guest')")[0]["mode"]
+
+
 def test_theme_stylesheets(plain_app):
     c = plain_app.test_client()
     for name in ("default", "heritage", "evergreen", "contrast", "midnight"):

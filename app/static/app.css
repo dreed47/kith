@@ -437,7 +437,7 @@ img.avatar { object-fit: cover; }
 .hero { position: relative; overflow: hidden; margin: 0 0 var(--space-4); padding: calc(var(--space-4) * 1.8) calc(var(--space-4) * 1.8);
   border-radius: var(--radius-lg); background: var(--hero-bg); color: var(--hero-text); isolation: isolate; }
 .hero::after { content: ""; position: absolute; z-index: -1; right: -6rem; bottom: -1rem; width: 34rem; aspect-ratio: 1000 / 510;
-  background: currentColor; opacity: 0.13; -webkit-mask: url("fan.svg") center / contain no-repeat; mask: url("fan.svg") center / contain no-repeat; }
+  background: currentColor; opacity: 0.13; -webkit-mask: var(--hero-art, url("fan.svg")) center / contain no-repeat; mask: var(--hero-art, url("fan.svg")) center / contain no-repeat; }
 .hero .eyebrow { color: inherit; opacity: 0.75; margin: 0 0 0.3rem; }
 .hero-title { color: inherit; margin: 0 0 var(--space-4); font-size: clamp(1.8rem, 1.2rem + 2vw, 2.6rem); }
 .hero-search { display: flex; align-items: center; max-width: 36rem; position: relative; background: var(--surface); border-radius: 999px;
@@ -564,7 +564,7 @@ details.menu summary.btn::-webkit-details-marker { display: none; }
 .welcome .narrow { position: relative; z-index: 1; }
 .fan-art { position: fixed; left: 50%; bottom: -2rem; width: min(70rem, 130vw); aspect-ratio: 1000 / 510; transform: translateX(-50%);
   background: var(--accent); opacity: 0.1; pointer-events: none;
-  -webkit-mask: url("fan.svg") center bottom / contain no-repeat; mask: url("fan.svg") center bottom / contain no-repeat; }
+  -webkit-mask: var(--hero-art, url("fan.svg")) center bottom / contain no-repeat; mask: var(--hero-art, url("fan.svg")) center bottom / contain no-repeat; }
 .welcome .site-footer { position: relative; z-index: 1; }
 
 /* ---------- Admin ---------- */

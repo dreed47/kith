@@ -118,12 +118,13 @@ def create_app(config=None):
 
     @app.context_processor
     def theme_context():
-        from .settings import site_settings
-        from .account import chosen_theme
+        from .settings import hero_art, site_settings
+        from .account import chosen_mode, chosen_theme
         from .settings import default_theme
         name = chosen_theme() or default_theme()
         css = url_for("theme_file", filename="theme.css") if name == app.config["THEME"] else url_for("user_theme", name=name)
-        return {"theme": {**meta, **site_settings()}, "theme_css": css}  # admin-edited text wins over theme.toml
+        return {"theme": {**meta, **site_settings()}, "theme_css": css,  # admin-edited text wins over theme.toml
+                "mode": chosen_mode(), "hero_art": url_for("static", filename=hero_art())}
 
     # Globals (not context) so imported macros can use them too.
     from .dates import display as display_date

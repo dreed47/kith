@@ -13,7 +13,7 @@ from .db import execute, insert, query, update
 from .edit import audit, get_person, now
 from . import localtime
 from .me import pending_count
-from .settings import SITE_TEXT, default_theme, site_settings
+from .settings import HERO_ART, SITE_TEXT, default_theme, hero_art, site_settings
 from .views import one, people_by_id
 
 bp = Blueprint("admin", __name__, url_prefix="/admin")
@@ -309,25 +309,28 @@ def weekly_email():
 @bp.route("/settings", methods=["GET", "POST"])
 def settings():
     themes = current_app.extensions["themes"]
-    current, errors = {**site_settings(), "theme": default_theme()}, []
+    current, errors = {**site_settings(), "theme": default_theme(), "hero_art": hero_art()}, []
     v = current
     if request.method == "POST":
-        v = {k: request.form.get(k, "").strip() for k in (*SITE_TEXT, "theme")}
+        v = {k: request.form.get(k, "").strip() for k in (*SITE_TEXT, "theme", "hero_art")}
         v["theme"] = v["theme"] or current["theme"]
+        v["hero_art"] = v["hero_art"] or current["hero_art"]
         errors = [f"{label} is longer than {n} characters." for k, (label, n, _) in SITE_TEXT.items() if len(v[k]) > n]
-        if v["theme"] not in themes:
+        if v["theme"] not in themes or v["hero_art"] not in HERO_ART:
             abort(400)
         if not errors:
-            # The theme named by KITH_THEME is the default anyway; only another choice needs storing.
-            for k, value in {**v, "theme": "" if v["theme"] == current_app.config["THEME"] else v["theme"]}.items():
+            # The theme named by KITH_THEME and the fan are the defaults anyway; only another choice needs storing.
+            for k, value in {**v, "theme": "" if v["theme"] == current_app.config["THEME"] else v["theme"],
+                             "hero_art": "" if v["hero_art"] == "fan.svg" else v["hero_art"]}.items():
                 if value:
                     execute("REPLACE INTO app_settings (name, value) VALUES (%s, %s)", (k, value))
                 else:
                     execute("DELETE FROM app_settings WHERE name = %s", (k,))
-            audit("edit settings", "app_settings", "site", current, {**site_settings(), "theme": default_theme()})
+            audit("edit settings", "app_settings", "site", current,
+                  {**site_settings(), "theme": default_theme(), "hero_art": hero_art()})
             flash("Saved.")
             return redirect(url_for("admin.settings"))
-    return render_template("admin_settings.html", v=v, errors=errors, fields=SITE_TEXT, themes=themes,
+    return render_template("admin_settings.html", v=v, errors=errors, fields=SITE_TEXT, themes=themes, art=HERO_ART,
                            defaults=current_app.extensions["theme"])
 
 
