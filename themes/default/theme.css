@@ -14,14 +14,14 @@
   --space-4: 1rem;
   --link-underline: 35%;
 
-  --bg: #f5f3ef;
+  --bg: #ece8e1;
   --surface: #ffffff;
-  --surface-2: #f2efe9;
-  --border: #c9c0b0;
+  --surface-2: #efebe4;
+  --border: #b5ab99;
   --shadow: 0 14px 34px rgb(20 33 61 / 0.18);
-  --shadow-card: 0 1px 2px rgb(20 33 61 / 0.05), 0 4px 16px rgb(20 33 61 / 0.05);
-  --text: #1d2329;
-  --text-muted: #5f6871;
+  --shadow-card: 0 1px 2px rgb(20 33 61 / 0.08), 0 4px 16px rgb(20 33 61 / 0.08);
+  --text: #161b20;
+  --text-muted: #4d555d;
   --heading: #14213d;
   --link: #0e6a87;
   --accent: #0e6a87;
