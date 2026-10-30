@@ -1,13 +1,15 @@
 """Editing places and cemeteries. Renaming a place changes it on every record that uses it, the way TNG's place
 edit does when told to; renaming it to a place that already exists merges the two. The tidy page finds names that
 are the same place written differently and puts them in the house style ("Clarion Cnty, PA")."""
+import re
 from collections import defaultdict
 
 from flask import abort, flash, g, redirect, render_template, request, url_for
 
 from .db import execute, insert, query, update
-from .edit import PLACE_MAX, audit, bp, now, require
+from .edit import PLACE_MAX, add_places, audit, bp, now, require
 from .placenames import standard
+from .reports import RECORD_TITLE
 from .views import one, tree
 
 # Every column that holds a place name (TNG stores the name itself on each record, not a link).
@@ -177,6 +179,56 @@ def misspellings(counts):
                   key=lambda r: (r["to"], r["names"]))
 
 
+RESIDENCE = re.compile(r"^\s*residence place:\s*(.+?)\s*$", re.I | re.M)
+PERSON = re.compile(r"\b(yrs?|years?|head|wife|son|daughter)\b", re.I)
+
+
+def place_line(line):
+    """The place a census notes line starts with: "Toby Twp, Armstrong Cnty, PA", or "Red Bank, Clarion, PA" from
+    "Red Bank, Clarion, PA - lived next door to ...". Blank for a person ("Mary Hughey - wife - 29") or a label."""
+    place = line.split(" - ")[0].strip()
+    return place if "," in place and ":" not in place and not PERSON.search(line) and len(place) <= PLACE_MAX else ""
+
+
+def titled_events():
+    """Events with a record's title where the place goes ("U.S. Federal Population Census"), as TNG imports left
+    them, each with a guess at the real place from its notes: [{event, "line": the place read from the first notes line, "to"}].
+    A census usually starts its notes with the place; a draft card may have a "Residence Place:" line."""
+    rows = []
+    for e in query("SELECT e.eventID, e.persfamID, e.eventdate, e.eventplace, e.info, t.tag, t.display, t.type"
+                   " FROM events e JOIN eventtypes t ON t.eventtypeID = e.eventtypeID"
+                   " WHERE e.gedcom = %s AND e.eventplace <> '' ORDER BY e.eventplace, e.eventdatetr, e.eventID",
+                   (tree(),)):
+        if not RECORD_TITLE.search(e["eventplace"]):
+            continue
+        lines = [x.strip() for x in (e["info"] or "").splitlines() if x.strip()]
+        line = place_line(lines[0]) if e["tag"] == "CENS" and lines else ""
+        found = RESIDENCE.search(e["info"] or "") if not line else None
+        rows.append({**e, "line": line, "to": standard(line or (found[1] if found else "").rstrip(".,"))})
+    return rows
+
+
+def move_title(eid, to):
+    """Put the place in the event's place field. A census's first notes line, if it is just that place, leaves the
+    notes."""
+    get = lambda: one("SELECT * FROM events WHERE gedcom = %s AND eventID = %s", (tree(), eid))
+    e = get()
+    if not e or not RECORD_TITLE.search(e["eventplace"] or ""):
+        return False  # already fixed, or gone, since the page loaded
+    info = e["info"] or ""
+    lines = info.splitlines()
+    first = next((i for i, x in enumerate(lines) if x.strip()), None)
+    if to and first is not None and standard(lines[first].strip()) == to:
+        rest = lines[first + 1:]
+        while rest and not rest[0].strip():
+            rest.pop(0)
+        info = "\n".join(rest)
+    update("events", {"eventplace": to, "info": info}, {"gedcom": tree(), "eventID": eid})
+    add_places(to)
+    audit("edit event", "events", str(eid), e, get())
+    return True
+
+
 @bp.route("/places/tidy", methods=["GET", "POST"])
 def tidy_places():
     require("allow_edit")
@@ -194,6 +246,13 @@ def tidy_places():
             for old, to in renames.items():
                 audit("rename place", "places", to, {"place": before[old], "renamed from": old,
                                                          "records changed": counts.get(old, 0)}, get_place(to))
+        moved = 0
+        for eid in request.form.getlist("event"):
+            to = request.form.get(f"place{eid}", "").strip()
+            if len(to) > PLACE_MAX:
+                flash(f"Skipped a place longer than {PLACE_MAX} characters.")
+            elif eid.isdigit() and move_title(int(eid), to):
+                moved += 1
         deleted = 0
         if g.user["allow_delete"] == 1:
             for name in request.form.getlist("delete"):
@@ -203,13 +262,14 @@ def tidy_places():
                     execute("DELETE FROM places WHERE ID = %s", (row["ID"],))
                     audit("delete place", "places", name, row, None)
                     deleted += 1
-        flash(f"Renamed {len(renames)} place name(s), deleted {deleted} unused one(s).")
+        flash(f"Renamed {len(renames)} place name(s), fixed {moved} event place(s), deleted {deleted} unused one(s).")
         return redirect(url_for("edit.tidy_places"))
     counts = place_counts()
     unused = query("SELECT * FROM places WHERE gedcom = %s ORDER BY place", (tree(),))
     used = {name.rstrip().lower() for name, n in counts.items() if n}  # the database ignores case and trailing spaces
     unused = [r for r in unused if r["place"].rstrip().lower() not in used]
-    return render_template("tidy_places.html", rows=tidy_rows(counts), typos=misspellings(counts), unused=unused)
+    return render_template("tidy_places.html", rows=tidy_rows(counts), typos=misspellings(counts), titled=titled_events(),
+                           unused=unused)
 
 
 def get_cemetery(cid):

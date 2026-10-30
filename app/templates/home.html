@@ -88,12 +88,13 @@
   <section class="card">
     <h2 class="card-title">{{ icon("edit") }}Tidy up</h2>
     {% macro row(n, one, many, endpoint) %}<li>{% if n is not none %}<strong>{{ "{:,}".format(n) }}</strong> {% endif %}<a href="{{ url_for(endpoint) }}">{{ one if n == 1 else many }}</a></li>{% endmacro %}
-    {% if fix == 0 and tidy and not (tidy.places or tidy.typos or tidy.living or tidy.checks) %}<p>Nothing to tidy. Nice.</p>
+    {% if fix == 0 and tidy and not (tidy.places or tidy.typos or tidy.titles or tidy.living or tidy.checks) %}<p>Nothing to tidy. Nice.</p>
     {% else %}
     <ul class="tidy-list">
       {% if fix %}{{ row(fix, "date can't be read", "dates can't be read", "main.dates_to_fix") }}{% endif %}
       {% if not tidy or tidy.places %}{{ row(tidy.places if tidy else none, "place name to tidy", "place names to tidy", "edit.tidy_places") }}{% endif %}
       {% if not tidy or tidy.typos %}{{ row(tidy.typos if tidy else none, "possible misspelled place", "possible misspelled places", "edit.tidy_places") }}{% endif %}
+      {% if not tidy or tidy.titles %}{{ row(tidy.titles if tidy else none, "event with a record title as its place", "events with a record title as their place", "edit.tidy_places") }}{% endif %}
       {% if not tidy or tidy.living %}{{ row(tidy.living if tidy else none, "person whose living mark looks wrong", "people whose living mark looks wrong", "edit.living_flags") }}{% endif %}
       {% if not tidy or tidy.checks %}{{ row(tidy.checks if tidy else none, "other data problem", "other data problems", "edit.checks") }}{% endif %}
     </ul>

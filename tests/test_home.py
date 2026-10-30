@@ -137,9 +137,9 @@ def test_dates_to_fix_paging_and_empty(app, admin, monkeypatch):
     assert "Nothing to fix" in text(admin.get("/dates-to-fix?page=99999"))
     monkeypatch.setattr(home, "fix_count", lambda: 0)
     assert "Still counting" in text(admin.get("/"))  # no background count yet: links without numbers
-    monkeypatch.setitem(home._tidy, "counts", {"places": 0, "typos": 0, "living": 0, "checks": 0})
+    monkeypatch.setitem(home._tidy, "counts", {"places": 0, "typos": 0, "titles": 0, "living": 0, "checks": 0})
     assert "Nothing to tidy" in text(admin.get("/"))
-    monkeypatch.setitem(home._tidy, "counts", {"places": 0, "typos": 1, "living": 0, "checks": 12})
+    monkeypatch.setitem(home._tidy, "counts", {"places": 0, "typos": 1, "titles": 0, "living": 0, "checks": 12})
     html = text(admin.get("/"))
     assert "<strong>1</strong> <a href=\"/edit/places/tidy\">possible misspelled place</a>" in html
     assert "<strong>12</strong> <a href=\"/edit/checks\">other data problems</a>" in html
@@ -154,7 +154,7 @@ def test_tidy_counts_in_background(app, admin, monkeypatch):
     assert home._tidy["thread"] is first
     first.join(60)
     counts = home._tidy["counts"]
-    assert set(counts) == {"places", "typos", "living", "checks"} and all(isinstance(n, int) for n in counts.values())
+    assert set(counts) == {"places", "typos", "titles", "living", "checks"} and all(isinstance(n, int) for n in counts.values())
     admin.get("/")  # fresh: no new count
     assert home._tidy["thread"] is first
 

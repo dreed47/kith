@@ -132,7 +132,7 @@ def test_tidy_places(app, admin):
         "from4": "Xrowless,PA", "to4": "Xrowless, PA", "delete": ["Xunused, PA", "Xmapped, PA", "Xlong" + "g" * 90 + ", PA", ""]})
     assert r.status_code == 302
     flashed = text(admin.get(r.headers["Location"]))
-    assert "Skipped a name" in flashed and "Renamed 4 place name(s), deleted 3 unused one(s)." in flashed
+    assert "Skipped a name" in flashed and "Renamed 4 place name(s), fixed 0 event place(s), deleted 3 unused one(s)." in flashed
     assert sql(app, "SELECT baptplace FROM people WHERE personID = %s", (pid,))[0]["baptplace"] == "Xrowless, PA"
     p = sql(app, "SELECT birthplace, deathplace, burialplace FROM people WHERE personID = %s", (pid,))[0]
     assert p == {"birthplace": "Xville, Xco Cnty, PA", "deathplace": "Xville, Xco Cnty, PA",
@@ -201,3 +201,40 @@ def test_places_saved_in_house_style(app, admin):
     r = admin.post("/edit/place", data={"csrf": CSRF, "name": "Xrestyle,Pennsylvania", "place": "Xrestyle , Penna"})
     assert r.status_code == 302 and sql(app, "SELECT place FROM places WHERE place LIKE 'Xrestyle%%'") == [
         {"place": "Xrestyle, PA"}]
+
+
+def test_record_titles_as_places(app, admin):
+    from app.edit_places import place_line
+    assert place_line("Red Bank, Clarion, PA - lived next door") == "Red Bank, Clarion, PA"
+    assert place_line("Redbank Twp, Clarion Cnty, PA - Post Office: New Bethlehem") == "Redbank Twp, Clarion Cnty, PA"
+    for line in ("Sherry, Noah - head - 33 yrs", "Enumeration Date: 8/7, 1820", "Union Twp"):
+        assert not place_line(line), line
+    ids = make(app, ("Head", "M", 0), ("Wife", "F", 0), family=("Head", "Wife"))
+    fid, pid = ids["family"], ids["Head"]
+    cens = sql(app, "SELECT eventtypeID FROM eventtypes WHERE tag = 'CENS' AND type = 'F'")[0]["eventtypeID"]
+    other = sql(app, "SELECT eventtypeID FROM eventtypes WHERE type = 'I' AND ldsevent = 0 LIMIT 1")[0]["eventtypeID"]
+    title = "U.S. Federal Population Census"
+    with app.app_context():
+        _, census = insert("events", {"gedcom": "tree1", "persfamID": fid, "eventtypeID": cens, "eventdate": "1930",
+                                      "eventplace": title, "info": "\nQzville, Qzco Cnty, PA\n\n\nJo Qz - head - 40 yrs"})
+        _, draft = insert("events", {"gedcom": "tree1", "persfamID": pid, "eventtypeID": other, "eventplace":
+                                     "U.S. World War I Draft Card", "info": "Jo Qz\nResidence Place: Qzburg, PA."})
+        _, blank = insert("events", {"gedcom": "tree1", "persfamID": pid, "eventtypeID": other, "eventplace": title})
+    page = text(admin.get("/edit/places/tidy"))
+    assert f'name="event" value="{census}" checked' in page and f'name="place{census}" value="Qzville, Qzco Cnty, PA"' in page
+    assert f'name="place{draft}" value="Qzburg, PA"' in page and f'href="/family/{fid}"' in page
+    assert f'name="event" value="{blank}" aria' in page  # no guess: unticked
+    sql(app, "UPDATE events SET eventplace = 'Fixed, PA' WHERE eventID = %s", (blank,))  # fixed since loading
+    r = admin.post("/edit/places/tidy", data={
+        "csrf": CSRF, "event": [str(census), str(draft), str(blank), "x"], f"place{census}": "Qzville, Qzco Cnty, PA",
+        f"place{draft}": "Qz" * 200, f"place{blank}": ""})
+    assert "Skipped a place longer" in text(admin.get(r.headers["Location"]))
+    e = sql(app, "SELECT eventplace, info FROM events WHERE eventID = %s", (census,))[0]
+    assert e == {"eventplace": "Qzville, Qzco Cnty, PA", "info": "Jo Qz - head - 40 yrs"}
+    assert sql(app, "SELECT * FROM places WHERE place = 'Qzville, Qzco Cnty, PA'")
+    r = admin.post("/edit/places/tidy", data={"csrf": CSRF, "event": str(draft), f"place{draft}": ""})
+    assert "fixed 1 event place(s)" in text(admin.get(r.headers["Location"]))
+    e = sql(app, "SELECT eventplace, info FROM events WHERE eventID = %s", (draft,))[0]
+    assert e == {"eventplace": "", "info": "Jo Qz\nResidence Place: Qzburg, PA."}  # a blank box clears the title only
+    assert sql(app, "SELECT COUNT(*) AS n FROM app_audit WHERE action = 'edit event' AND record IN (%s, %s)",
+               (str(census), str(draft)))[0]["n"] == 2

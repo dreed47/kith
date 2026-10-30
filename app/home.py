@@ -86,13 +86,14 @@ def tidy_counts():
 def count_tidy(app, user):
     """Counted as the editor who asked (who may see living people) so the numbers match the pages they open."""
     from .checks import CHECKS, run  # here, not at the top: these import this module's blueprint
-    from .edit_places import misspellings, place_counts, tidy_rows
+    from .edit_places import misspellings, place_counts, tidy_rows, titled_events
     from .living import report
     with app.app_context():
         g.user = user
         places = place_counts()
         _tidy.update(at=time.time(), counts={
             "places": len(tidy_rows(places)), "typos": len(misspellings(places)),
+            "titles": len(titled_events()),
             "living": sum(len(people) for _, _, _, people, _ in report()),
             "checks": sum(len(run(selects)) for _, _, selects in CHECKS)})
 
