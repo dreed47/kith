@@ -79,6 +79,20 @@ def test_quick_tag_as_linked_person(app, admin):
     assert [t["personID"] for t in tags(app, mid)] == [ids["Owner"], ids["Other"]]
 
 
+def test_quick_tag_family(app, admin):
+    """A family photo linked to one child offers buttons for the parents and siblings too."""
+    ids = make(app, ("Dad", "M", 0), ("Mom", "F", 0), ("Kid", "F", 0), ("Sis", "F", 0), ("Stranger", "M", 0),
+               family=("Dad", "Mom"), kids=("Kid", "Sis"))
+    upload(admin, ids["Kid"])
+    mid = newest_media(app)["mediaID"]
+    page = text(admin.get(f"/media/{mid}"))
+    for who in ("Dad", "Mom", "Sis"):
+        assert f'name="quick" value="{ids[who]}"' in page, who
+    assert page.count(f'value="{ids["Kid"]}"') == 1  # once, under "Tag as", not again under "Family"
+    assert ids["Stranger"] not in page
+    assert 'name="quick"' not in text(client_for(app, "fx_adder").get(f"/media/{mid}"))  # editors only
+
+
 def test_tag_checks(app, admin):
     ids = make(app, ("Snap", "M", 0))
     upload(admin, ids["Snap"])

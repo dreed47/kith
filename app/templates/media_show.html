@@ -25,8 +25,9 @@
     {% for k in "xywh" %}<input type="hidden" name="{{ k }}">{% endfor %}
     {% set tagged = faces|map(attribute="personID")|list %}
     {% set linked = people|rejectattr("personID", "in", tagged)|list %}
-    {% if linked %}<p class="quick-tags">Tag as {% for x in linked %}<button class="small-button secondary" name="quick" value="{{ x.personID }}">{{ pname(x) }}</button> {% endfor %}</p>
-    <p class="muted small">or someone else:</p>{% endif %}
+    {% if linked %}<p class="quick-tags">Tag as {% for x in linked %}<button class="small-button secondary" name="quick" value="{{ x.personID }}">{{ pname(x) }}</button> {% endfor %}</p>{% endif %}
+    {% if kin %}<p class="quick-tags">Family {% for x in kin %}<button class="small-button secondary" name="quick" value="{{ x.personID }}">{{ pname(x) }}</button> {% endfor %}</p>{% endif %}
+    {% if linked or kin %}<p class="muted small">or someone else:</p>{% endif %}
     {{ picker("personID", "Who is this?", "", None) }}
     <div class="form-actions"><button>Save tag</button> <button type="button" class="secondary" data-cancel>Cancel</button></div>
   </form>

@@ -2,7 +2,7 @@ import os
 import subprocess
 from pathlib import Path
 
-from flask import Blueprint, Response, abort, current_app, render_template, request, send_file, send_from_directory
+from flask import Blueprint, Response, abort, current_app, g, render_template, request, send_file, send_from_directory
 from PIL import Image, ImageOps, UnidentifiedImageError
 
 from .db import query
@@ -56,6 +56,28 @@ def browse():
                            pages=max((total + PER_PAGE - 1) // PER_PAGE, 1))
 
 
+def relatives(ids, fids):
+    """Everyone in these families and in the families of these people (as parent or child): their parents, siblings,
+    spouses and children, oldest first, for the "Tag as" buttons on a family photo. The people themselves are left out."""
+    ids, fids = [i for i in ids if i], [f for f in fids if f]
+    if ids:
+        marks = ",".join(["%s"] * len(ids))
+        fids += [r["familyID"] for r in query(
+            f"SELECT familyID FROM families WHERE gedcom = %s AND (husband IN ({marks}) OR wife IN ({marks}))"
+            f" UNION SELECT familyID FROM children WHERE gedcom = %s AND personID IN ({marks})",
+            [tree(), *ids, *ids, tree(), *ids])]
+    if not fids:
+        return []
+    marks = ",".join(["%s"] * len(fids))
+    kin = query("SELECT * FROM people WHERE gedcom = %s AND personID IN ("
+                f"SELECT husband FROM families WHERE gedcom = %s AND familyID IN ({marks})"
+                f" UNION SELECT wife FROM families WHERE gedcom = %s AND familyID IN ({marks})"
+                f" UNION SELECT personID FROM children WHERE gedcom = %s AND familyID IN ({marks}))"
+                " ORDER BY IFNULL(birthdatetr, '0000-00-00') = '0000-00-00', birthdatetr",
+                [tree(), tree(), *fids, tree(), *fids, tree(), *fids])
+    return [k for k in kin if k["personID"] not in ids]
+
+
 @bp.get("/<int:media_id>")
 def show(media_id):
     m = get_visible(media_id)
@@ -84,8 +106,13 @@ def show(media_id):
         [tree(), *fids])} if fids else {}
     evidence = [{**c, "person": folks.get(c["persfamID"]), "about": about_label(c["persfamID"], c["eventID"])}
                 for c in cites if (r := folks.get(c["persfamID"]) or fams.get(c["persfamID"])) and rights(r)["both"]]
-    return render_template("media_show.html", m=m, people=people, families=families, spouses=spouses,
-                           url=is_url(m), image=image, faces=face_tags(media_id) if image else [],
+    faces = face_tags(media_id) if image else []
+    kin = []
+    if image and g.user and g.user["allow_edit"] == 1:
+        kin = relatives([p["personID"] for p in people] + [t["personID"] for t in faces],
+                        [f["familyID"] for f in families])
+    return render_template("media_show.html", m=m, people=people, families=families, spouses=spouses, kin=kin,
+                           url=is_url(m), image=image, faces=faces,
                            comments=comments_for("media", media_id), evidence=evidence, body=clean_html(m["bodytext"]))
 
 
