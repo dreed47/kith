@@ -3,9 +3,9 @@
 {% macro item(endpoint, label, glyph) %}{% set href = url_for(endpoint, **kwargs) %}<a href="{{ href }}"{% if request.path == href or (href != "/" and request.path.startswith(href.rstrip("/") ~ "/")) %} aria-current="page"{% endif %}>{{ icon(glyph) }}{{ label }}</a>{% endmacro %}
 <form class="header-search" action="{{ url_for('main.search') }}" role="search">
   {{ icon("search") }}
-  <input name="q" aria-label="Search people" placeholder="Search people by name" list="header-search-list"
-         data-find="{{ url_for('main.find') }}" data-go="{{ url_for('main.person', pid='ID') }}" autocomplete="off">
-  <datalist id="header-search-list"></datalist>
+  <input name="q" aria-label="Search people" placeholder="Search people by name" aria-controls="header-search-list"
+         aria-expanded="false" data-find="{{ url_for('main.find') }}" data-go="{{ url_for('main.person', pid='ID') }}" autocomplete="off">
+  <ul id="header-search-list" class="pick-list" hidden></ul>
 </form>
 <script src="{{ url_for('static', filename='quicksearch.js') }}" defer></script>
 <details class="menu account-menu">
