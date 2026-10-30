@@ -2,7 +2,7 @@
 {% block title %}Tidy places · {{ super() }}{% endblock %}
 {% block content %}
 <h1>Tidy places</h1>
-<p class="muted">Place names that look like the same place written differently, and names not yet in the house style ("Madison Twp, Clarion Cnty, PA"). Each ticked row renames those names to the one in the box, on every record that uses them; names that already exist are combined. Untick anything that isn't right, or change the box first. Every rename is in the activity log.</p>
+<p class="muted">Place names that look like the same place written differently, and names not yet in the house style ("Madison Twp, Clarion Cnty, PA"). Nothing starts ticked: tick the rows you want, check the box, then Apply. Each ticked row renames those names to the one in the box, on every record that uses them; names that already exist are combined. Every rename is in the activity log.</p>
 <form method="post">
   <input type="hidden" name="csrf" value="{{ csrf_token() }}">
   <section class="card">
@@ -11,7 +11,7 @@
     <p class="small"><button type="button" class="tick-all" data-name="apply" data-on="1">Tick all</button> <button type="button" class="tick-all" data-name="apply" data-on="">Untick all</button></p>
     <div class="scroll-list"><table class="facts">
       {% for r in rows %}
-      <tr><td><input type="checkbox" name="apply" value="{{ loop.index }}" checked aria-label="Rename to {{ r.to }}"></td>
+      <tr><td><input type="checkbox" name="apply" value="{{ loop.index }}" aria-label="Rename to {{ r.to }}"></td>
         <td class="small">{% set i = loop.index %}{% for name, n in r.names %}<input type="hidden" name="from{{ i }}" value="{{ name }}"><a href="{{ url_for('places.place', name=name) }}">{{ name }}</a> <span class="muted">({{ n }})</span>{% if not loop.last %}<br>{% endif %}{% endfor %}</td>
         <td><input name="to{{ i }}" value="{{ r.to }}" maxlength="248" aria-label="New name"></td></tr>
       {% endfor %}
@@ -20,7 +20,7 @@
   </section>
   <section class="card">
     <h2 class="card-title">Possible misspellings <span class="muted">{{ typos|length }}</span></h2>
-    <p class="muted small">Names one word apart by what may be a typo ("Kittaning" and "Kittanning"). The box has the more used spelling. These are only guesses, so none start ticked: tick the ones that really are the same place.</p>
+    <p class="muted small">Names one word apart by what may be a typo ("Kittaning" and "Kittanning"). The box has the more used spelling. These are only guesses: tick the ones that really are the same place.</p>
     {% if typos %}
     <div class="scroll-list"><table class="facts">
       {% for r in typos %}{% set i = "t" ~ loop.index %}
@@ -33,12 +33,12 @@
   </section>
   <section class="card">
     <h2 class="card-title">Record titles as places <span class="muted">{{ titled|length }}</span></h2>
-    <p class="muted small">Events with a record's title where the place goes ("U.S. Federal Population Census"). The box has the real place where the notes give one: a census's first notes line, which then leaves the notes, or a draft card's "Residence Place". Ticked rows get the place in the box; a blank box just clears the title. Rows with no guess start unticked.</p>
+    <p class="muted small">Events with a record's title where the place goes ("U.S. Federal Population Census"). The box has the real place where the notes give one: a census's first notes line, which then leaves the notes, or a draft card's "Residence Place". Ticked rows get the place in the box; a blank box just clears the title. Rows with no guess have an empty box.</p>
     {% if titled %}
     <p class="small"><button type="button" class="tick-all" data-name="event" data-on="1">Tick all</button> <button type="button" class="tick-all" data-name="event" data-on="">Untick all</button></p>
     <div class="scroll-list"><table class="facts">
       {% for e in titled %}
-      <tr><td><input type="checkbox" name="event" value="{{ e.eventID }}"{% if e.to %} checked{% endif %} aria-label="Fix the place of {{ e.display }} {{ e.eventdate }}"></td>
+      <tr><td><input type="checkbox" name="event" value="{{ e.eventID }}" aria-label="Fix the place of {{ e.display }} {{ e.eventdate }}"></td>
         <td class="small"><a href="{{ url_for('main.family', fid=e.persfamID) if e.type == 'F' else url_for('main.person', pid=e.persfamID) }}">{{ owner_name(e.persfamID) }}</a>, {{ e.display }} {{ e.eventdate }}<br><span class="muted">{{ e.eventplace }}</span></td>
         <td><input name="place{{ e.eventID }}" value="{{ e.to }}" maxlength="248" aria-label="Place"></td></tr>
       {% endfor %}
@@ -48,12 +48,12 @@
   {% if g.user.allow_delete == 1 %}
   <section class="card">
     <h2 class="card-title">Unused places <span class="muted">{{ unused|length }}</span></h2>
-    <p class="muted small">Names in the places list that no person, family, event, photo or cemetery uses: leftovers from old edits. Applying deletes the ticked ones from the list; no record changes. Ones with coordinates or notes start unticked in case they are worth keeping.</p>
+    <p class="muted small">Names in the places list that no person, family, event, photo or cemetery uses: leftovers from old edits. Applying deletes the ticked ones from the list; no record changes. Ones with coordinates or notes are marked, in case they are worth keeping.</p>
     {% if unused %}
     <p class="small"><button type="button" class="tick-all" data-name="delete" data-on="1">Tick all</button> <button type="button" class="tick-all" data-name="delete" data-on="">Untick all</button></p>
     <div class="scroll-list"><table class="facts">
       {% for r in unused %}
-      <tr><td><input type="checkbox" name="delete" value="{{ r.place }}"{% if not (r.latitude or r.longitude or r.notes) %} checked{% endif %} aria-label="Delete {{ r.place }}"></td>
+      <tr><td><input type="checkbox" name="delete" value="{{ r.place }}" aria-label="Delete {{ r.place }}"></td>
         <td class="small">{% if r.place.strip() %}<a href="{{ url_for('places.place', name=r.place) }}">{{ r.place }}</a>{% else %}<em>(blank name)</em>{% endif %}{% if r.latitude or r.notes %} <span class="muted">(has {{ "coordinates" if r.latitude else "notes" }})</span>{% endif %}</td></tr>
       {% endfor %}
     </table></div>

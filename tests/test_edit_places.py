@@ -122,7 +122,7 @@ def test_tidy_places(app, admin):
     assert 'value="Xville, Xco Cnty, PA" maxlength' in page and 'value="Xlower, Xco Cnty, PA"' not in page
     assert 'name="delete" value=""' in page and "(blank name)" in page
     assert 'data-name="apply" data-on="1">Tick all' in page and 'data-name="delete" data-on="">Untick all' in page
-    assert 'name="delete" value="Xunused, PA" checked' in page and 'name="delete" value="Xmapped, PA" aria' in page
+    assert '" checked' not in page and 'name="delete" value="Xunused, PA" aria' in page and 'name="delete" value="Xmapped, PA" aria' in page
     assert text(client_for(app, "fx_editor").get("/edit/places/tidy")).count('name="delete"') == 0
     sql(app, "UPDATE people SET altbirthplace = 'Xunused, PA' WHERE personID = %s", (pid,))  # used since loading
     r = admin.post("/edit/places/tidy", data={
@@ -221,9 +221,9 @@ def test_record_titles_as_places(app, admin):
                                      "U.S. World War I Draft Card", "info": "Jo Qz\nResidence Place: Qzburg, PA."})
         _, blank = insert("events", {"gedcom": "tree1", "persfamID": pid, "eventtypeID": other, "eventplace": title})
     page = text(admin.get("/edit/places/tidy"))
-    assert f'name="event" value="{census}" checked' in page and f'name="place{census}" value="Qzville, Qzco Cnty, PA"' in page
+    assert f'name="event" value="{census}" aria' in page and f'name="place{census}" value="Qzville, Qzco Cnty, PA"' in page
     assert f'name="place{draft}" value="Qzburg, PA"' in page and f'href="/family/{fid}"' in page
-    assert f'name="event" value="{blank}" aria' in page  # no guess: unticked
+    assert f'name="event" value="{blank}" aria' in page and f'name="place{blank}" value=""' in page  # no guess
     sql(app, "UPDATE events SET eventplace = 'Fixed, PA' WHERE eventID = %s", (blank,))  # fixed since loading
     r = admin.post("/edit/places/tidy", data={
         "csrf": CSRF, "event": [str(census), str(draft), str(blank), "x"], f"place{census}": "Qzville, Qzco Cnty, PA",
