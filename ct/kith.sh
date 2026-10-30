@@ -49,6 +49,7 @@ function update_script() {
     # Photos, settings and the database live outside /opt/kith, so a clean install only replaces the code.
     CLEAN_INSTALL=1 fetch_and_deploy_gh_release "kith" "dreed47/kith" "tarball"
     install -o root -g root -m 755 /opt/kith/deploy/backup.sh /usr/local/sbin/kith-backup
+    bash /opt/kith/deploy/jobs.sh
 
     msg_info "Updating Python Environment"
     $STD python3 -m venv /opt/kith/.venv

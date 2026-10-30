@@ -137,6 +137,10 @@ systemctl enable -q --now kith-requests.path
 /usr/local/sbin/kith-backup apply
 msg_ok "Set up Backups"
 
+msg_info "Setting up Scheduled Jobs"
+bash /opt/kith/deploy/jobs.sh
+msg_ok "Set up Scheduled Jobs"
+
 motd_ssh
 customize
 cleanup_lxc

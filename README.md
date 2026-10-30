@@ -84,7 +84,8 @@ Settings are environment variables (`/etc/kith.env`, or `docker/.env`):
 
 The site title, tagline and welcome page text are set under Admin > Site settings.
 
-Two optional jobs run from the command line, for example from a systemd timer or cron:
+Two scheduled jobs. The Proxmox installer sets them up as systemd timers (`deploy/jobs.sh`); elsewhere run them
+from cron:
 
 - `flask --app app geocode run`: looks up map coordinates for places that have none (OpenStreetMap's Nominatim,
   one a second). Only place names leave the server.
