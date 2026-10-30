@@ -1,10 +1,9 @@
 import datetime
 import html as htmllib
+import subprocess
 
 import pytest
 from flask import g
-
-import subprocess
 
 import app as kith
 from app import home
@@ -70,7 +69,7 @@ def test_dates_to_fix(app, admin, guest):
         _, e1 = insert("events", {"gedcom": "tree1", "persfamID": ids["Baddate"], "eventtypeID": occu, "eventdate": "1/23/1733"})
         _, e2 = insert("events", {"gedcom": "tree1", "persfamID": ids["family"], "eventtypeID": cens, "eventdate": "sometime"})
     home_html = text(admin.get("/"))
-    assert "Dates to fix" in home_html and "Work through the list" in home_html
+    assert "Tidy up" in home_html and 'dates can\'t be read' in home_html and 'href="/dates-to-fix"' in home_html
     html = ""
     for n in range(1, 30):  # read every page
         page = text(admin.get(f"/dates-to-fix?page={n}"))
@@ -82,7 +81,7 @@ def test_dates_to_fix(app, admin, guest):
                  "sometime", f"/edit/event/{e2}", "Save as 23 Jan 1733"):
         assert part in html, part
     assert guest.get("/dates-to-fix").status_code == 403
-    assert "Dates to fix" not in text(guest.get("/"))
+    assert "Tidy up" not in text(guest.get("/"))
 
 
 def test_one_click_date_fix(app, admin, guest):
@@ -137,7 +136,27 @@ def test_dates_to_fix_paging_and_empty(app, admin, monkeypatch):
     assert "Previous" in text(admin.get("/dates-to-fix?page=2"))
     assert "Nothing to fix" in text(admin.get("/dates-to-fix?page=99999"))
     monkeypatch.setattr(home, "fix_count", lambda: 0)
-    assert "All dates are readable" in text(admin.get("/"))
+    assert "Still counting" in text(admin.get("/"))  # no background count yet: links without numbers
+    monkeypatch.setitem(home._tidy, "counts", {"places": 0, "typos": 0, "living": 0, "checks": 0})
+    assert "Nothing to tidy" in text(admin.get("/"))
+    monkeypatch.setitem(home._tidy, "counts", {"places": 0, "typos": 1, "living": 0, "checks": 12})
+    html = text(admin.get("/"))
+    assert "<strong>1</strong> <a href=\"/edit/places/tidy\">possible misspelled place</a>" in html
+    assert "<strong>12</strong> <a href=\"/edit/checks\">other data problems</a>" in html
+    assert "living mark" not in html and "Still counting" not in html and "dates can't be read" not in html
+
+
+def test_tidy_counts_in_background(app, admin, monkeypatch):
+    monkeypatch.setitem(home._tidy, "at", 0.0)  # stale: the next editor's home page starts a count
+    admin.get("/")
+    first = home._tidy["thread"]
+    admin.get("/")  # still counting: no second thread
+    assert home._tidy["thread"] is first
+    first.join(60)
+    counts = home._tidy["counts"]
+    assert set(counts) == {"places", "typos", "living", "checks"} and all(isinstance(n, int) for n in counts.values())
+    admin.get("/")  # fresh: no new count
+    assert home._tidy["thread"] is first
 
 
 def test_your_branch(app):
@@ -252,7 +271,7 @@ def test_public_page_contact_and_defaults(tmp_path, monkeypatch):
 
 def test_editor_home_order(admin):
     html = text(admin.get("/"))
-    assert html.index("Recently updated") < html.index("Dates to fix") < html.index("On this day")
+    assert html.index("Recently updated") < html.index("Tidy up") < html.index("On this day")
     assert "Make this site yours" not in html
 
 
@@ -261,7 +280,7 @@ def test_family_member_home_order(app):
     try:
         html = text(c.get("/"))
         assert html.index("Your branch") < html.index("On this day") < html.index("Recently updated")
-        assert "Dates to fix" not in html and "Make this site yours" not in html
+        assert "Tidy up" not in html and "Make this site yours" not in html
     finally:
         linked(app, "fx_nonotes", "")
 

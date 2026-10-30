@@ -34,6 +34,9 @@ def no_dev_db(monkeypatch):
     monkeypatch.setenv("KITH_DB_NAME", "no_such_db_in_tests")
     # The fixture accounts have TNG-style md5 passwords; strong hashing has its own test (test_account).
     monkeypatch.setenv("KITH_STRONG_PASSWORDS", "0")
+    # The home page's Tidy up counts run in a background thread; tests that want them start it themselves.
+    from app import home
+    monkeypatch.setattr(home, "_tidy", {"at": float("inf"), "counts": None, "thread": None})
 
 
 @pytest.fixture(scope="session")

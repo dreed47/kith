@@ -1,9 +1,11 @@
-"""Home page. Editors get what changed lately and dates that need fixing first; everyone else gets the family
+"""Home page. Editors get what changed lately and what needs tidying first; everyone else gets the family
 side first (your branch, on this day, photos). Logged-out visitors get a public welcome page with no family data.
 Also the "Dates to fix" list."""
 import datetime
+import threading
+import time
 
-from flask import abort, flash, g, redirect, render_template, request, url_for
+from flask import abort, current_app, flash, g, redirect, render_template, request, url_for
 
 from . import localtime
 from .dates import convert_date, describe, readings
@@ -67,6 +69,34 @@ def fix_count():
     return len(to_fix())
 
 
+TIDY_TTL = 600  # seconds a background count is shown before it's redone
+_tidy = {"at": 0.0, "counts": None, "thread": None}
+
+
+def tidy_counts():
+    """The slow counts for the Tidy up card (seconds each on a big tree): the last background count, or None
+    before the first one has finished (just after a restart). A stale count starts a new one, at most one at a time."""
+    if time.time() - _tidy["at"] > TIDY_TTL and not (_tidy["thread"] and _tidy["thread"].is_alive()):
+        _tidy["thread"] = threading.Thread(target=count_tidy, args=(current_app._get_current_object(), g.user),
+                                           daemon=True)
+        _tidy["thread"].start()
+    return _tidy["counts"]
+
+
+def count_tidy(app, user):
+    """Counted as the editor who asked (who may see living people) so the numbers match the pages they open."""
+    from .checks import CHECKS, run  # here, not at the top: these import this module's blueprint
+    from .edit_places import misspellings, place_counts, tidy_rows
+    from .living import report
+    with app.app_context():
+        g.user = user
+        places = place_counts()
+        _tidy.update(at=time.time(), counts={
+            "places": len(tidy_rows(places)), "typos": len(misspellings(places)),
+            "living": sum(len(people) for _, _, _, people, _ in report()),
+            "checks": sum(len(run(selects)) for _, _, selects in CHECKS)})
+
+
 def my_branch():
     """The logged-in user's own record with parents and grandparents."""
     me = g.user["personID"]
@@ -118,6 +148,7 @@ def home():
     days, day_total = on_this_day()
     from .news import HOME_COUNT, whats_new  # here, not at the top: news imports this module
     return render_template("home.html", news=whats_new(HOME_COUNT)[0], recent=recent_changes(), fix=fix_count() if editor else None,
+                           tidy=tidy_counts() if editor else None,
                            branch=my_branch(), days=days, day_total=day_total, photos=recent_photos(),
                            today=localtime.today())
 

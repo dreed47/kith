@@ -86,12 +86,19 @@
 {{ recent_card("Recently updated") }}
   {% if fix is not none %}
   <section class="card">
-    <h2 class="card-title">{{ icon("edit") }}Dates to fix</h2>
-    {% if fix %}
-    <p class="big-number"><strong>{{ "{:,}".format(fix) }}</strong> date{{ "" if fix == 1 else "s" }} can't be read, so they don't sort or count toward ages.</p>
-    <p><a class="btn primary" href="{{ url_for('main.dates_to_fix') }}">Work through the list</a></p>
-    {% else %}<p>All dates are readable. Nice.</p>{% endif %}
-    <p class="small"><a href="{{ url_for('edit.living_flags') }}">Check who's marked living</a> · <a href="{{ url_for('edit.checks') }}">Other data checks</a></p>
+    <h2 class="card-title">{{ icon("edit") }}Tidy up</h2>
+    {% macro row(n, one, many, endpoint) %}<li>{% if n is not none %}<strong>{{ "{:,}".format(n) }}</strong> {% endif %}<a href="{{ url_for(endpoint) }}">{{ one if n == 1 else many }}</a></li>{% endmacro %}
+    {% if fix == 0 and tidy and not (tidy.places or tidy.typos or tidy.living or tidy.checks) %}<p>Nothing to tidy. Nice.</p>
+    {% else %}
+    <ul class="tidy-list">
+      {% if fix %}{{ row(fix, "date can't be read", "dates can't be read", "main.dates_to_fix") }}{% endif %}
+      {% if not tidy or tidy.places %}{{ row(tidy.places if tidy else none, "place name to tidy", "place names to tidy", "edit.tidy_places") }}{% endif %}
+      {% if not tidy or tidy.typos %}{{ row(tidy.typos if tidy else none, "possible misspelled place", "possible misspelled places", "edit.tidy_places") }}{% endif %}
+      {% if not tidy or tidy.living %}{{ row(tidy.living if tidy else none, "person whose living mark looks wrong", "people whose living mark looks wrong", "edit.living_flags") }}{% endif %}
+      {% if not tidy or tidy.checks %}{{ row(tidy.checks if tidy else none, "other data problem", "other data problems", "edit.checks") }}{% endif %}
+    </ul>
+    {% if not tidy %}<p class="small muted">Still counting; the numbers show on your next visit.</p>{% endif %}
+    {% endif %}
   </section>
   {% endif %}
 </div>
