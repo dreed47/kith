@@ -85,6 +85,21 @@ def test_register_privacy(app):
     assert "Details are private." in html and "1980" not in html and "Living" in html
 
 
+def test_branch_book(app, admin):
+    ids = chain(app)
+    html = " ".join(text(admin.get(f"/book/{ids['Top']}?gens=4")).split())
+    assert "Descendants of" in html and "4 people in 4 generations" in html
+    for n, who in ((1, "Top"), (2, "Mid"), (3, "Low"), (4, "End")):
+        assert f'id="p{n}"' in html and f"/person/{ids[who]}" in html
+    assert "was born in Synthville" in html and 'class="book-entry"' in html
+    assert "3 people in 3 generations" in text(admin.get(f"/book/{ids['Top']}"))  # 3 by default
+    assert f"/book/{ids['Top']}" in text(admin.get(f"/register/{ids['Top']}"))
+    assert admin.get("/book/NOPE").status_code == 404
+    sql(app, "UPDATE people SET living = 1 WHERE personID = %s", (ids["End"],))
+    guest = " ".join(text(client_for(app, "fx_guest").get(f"/book/{ids['Top']}?gens=4")).split())
+    assert 'id="p4"' in guest and "Details are private." in guest
+
+
 def test_anniversaries_list(app, admin, monkeypatch):
     ids = make(app, ("Marchborn", "F", 0), ("Monthonly", "M", 0), ("Livmarch", "M", 1))
     for pid, date, tr in ((ids["Marchborn"], "5 MAR 1901", "1901-03-05"), (ids["Monthonly"], "MAR 1902", "1902-03-00"),

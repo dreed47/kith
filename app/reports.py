@@ -5,6 +5,7 @@ import datetime
 import re
 
 from flask import abort, redirect, render_template, request, url_for
+from markupsafe import Markup
 
 from . import localtime
 from .dates import display as display_date
@@ -65,14 +66,10 @@ def in_words(n, ordinal=False):
     return f"{n}{'th' if 11 <= n % 100 <= 13 else {1: 'st', 2: 'nd', 3: 'rd'}.get(n % 10, 'th')}"
 
 
-@bp.get("/register/<pid>")
-def register(pid):
-    """Each generation's people in sentences, with their marriages and numbered children. Every child gets the next
-    number when first listed; those with a family of their own get an entry in the next generation (the "+")."""
-    gens = gens_arg(DESCEND_GENS, 4)
-    root = one("SELECT * FROM people WHERE gedcom = %s AND personID = %s", (tree(), pid))
-    if not root:
-        abort(404)
+def descent(root, gens):
+    """Walk down from root for gens generations: (numbers {pid: n}, lineage, generations, fams, kids). Every child
+    gets the next number when first listed; those with a family of their own are in the next generation."""
+    pid = root["personID"]
     numbers, lineage, generations = {pid: 1}, {pid: []}, []
     fams, kids, current = {}, {}, [root]
     new_fams, depth = families_of([pid]), 0
@@ -92,6 +89,18 @@ def register(pid):
         depth += 1
         new_fams = families_of([c["personID"] for c in following]) if depth < gens else {}
         current = [c for c in following if c["personID"] in new_fams]  # childless and unmarried: the list says it all
+    return numbers, lineage, generations, fams, kids
+
+
+@bp.get("/register/<pid>")
+def register(pid):
+    """Each generation's people in sentences, with their marriages and numbered children (the "+" marks a child
+    with an entry in the next generation)."""
+    gens = gens_arg(DESCEND_GENS, 4)
+    root = one("SELECT * FROM people WHERE gedcom = %s AND personID = %s", (tree(), pid))
+    if not root:
+        abort(404)
+    numbers, lineage, generations, fams, kids = descent(root, gens)
     shown = {p["personID"] for gen in generations for p in gen}
     spouses = people_by_id([x for fs in fams.values() for f in fs for x in (f["husband"], f["wife"])])
     famcs = [s["famc"] for s in spouses.values() if s["famc"] and s["personID"] not in shown]
@@ -132,6 +141,20 @@ def story_life(timeline):
     return out
 
 
+def story_context(p, r):
+    """Everything story.html and _story.html need to tell p's life."""
+    pid = p["personID"]
+    fam = relatives(pid)
+    pf = fam["parent_fams"][0] if fam["parent_fams"] else None
+    born = children_by_family([pf["familyID"]]).get(pf["familyID"], []) if pf else []
+    place = next((i for i, c in enumerate(born, 1) if c["personID"] == pid), 0)
+    if any((c["birthdatetr"] or "0000-00-00") == "0000-00-00" for c in born):  # pymysql gives partial/zero dates as str
+        place = 0  # undated children sort last, so the place is a guess: say "one of"
+    detail = person_detail(p, r, fam)
+    return {"p": p, "r": r, **fam, **detail, "life": story_life(detail["timeline"]), "pf": pf,
+            "birth_order": (place, len(born)), "verbs": STORY_VERBS}
+
+
 @bp.get("/person/<pid>/story")
 def story(pid):
     """A person's life told in sentences, built from the record each time it's shown, so nothing written here is
@@ -142,15 +165,28 @@ def story(pid):
     r = rights(p)
     if not r["both"]:
         return redirect(url_for("main.person", pid=pid))
-    fam = relatives(pid)
-    pf = fam["parent_fams"][0] if fam["parent_fams"] else None
-    born = children_by_family([pf["familyID"]]).get(pf["familyID"], []) if pf else []
-    place = next((i for i, c in enumerate(born, 1) if c["personID"] == pid), 0)
-    if any((c["birthdatetr"] or "0000-00-00") == "0000-00-00" for c in born):  # pymysql gives partial/zero dates as str
-        place = 0  # undated children sort last, so the place is a guess: say "one of"
-    detail = person_detail(p, r, fam)
-    return render_template("story.html", p=p, r=r, **fam, **detail, life=story_life(detail["timeline"]), pf=pf,
-                           birth_order=(place, len(born)), verbs=STORY_VERBS)
+    return render_template("story.html", **story_context(p, r))
+
+
+@bp.get("/book/<pid>")
+def book(pid):
+    """A branch book: the life story of each of a person's descendants, numbered as in the register, made to be
+    printed (or saved as a PDF) from the browser. People whose details are private get their name only."""
+    # shortcut: every story is built on each visit (a second or so per 20 people); cache if big books get used
+    gens = gens_arg(DESCEND_GENS, 3)
+    root = one("SELECT * FROM people WHERE gedcom = %s AND personID = %s", (tree(), pid))
+    if not root:
+        abort(404)
+    numbers, lineage = descent(root, gens)[:2]
+    people = people_by_id(list(numbers))
+    entries = []
+    for x, n in sorted(numbers.items(), key=lambda kv: kv[1]):
+        if len(lineage[x]) >= gens:
+            continue  # the walk lists one more generation of children, the register's last list; the book stops here
+        r = rights(people[x])
+        entries.append((n, people[x], Markup(render_template("_story.html", **story_context(people[x], r), number=n))
+                        if r["both"] else None))
+    return render_template("book.html", root=root, gens=gens, choices=DESCEND_GENS, entries=entries)
 
 
 def dated_events(month, day=None, kinds=DEFAULT_KINDS):

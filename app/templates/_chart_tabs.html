@@ -4,7 +4,7 @@
   {% for endpoint, label in (("main.pedigree", "Pedigree"), ("main.vertical_pedigree", "Upward"), ("main.fan_chart", "Fan"),
                              ("main.ahnentafel", "Ahnentafel"), ("main.descendants", "Descendants"),
                              ("main.descendant_table", "Descendant table"),
-                             ("main.hourglass", "Hourglass"), ("main.register", "Register")) %}
+                             ("main.hourglass", "Hourglass"), ("main.register", "Register"), ("main.book", "Book")) %}
   {% if endpoint == current %}<strong aria-current="page">{{ label }}</strong>{% else %}<a href="{{ url_for(endpoint, pid=pid) }}">{{ label }}</a>{% endif %}
   {% endfor %}
 </p>

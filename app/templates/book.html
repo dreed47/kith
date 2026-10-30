@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% from "_macros.html" import gens_picker %}
+{% from "_chart_tabs.html" import chart_tabs %}
+{% block title %}Branch book: {{ pname(root) }} · {{ super() }}{% endblock %}
+{% block content %}
+<div class="no-print">
+  {{ chart_tabs(root.personID, "main.book") }}
+  {{ gens_picker(choices, gens) }}
+  <p class="muted small">The life story of everyone descended from {{ pname(root) }}, numbered as in the register. To make a PDF, use your browser's Print and choose "Save as PDF"; the menus are left out. More generations take longer to open.</p>
+</div>
+<header class="book-title">
+  <h1>Descendants of {{ pname(root) }}</h1>
+  <p class="lead">{{ entries|length }} {{ "person" if entries|length == 1 else "people" }} in {{ gens }} generations · {{ theme.site_title or "Family Tree" }}</p>
+</header>
+{% for n, p, story in entries %}
+{% if story %}{{ story }}
+{% else %}<article class="book-entry"><h2 id="p{{ n }}"><span class="reg-num">{{ n }}</span> {{ pname(p) }}</h2><p class="muted">Details are private.</p></article>
+{% endif %}
+{% endfor %}
+{% endblock %}
