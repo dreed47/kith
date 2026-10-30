@@ -18,6 +18,19 @@
     </table></div>
     {% else %}<p class="muted">Nothing to tidy.</p>{% endif %}
   </section>
+  <section class="card">
+    <h2 class="card-title">Possible misspellings <span class="muted">{{ typos|length }}</span></h2>
+    <p class="muted small">Names one word apart by what may be a typo ("Kittaning" and "Kittanning"). The box has the more used spelling. These are only guesses, so none start ticked: tick the ones that really are the same place.</p>
+    {% if typos %}
+    <div class="scroll-list"><table class="facts">
+      {% for r in typos %}{% set i = "t" ~ loop.index %}
+      <tr><td><input type="checkbox" name="apply" value="{{ i }}" aria-label="Rename to {{ r.to }}"></td>
+        <td class="small">{% for name, n in r.names %}<input type="hidden" name="from{{ i }}" value="{{ name }}"><a href="{{ url_for('places.place', name=name) }}">{{ name }}</a> <span class="muted">({{ n }})</span>{% if not loop.last %}<br>{% endif %}{% endfor %}</td>
+        <td><input name="to{{ i }}" value="{{ r.to }}" maxlength="248" aria-label="New name"></td></tr>
+      {% endfor %}
+    </table></div>
+    {% else %}<p class="muted">None found.</p>{% endif %}
+  </section>
   {% if g.user.allow_delete == 1 %}
   <section class="card">
     <h2 class="card-title">Unused places <span class="muted">{{ unused|length }}</span></h2>
@@ -33,7 +46,7 @@
     {% else %}<p class="muted">None.</p>{% endif %}
   </section>
   {% endif %}
-  {% if rows or unused %}<div class="form-actions sticky-actions"><button>Apply ticked changes</button></div>{% endif %}
+  {% if rows or typos or unused %}<div class="form-actions sticky-actions"><button>Apply ticked changes</button></div>{% endif %}
 </form>
 <script>
 document.querySelectorAll(".tick-all").forEach((b) => b.addEventListener("click", () => {

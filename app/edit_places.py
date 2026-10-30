@@ -132,6 +132,51 @@ def tidy_rows(counts):
     return rows
 
 
+def typo(a, b):
+    """Two different words one slip apart: a letter added, dropped, changed or swapped ("Kittaning", "Ctny"), or two
+    for long words. Short words, and words that differ in a digit ("Ward 1"), are different places, not typos."""
+    a, b = a.lower(), b.lower()
+    if a == b or min(len(a), len(b)) < 4 or any(c.isdigit() for c in a + b):
+        return False
+    limit = 2 if min(len(a), len(b)) >= 8 else 1
+    if abs(len(a) - len(b)) > limit:
+        return False
+    # Edit distance counting a swap of neighbours as one slip (optimal string alignment).
+    d = [[i + j if not i * j else 0 for j in range(len(b) + 1)] for i in range(len(a) + 1)]
+    for i in range(1, len(a) + 1):
+        for j in range(1, len(b) + 1):
+            d[i][j] = min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + (a[i - 1] != b[j - 1]))
+            if i > 1 and j > 1 and a[i - 1] == b[j - 2] and a[i - 2] == b[j - 1]:
+                d[i][j] = min(d[i][j], d[i - 2][j - 2] + 1)
+    return d[-1][-1] <= limit
+
+
+def misspellings(counts):
+    """Place names (in the house style) that differ in one word, by a typo: [{"names": [(name, records)], "to":
+    the name with the more used spelling}]. Only a guess, so an editor checks each one."""
+    styled = defaultdict(list)
+    for name, n in counts.items():
+        if n:
+            styled[standard(name)].append((name, n))
+    # Names that differ only in word i share the key "the words with word i blanked out", so only those are compared.
+    buckets, used = defaultdict(list), defaultdict(int)
+    for name, originals in styled.items():
+        words = name.replace(",", " ,").split()
+        for i in range(len(words)):
+            buckets[(*words[:i], None, *words[i + 1:])].append((words[i], name))
+            used[words[i].lower()] += sum(n for _, n in originals)
+    best = {}  # name to rename: (how used its replacement's spelling is, replacement); one suggestion per name
+    for entries in buckets.values():
+        for x, (wa, a) in enumerate(entries):
+            for wb, b in entries[x + 1:]:
+                if typo(wa, wb):
+                    # The spelling used most across all places wins ("Shannondale" over a one-off "Shannondle").
+                    (ka, keep), (kb, drop) = sorted([((-used[wa.lower()], a), a), ((-used[wb.lower()], b), b)])
+                    best[drop] = min(best.get(drop, (ka, keep)), (ka, keep))
+    return sorted(({"names": sorted(styled[drop], key=lambda x: -x[1]), "to": keep} for drop, (_, keep) in best.items()),
+                  key=lambda r: (r["to"], r["names"]))
+
+
 @bp.route("/places/tidy", methods=["GET", "POST"])
 def tidy_places():
     require("allow_edit")
@@ -164,7 +209,7 @@ def tidy_places():
     unused = query("SELECT * FROM places WHERE gedcom = %s ORDER BY place", (tree(),))
     used = {name.rstrip().lower() for name, n in counts.items() if n}  # the database ignores case and trailing spaces
     unused = [r for r in unused if r["place"].rstrip().lower() not in used]
-    return render_template("tidy_places.html", rows=tidy_rows(counts), unused=unused)
+    return render_template("tidy_places.html", rows=tidy_rows(counts), typos=misspellings(counts), unused=unused)
 
 
 def get_cemetery(cid):

@@ -1,4 +1,6 @@
 """Editing places (renaming everywhere, merging) and cemeteries."""
+import re
+
 import pytest
 from conftest import CSRF, client_for, make, sql
 
@@ -141,6 +143,35 @@ def test_tidy_places(app, admin):
                     {"place": "Xville, Xco Cnty, PA", "latitude": "41.1", "notes": "from the variant"}]
     assert sql(app, "SELECT COUNT(*) AS n FROM app_audit WHERE action = 'delete place'")[0]["n"] == 3
     assert not sql(app, "SELECT * FROM places WHERE place = ''")
+
+
+def test_typo():
+    from app.edit_places import typo
+    for a, b in (("Kittaning", "Kittanning"), ("Ctny", "Cnty"), ("Pittsburgh", "Pittsbrug"), ("Clarion", "Clarlon")):
+        assert typo(a, b), (a, b)
+    for a, b in (("East", "West"), ("Twp", "Two"), ("Ward1", "Ward2"), ("Same", "same"), ("Clarion", "Butler"),
+                 ("Indiana", "Indianapolis")):
+        assert not typo(a, b), (a, b)
+
+
+def test_tidy_misspellings(app, admin):
+    # A fresh made-up word per run, near no real place (letters only: a digit would make it not a typo).
+    tag = "".join("abcdefghij"[int(d)] for d in make(app, ("Tag", "F", 0))["Tag"] if d.isdigit())
+    good, bad, other = (f"Qz{tag}anning, Qzarm Cnty, PA", f"Qz{tag}aning, Qzarm Cnty, PA", f"Qz{tag}anning, Qzwest Cnty, PA")
+    pids = make(app, ("A", "F", 0), ("B", "F", 0))
+    sql(app, "UPDATE people SET birthplace = %s, deathplace = %s WHERE personID IN (%s, %s)",
+        (good, other, pids["A"], pids["B"]))
+    sql(app, "UPDATE people SET burialplace = %s WHERE personID = %s", (bad, pids["A"]))
+    page = text(admin.get("/edit/places/tidy"))
+    row = re.search(rf'name="apply" value="(t\d+)" aria-label="Rename to {good}">', page)
+    assert row, "no misspelling row"  # and not ticked to start with: it's a guess
+    i = row.group(1)
+    assert f'name="from{i}" value="{bad}"' in page and f'name="to{i}" value="{good}"' in page
+    assert f'name="from{i}" value="{other}"' not in page  # a different word in another part: not a typo
+    r = admin.post("/edit/places/tidy", data={"csrf": CSRF, "apply": i, f"from{i}": bad, f"to{i}": good})
+    assert r.status_code == 302
+    assert sql(app, "SELECT burialplace FROM people WHERE personID = %s", (pids["A"],))[0]["burialplace"] == good
+    assert f'value="{bad}"' not in text(admin.get("/edit/places/tidy"))
 
 
 def test_tidy_places_needs_edit_rights(app, guest):
