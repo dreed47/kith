@@ -46,5 +46,13 @@
     </div>
   </footer>{% endblock %}
   <script src="{{ url_for('static', filename='tz.js') }}"></script>
+  <script>
+    // Hovering a link to a person or family shows its ID (I123, F45). Delegated, so lists filled in later get it too.
+    document.addEventListener("mouseover", (e) => {
+      const a = e.target.closest?.("a[href]");
+      const m = a && !a.title && a.getAttribute("href").match(/^\/(?:person|family)\/([^/?#]+)$/);
+      if (m) a.title = decodeURIComponent(m[1]);
+    });
+  </script>
 </body>
 </html>
