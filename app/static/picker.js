@@ -1,7 +1,8 @@
-// Person picker: typing a name in an input with data-find lists matches under it; picking one puts that person's ID
-// in the box. Plain typing of an ID also works. A plain list, not a <datalist>: Android Chrome matches a datalist
-// only against option values (the IDs), so typed names showed nothing there.
-document.querySelectorAll("input[data-find]").forEach((input) => {
+// Person picker: typing a name in a .picker input with data-find lists matches under it; picking one puts that
+// person's ID in the box. Plain typing of an ID also works. A plain list, not a <datalist>: Android Chrome matches a
+// datalist only against option values (the IDs), so typed names showed nothing there. Not the header search, which
+// has data-find too but no list.
+document.querySelectorAll(".picker input[data-find]").forEach((input) => {
   const list = document.getElementById(input.id + "-list");
   const label = document.getElementById(input.id + "-name");
   let timer;
