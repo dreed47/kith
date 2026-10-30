@@ -4,6 +4,9 @@ import html as htmllib
 import pytest
 from flask import g
 
+import subprocess
+
+import app as kith
 from app import home
 from app.db import insert
 from app.home import ago, on_this_day
@@ -222,6 +225,17 @@ def test_public_welcome_page(app, plain_app):
     for private in ("Fixture", "Recently updated", "On this day", "/person/", "/media/"):
         assert private not in html, private
     assert c.get("/surnames").status_code == 302  # everything else still needs a login
+    assert f"Kith</a> {kith.version()}" in html
+
+
+def test_version(monkeypatch):
+    assert kith.version().startswith("0.1.0 (")  # a git checkout: the commit too
+    monkeypatch.setattr(subprocess, "run", lambda *a, **k: subprocess.CompletedProcess(a, 128, "", "not a repo"))
+    assert kith.version() == "0.1.0"  # a tarball or Docker copy
+    def missing(*a, **k):
+        raise FileNotFoundError("git")
+    monkeypatch.setattr(subprocess, "run", missing)
+    assert kith.version() == "0.1.0"  # no git installed
 
 
 def test_public_page_contact_and_defaults(tmp_path, monkeypatch):

@@ -32,7 +32,7 @@
       <a class="footer-brand" href="{{ url_for('main.home') }}"><span class="brand-mark">{{ icon("tree") }}</span>{{ theme.site_title or "Family Tree" }}</a>
       {% if g.user %}<p class="small muted">Something not right, or an idea? <a href="{{ url_for('feedback.new', **{'from': request.full_path.rstrip('?')}) }}">Send feedback</a></p>{% endif %}
       {% if g.user %}<p class="small muted"><a href="{{ url_for('account.profile') }}">Your account</a>: look of the site, password</p>{% endif %}
-      <p class="small muted">Built with <a href="https://github.com/dreed47/kith">Kith</a></p>
+      <p class="small muted">Built with <a href="https://github.com/dreed47/kith">Kith</a> {{ kith_version }}</p>
     </div>
   </footer>{% endblock %}
   <script src="{{ url_for('static', filename='tz.js') }}"></script>

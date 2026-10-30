@@ -1,5 +1,6 @@
 import os
 import secrets
+import subprocess
 import tomllib
 from pathlib import Path
 
@@ -16,6 +17,17 @@ THEMES_DIR = ROOT / "themes"
 def env(name, default=None):
     """A setting from the environment: KITH_<name>, or GENEALOGY_<name> as sites set up before the rename have it."""
     return os.environ.get(f"KITH_{name}", os.environ.get(f"GENEALOGY_{name}", default))
+
+
+def version():
+    """For the footer: pyproject's version, plus the commit when the code is a git checkout, e.g. "0.1.0 (34f4426)"."""
+    v = tomllib.loads((ROOT / "pyproject.toml").read_text())["project"]["version"]
+    try:  # safe.directory: the checkout is owned by root but the site runs as its own user
+        commit = subprocess.run(["git", "-C", str(ROOT), "-c", "safe.directory=*", "rev-parse", "--short", "HEAD"],
+                                capture_output=True, text=True, timeout=5).stdout.strip()
+    except (OSError, subprocess.SubprocessError):  # no git installed
+        commit = ""
+    return f"{v} ({commit})" if commit else v
 
 
 def secret_key(instance_dir):
@@ -127,6 +139,7 @@ def create_app(config=None):
     from .relations import phrase
     from .views import url_with
     app.jinja_env.globals.update(url_with=url_with, rel_phrase=phrase)
+    app.jinja_env.globals["kith_version"] = version()
     from .me import my_link_request, pending_count
     app.jinja_env.globals.update(my_link_request=my_link_request, pending_link_requests=pending_count)
     from .admin import waiting_count
