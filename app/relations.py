@@ -34,6 +34,29 @@ def graph():
     return _cache["graph"]
 
 
+def line_starts(g):
+    """{person with no parents in the tree: how many descendants they have}, for everyone with any. Worked out
+    once per family graph (it's cached; see graph())."""
+    if _cache.get("starts_for") is not g:
+        kids = {}
+        for child, fams in g["parents"].items():
+            for _, husband, wife in fams:
+                for x in (husband, wife):
+                    if x:
+                        kids.setdefault(x, set()).add(child)
+        counts = {}
+        for root in kids.keys() - g["parents"].keys():
+            seen, todo = set(), list(kids[root])
+            while todo:
+                x = todo.pop()
+                if x not in seen:
+                    seen.add(x)
+                    todo.extend(kids.get(x, ()))
+            counts[root] = len(seen)
+        _cache.update(starts_for=g, starts=counts)
+    return _cache["starts"]
+
+
 def ancestors(pid, g):
     """Every ancestor of pid (and pid itself): {id: (generations up, child on the way, that child's family)}."""
     found = {pid: (0, None, None)}

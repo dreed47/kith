@@ -12,7 +12,7 @@ from .dates import display as display_date
 from .db import query
 from .privacy import display_name as pname, families_filter, people_filter, rights
 from .search import same_name
-from .views import (DESCEND_GENS, bp, children_by_family, coordinates, families_of, gens_arg, map_pins, notes_for,
+from .views import (DESCEND_GENS, LINE_MIN, bp, children_by_family, coordinates, families_of, gens_arg, map_pins, notes_for,
                     one, people_by_id, person_detail, record_notes, relatives, tree, year_arg)
 
 KINDS = {"born": ("Birth", "birthdate"), "christened": ("Christening", "altbirthdate"),
@@ -230,7 +230,6 @@ def migration_map():
                            lines=lines)
 
 
-LINE_MIN = 10  # descendants a person needs to count as where a line begins
 LINES_SHOWN = 100  # the biggest lines; the rest are only counted
 
 
@@ -239,23 +238,7 @@ def lines():
     """Where the lines begin: for each surname, the earliest person with no parents in the tree and at least
     LINE_MIN descendants (the edge of the tree), the biggest lines first. Other such people of the same surname
     are only counted."""
-    g = relations.graph()
-    kids = {}
-    for child, fams in g["parents"].items():
-        for _, husband, wife in fams:
-            for x in (husband, wife):
-                if x:
-                    kids.setdefault(x, set()).add(child)
-    counts = {}
-    for root in kids.keys() - g["parents"].keys():
-        seen, todo = set(), list(kids[root])
-        while todo:
-            x = todo.pop()
-            if x not in seen:
-                seen.add(x)
-                todo.extend(kids.get(x, ()))
-        if len(seen) >= LINE_MIN:
-            counts[root] = len(seen)
+    counts = {pid: n for pid, n in relations.line_starts(relations.graph()).items() if n >= LINE_MIN}
     cond, params = people_filter("p")
     people = query(f"SELECT * FROM people p WHERE p.gedcom = %s AND {cond} AND p.lastname <> ''"
                    f" AND p.personID IN ({','.join(['%s'] * len(counts))})", [tree(), *params, *counts]

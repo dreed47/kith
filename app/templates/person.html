@@ -24,6 +24,7 @@
     {% if r.both %}
       {% if married_names %}<p class="muted">Later {{ married_names|join(", then ") }}</p>{% endif %}
       {% if p.nickname %}<p class="muted">Known as {{ p.nickname }}</p>{% endif %}
+      {% if line_begins %}{% set top, n = line_begins %}<p class="muted small">{{ n }} generation{{ "s" if n != 1 }} down from {{ person_link(top) }}, <a href="{{ url_for('main.lines') }}">where this {{ top.lastname }} line begins</a>.</p>{% endif %}
       {% set born, died = year(p.birthdatetr), year(p.deathdatetr) %}
       {% if born or died %}<p class="lifespan">{{ born or "?" }} – {{ died }}{% if age_at_death %} <span class="muted">(age {{ age_at_death }})</span>{% endif %}</p>{% endif %}
     {% endif %}

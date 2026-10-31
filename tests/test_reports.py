@@ -190,3 +190,21 @@ def test_where_lines_begin(app, admin, monkeypatch):
     assert "The biggest 1 of" in text(admin.get("/lines"))
     monkeypatch.setattr(reports, "LINE_MIN", 10 ** 6)
     assert "No lines with" in text(admin.get("/lines"))
+
+
+def test_line_begins_on_person_page(app, admin, monkeypatch):
+    from app import views
+    ids = chain(app)
+    monkeypatch.setattr(views, "LINE_MIN", 3)
+    relations.invalidate()
+    tag = sql(app, "SELECT lastname FROM people WHERE personID = %s", (ids["Top"],))[0]["lastname"]
+    html = " ".join(text(admin.get(f"/person/{ids['End']}")).split())
+    assert f'3 generations down from <a href="/person/{ids["Top"]}">' in html
+    assert f'where this {tag} line begins</a>' in html and 'href="/lines"' in html
+    assert "1 generation down" in " ".join(text(admin.get(f"/person/{ids['Mid']}")).split())
+    assert "generations down from" not in text(admin.get(f"/person/{ids['Top']}"))  # the start itself
+    sql(app, "UPDATE people SET lastname = 'OTHERNAME' WHERE personID = %s", (ids["End"],))
+    assert "down from" not in text(admin.get(f"/person/{ids['End']}"))  # another surname's line isn't hers
+    sql(app, "UPDATE people SET living = 1 WHERE personID = %s", (ids["Top"],))
+    guest = text(client_for(app, "fx_guest").get(f"/person/{ids['Mid']}"))
+    assert "down from" not in guest  # the start is hidden from this viewer

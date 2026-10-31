@@ -6,6 +6,7 @@ from .dates import display as display_date
 from .db import query
 from .files import is_image, is_url
 from .privacy import display_name, families_filter, media_filter, people_filter, rights
+from . import relations
 from .relations import relationship
 from .search import PER_PAGE, SORTS, aliases, same_name, surnames as stored_surnames, variants
 
@@ -621,6 +622,21 @@ def life_route(entries, spots):
     return [{k: s[k] for k in ("label", "place")} for s in stops], lines
 
 
+LINE_MIN = 10  # descendants a person needs to count as where a line begins (here and on Where the lines begin)
+
+
+def line_begins(p):
+    """(start of this person's surname line, generations down from them), or None: the furthest ancestor of the
+    same surname with no parents in the tree and at least LINE_MIN descendants (see Where the lines begin)."""
+    g = relations.graph()
+    starts, up = relations.line_starts(g), relations.ancestors(p["personID"], g)
+    ids = [x for x in up if up[x][0] > 0 and starts.get(x, 0) >= LINE_MIN]
+    same = [s for s in people_by_id(ids).values() if (s["lastname"] or "").upper() == (p["lastname"] or "").upper()
+            and s["lastname"] and rights(s)["both"]]
+    best = max(same, key=lambda s: up[s["personID"]][0], default=None)
+    return (best, up[best["personID"]][0]) if best else None
+
+
 def married_names(p, fam):
     """["Mary REED", ...]: her first name with each husband's surname, if it differs from hers, first marriage
     first. Husbands whose name the user can't see, and families they can't see, are left out."""
@@ -657,7 +673,8 @@ def person_detail(p, r, fam):
     return {"timeline": life, "pins": map_pins(life, spots), "route": stops if lines else [], "route_lines": lines, "notes": record_notes(notes), "biography": biography, "obituary": obituary,
             "citations": citations_for(pid), "media": media,
             "photo": photo, "photo_tag": face_tag(pid, photo),
-            "age_at_death": age_at(p["birthdatetr"], p["deathdatetr"]), "married_names": married_names(p, fam)}
+            "age_at_death": age_at(p["birthdatetr"], p["deathdatetr"]), "married_names": married_names(p, fam),
+            "line_begins": line_begins(p)}
 
 
 @bp.get("/person/<pid>")
