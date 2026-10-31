@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% from "_picker.html" import picker %}
-{% from "_macros.html" import person_link, lifespan %}
+{% from "_macros.html" import avatar, person_link, lifespan %}
 {% block title %}Relationship · {{ super() }}{% endblock %}
 {% macro chain(ids, people) %}
 <ol class="chain">{% for pid in ids %}<li>{{ person_link(people.get(pid)) }} {{ lifespan(people.get(pid)) }}</li>{% endfor %}</ol>
@@ -27,6 +27,11 @@
   <p class="relation-answer">{{ person_link(pb) }} is {{ before }}{{ person_link(pa) }}'s <strong>{{ after }}</strong>.</p>
   {% if rel.kind == "blood" or rel.kind == "marriage" %}
     {% if rel.kind == "marriage" %}<p class="muted">Through {{ "the spouse" if rel.side == "theirs" else "the marriage of" }} {{ person_link(rel.people.get(rel.via)) }}.</p>{% endif %}
+    <ol class="face-row" aria-label="From {{ pname(row[0]) }} to {{ pname(row[-1]) }}">
+      {% for p in row %}
+      <li{% if p.personID in rel.common %} class="common"{% endif %}><a href="{{ url_for('main.person', pid=p.personID) }}">{{ avatar(p, "lg") }}<span>{{ pname(p) }}</span></a>{{ lifespan(p) }}</li>
+      {% endfor %}
+    </ol>
     <p class="muted">Common ancestor{{ "s" if rel.common|length > 1 else "" }}:
       {% for c in rel.common %}{{ person_link(rel.people.get(c)) }}{{ " & " if not loop.last }}{% endfor %}</p>
     <div class="grid relation-paths">

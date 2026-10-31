@@ -288,6 +288,11 @@ details.menu li a:hover { background: var(--bg); }
 .chain { padding-left: 1.4rem; }
 .chain li { padding: 0.15rem 0; }
 .relation-paths h2 { font-size: 1rem; }
+.face-row { display: flex; flex-wrap: wrap; align-items: flex-start; gap: var(--space-3) 0; padding: 0; margin: var(--space-4) 0; list-style: none; }
+.face-row li { display: flex; flex-direction: column; align-items: center; text-align: center; width: 7rem; font-size: 0.85rem; position: relative; }
+.face-row li + li::before { content: "→"; position: absolute; left: -0.5rem; top: 1rem; color: var(--text-muted); }
+.face-row a { display: flex; flex-direction: column; align-items: center; gap: 0.3rem; }
+.face-row .common .avatar { outline: 3px solid var(--accent); outline-offset: 2px; }
 .relation-paths { display: grid; grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr)); gap: 0 var(--space-4); }
 .action-row { display: flex; flex-wrap: wrap; gap: 0.3rem 1.1rem; align-items: baseline; margin-top: var(--space-3); }
 

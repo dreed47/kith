@@ -885,5 +885,14 @@ def relationship_page():
     b = request.args.get("b", "").strip().upper()
     people = people_by_id([a, b])
     rel = describe_relationship(a, b) if a in people and b in people else None
+    row = []
+    if rel and rel["kind"] in ("blood", "marriage"):
+        # One line of faces: the first person, up to the common ancestor, down to the second; a marriage adds the
+        # spouse at the end it's on.
+        row = rel["path_a"] + rel["path_b"][::-1][1:]
+        if rel["kind"] == "marriage":
+            row = [a, *row] if rel["side"] == "theirs" else [*row, b]
+        found = people_by_id(row)
+        row = [found[x] for x in row if x in found]
     return render_template("relationship.html", a=a, b=b, pa=people.get(a), pb=people.get(b), rel=rel,
-                           asked=bool(a and b))
+                           asked=bool(a and b), row=row)

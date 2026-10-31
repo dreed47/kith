@@ -166,6 +166,13 @@ def test_relationship_page(app, admin):
         assert "father-in-law" in html and "Through the spouse" in html
         html = text(c.get("/relationship?a=XGPA&b=XWIFE"))
         assert "daughter-in-law" in html and "Through the marriage of" in html
+        row = text(c.get("/relationship?a=XKID&b=XGGPA")).split('class="face-row"')[1].split("</ol>")[0]
+        assert [x for x in ("XKID", "XHUSB", "XGPA", "XGGPA") if f"/person/{x}" in row] == ["XKID", "XHUSB", "XGPA", "XGGPA"]
+        assert row.index("/person/XKID") < row.index("/person/XGGPA") and 'class="common"' in row
+        row = text(c.get("/relationship?a=XWIFE&b=XGPA")).split('class="face-row"')[1].split("</ol>")[0]
+        assert row.index("/person/XWIFE") < row.index("/person/XHUSB") < row.index("/person/XGPA")  # her husband's father
+        row = text(c.get("/relationship?a=XGPA&b=XWIFE")).split('class="face-row"')[1].split("</ol>")[0]
+        assert row.index("/person/XGPA") < row.index("/person/XHUSB") < row.index("/person/XWIFE")
         assert "How are they related?" in text(admin.get("/relationship")) and "Choose two" not in text(admin.get("/relationship"))
     finally:
         linked(app, "fx_nonotes", "")
