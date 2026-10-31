@@ -606,6 +606,21 @@ def map_pins(entries, spots=None):
     return list(pins.values())
 
 
+def life_route(entries, spots):
+    """The places of a life in the order of its events, for a line through them on the map: (stops: [{label,
+    place}], lines: [[from, to, approximate]]). Events with no date are left out (their place in the order isn't
+    known), except birth, death and burial; a stop is added only where the place changes."""
+    stops = []
+    for x in entries:
+        spot = spots.get((x["place"] or "").lower())
+        if not spot or (x["group"] == 1 and x["tr"] == "0000-00-00"):
+            continue
+        if not stops or stops[-1]["spot"][:2] != spot[:2]:
+            stops.append({"label": x["label"], "place": x["place"], "spot": spot})
+    lines = [[a["spot"][:2], b["spot"][:2], bool(a["spot"][2] or b["spot"][2])] for a, b in zip(stops, stops[1:])]
+    return [{k: s[k] for k in ("label", "place")} for s in stops], lines
+
+
 def married_names(p, fam):
     """["Mary REED", ...]: her first name with each husband's surname, if it differs from hers, first marriage
     first. Husbands whose name the user can't see, and families they can't see, are left out."""
@@ -637,7 +652,9 @@ def person_detail(p, r, fam):
         x["scans"] = scans.get((f["familyID"], x["key"].rsplit("-", 1)[1].upper() if x.get("family") else x["key"])
                                if f else (pid, x["key"]), [])
     photo = main_photo(media)
-    return {"timeline": life, "pins": map_pins(life), "notes": record_notes(notes), "biography": biography, "obituary": obituary,
+    spots = coordinates(x["place"] for x in life)
+    stops, lines = life_route(life, spots)
+    return {"timeline": life, "pins": map_pins(life, spots), "route": stops if lines else [], "route_lines": lines, "notes": record_notes(notes), "biography": biography, "obituary": obituary,
             "citations": citations_for(pid), "media": media,
             "photo": photo, "photo_tag": face_tag(pid, photo),
             "age_at_death": age_at(p["birthdatetr"], p["deathdatetr"]), "married_names": married_names(p, fam)}

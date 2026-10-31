@@ -243,6 +243,17 @@ def test_map_of_life_events(app):
                     {"lat": 41.2, "lon": -79.4, "approx": "Sligo, PA",
                      "events": [{"label": "Burial", "date": "", "place": "Xnear, PA"}]}]
     assert "personmap.js" in html and "leaflet/leaflet.js" in html
+    lines = json.loads(html.split("data-lines='")[1].split("'")[0])
+    assert lines == [[[41.1, -79.5], [41.2, -79.4], True]]  # death in the birth town adds no stop; dashed: approximate
+    assert "The line, in order: Birth, Xmaptown, PA → Burial, Xnear, PA." in " ".join(html.split())
+    with app.app_context():  # a dated event in between is a stop; an undated one has no known place in the order
+        et = sql(app, "SELECT eventtypeID FROM eventtypes WHERE type = 'I' AND tag = 'OCCU'")[0]["eventtypeID"]
+        insert("events", {"gedcom": "tree1", "persfamID": ids["Mapped"], "eventtypeID": et, "eventdate": "1900",
+                          "eventdatetr": "1900-00-00", "eventplace": "Xnear, PA"})
+        insert("events", {"gedcom": "tree1", "persfamID": ids["Mapped"], "eventtypeID": et, "eventplace": "Xmaptown, PA",
+                          "info": "farmer"})
+    html = " ".join(text(guest.get(f"/person/{ids['Mapped']}")).split())
+    assert "Birth, Xmaptown, PA → Occupation, Xnear, PA → Death, Xmaptown, PA → Burial, Xnear, PA." in html
     assert "person-map" not in text(guest.get(f"/person/{ids['Unmapped']}"))  # no usable coordinates
     assert "person-map" not in text(guest.get(f"/person/{ids['Alive']}"))  # living: the guest sees no events
 

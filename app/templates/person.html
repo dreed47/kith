@@ -159,7 +159,8 @@
 {% if r.both and pins %}
 <section class="card"><h2>Map</h2>
   <link rel="stylesheet" href="{{ url_for('static', filename='leaflet/leaflet.css') }}">
-  <div id="person-map" class="person-map" role="region" aria-label="Map of {{ pname(p) }}'s life events" data-pins='{{ pins|tojson }}'></div>
+  <div id="person-map" class="person-map" role="region" aria-label="Map of {{ pname(p) }}'s life events" data-pins='{{ pins|tojson }}' data-lines='{{ route_lines|tojson }}'></div>
+  {% if route %}<p class="small">The line, in order: {% for s in route %}{{ s.label }}, {{ s.place }}{{ " → " if not loop.last }}{% endfor %}.</p>{% endif %}
   <p class="muted small">Where the places in the life events are. A faint, dashed circle is approximate: only the town or county in the place name could be found. Places without coordinates aren't shown.</p>
   <script src="{{ url_for('static', filename='leaflet/leaflet.js') }}" defer></script>
   <script src="{{ url_for('static', filename='personmap.js') }}" defer></script>
