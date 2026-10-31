@@ -138,7 +138,8 @@ def merge():
                                          " OR wife = %s)", (t, keep, keep))}
     before = {"kept": a, "merged": b,
               **{f"{table}.{col}": query(f"SELECT * FROM {table} WHERE gedcom = %s AND {col} = %s", (t, dup))
-                 for table, col in (*LINKS, *UNIQUE_LINKS, ("children", "personID"), ("app_face_tags", "personID"))},
+                 for table, col in (*LINKS, *UNIQUE_LINKS, ("children", "personID"), ("app_face_tags", "personID"),
+                                   ("app_census_links", "personID"))},
               "spouse families": query("SELECT * FROM families WHERE gedcom = %s AND (husband = %s OR wife = %s)",
                                        (t, dup, dup))}
     chosen = {f: b[f] for k, (_, fields) in CHOICES.items() if request.form.get(k) == "b" for f in fields}
@@ -156,6 +157,7 @@ def merge():
     execute("UPDATE users SET personID = %s WHERE personID = %s", (keep, dup))
     execute("UPDATE app_link_requests SET personID = %s WHERE personID = %s", (keep, dup))
     execute("UPDATE app_face_tags SET personID = %s WHERE gedcom = %s AND personID = %s", (keep, t, dup))
+    execute("UPDATE app_census_links SET personID = %s WHERE gedcom = %s AND personID = %s", (keep, t, dup))
     before["comments"] = query("SELECT * FROM app_comments WHERE gedcom = %s AND kind = 'person' AND target = %s",
                                (t, dup))
     execute("UPDATE app_comments SET target = %s WHERE gedcom = %s AND kind = 'person' AND target = %s", (keep, t, dup))

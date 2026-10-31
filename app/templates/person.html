@@ -140,14 +140,14 @@
       <div class="when">{{ x.date|d }}{% if x.event and x.event.empty %}<span class="muted small">(empty)</span>{% endif %}
         {% if x.age %}<span class="age">age {{ x.age }}</span>{% endif %}</div>
       <div class="what">
-        <strong>{{ x.label }}</strong>{% if x.family %} {{ "to" if x.label == "Marriage" else "from" }} {% if x.spouse %}{{ person_link(x.spouse) }}{% else %}<a href="{{ url_for('main.family', fid=x.family.familyID) }}">unknown spouse</a>{% endif %}{% endif %}{% if x.household %} with <a href="{{ url_for('main.family', fid=x.household.familyID) }}">family</a>{% endif %}{% if x.place %} · {{ place_link(x.place) }}{% endif %}
+        <strong>{{ x.label }}</strong>{% if x.family %} {{ "to" if x.label == "Marriage" else "from" }} {% if x.spouse %}{{ person_link(x.spouse) }}{% else %}<a href="{{ url_for('main.family', fid=x.family.familyID) }}">unknown spouse</a>{% endif %}{% endif %}{% if x.household %} with <a href="{{ url_for('main.family', fid=x.household.familyID) }}">family</a>{% endif %}{% if x.counted_with %} with {{ person_link(x.counted_with) }}{% endif %}{% if x.place %} · {{ place_link(x.place) }}{% endif %}
         {% if x.event %}{{ event_details(x.event) }}{% endif %}
         {{ address_lines(x.address) }}
         {% if x.info %}{{ longtext(x.info) }}{% endif %}
         {{ scans(x.scans) }}
         {{ fact_notes(x.notes) }}
       </div>
-      <span class="row-edit small">{% if g.user.allow_edit == 1 %}<a href="{{ url_for('edit.event', eid=x.event.eventID) if x.event else url_for('edit.family', fid=x.family.familyID) ~ '#marriage' if x.family else url_for('edit.person', pid=p.personID) ~ '#event-' ~ x.field }}" aria-label="Edit {{ x.label }}">Edit</a>{% if not x.family and not x.household %} · {% endif %}{% endif %}{% if not x.family and not x.household %}{{ add_fact_note(p.personID, x.key, x.label) }}{% endif %}</span>
+      <span class="row-edit small">{% if g.user.allow_edit == 1 %}<a href="{{ url_for('edit.event', eid=x.event.eventID) if x.event else url_for('edit.family', fid=x.family.familyID) ~ '#marriage' if x.family else url_for('edit.person', pid=p.personID) ~ '#event-' ~ x.field }}" aria-label="Edit {{ x.label }}">Edit</a>{% if not x.family and not x.household and not x.counted_with %} · {% endif %}{% endif %}{% if not x.family and not x.household and not x.counted_with %}{{ add_fact_note(p.personID, x.key, x.label) }}{% endif %}</span>
     </li>
     {% endfor %}
   </ol>

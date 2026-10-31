@@ -201,7 +201,7 @@ def create_app(config=None):
         return response
 
     db.init_app(app)
-    from . import account, admin, auth, backups, charts, checks, comments, digest, edit, edit_events, edit_family, edit_media, edit_places, event_types, feedback, gedcom, geocode, gedcom_import, home, legacy, living, me, media, merge, news, places, reports, setup, sources, statistics, surname_aliases, timeline, views, watch  # noqa: F401 (backups/edit_*/gedcom/home/reports add routes)
+    from . import account, admin, auth, backups, charts, checks, comments, digest, edit, edit_events, edit_family, edit_media, edit_places, event_types, feedback, gedcom, geocode, gedcom_import, home, legacy, living, me, media, merge, news, places, reports, setup, sources, statistics, surname_aliases, census_links, timeline, views, watch  # noqa: F401 (backups/edit_*/gedcom/home/reports add routes)
     app.register_blueprint(auth.bp)
     app.register_blueprint(views.bp)
     app.register_blueprint(media.bp)

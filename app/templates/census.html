@@ -2,7 +2,7 @@
 {% block title %}Census by year · {{ super() }}{% endblock %}
 {% block content %}
 <h1>Census by year</h1>
-<p><a href="{{ url_for('places.places') }}">Places</a></p>
+<p><a href="{{ url_for('places.places') }}">Places</a>{% if g.user.allow_edit == 1 %} · <a href="{{ url_for('edit.census_matches') }}">Census matches</a>{% endif %}</p>
 {% if years %}
 <ul class="surnames">
   {% for y, n in years %}<li><a href="{{ url_for('places.census', year=y|int) }}">{{ y }}</a> <span class="muted">{{ n }}</span></li>{% endfor %}

@@ -216,9 +216,19 @@ def census(year):
             fid = family_of(r["persfamID"], place)
             key = (place, fid or "person " + r["persfamID"])
         h = households.setdefault(key, {"family": fams.get(key[1]), "people": [], "records": []})
+        r["household"] = h
         if r["type"] == "I" and folks.get(r["persfamID"]):
             h["people"].append(folks[r["persfamID"]])
         h["records"] += [r] if r["info"] else []
+    # People an editor matched to lines of these records (census_links) are counted in that household too.
+    by_event = {r["eventID"]: r["household"] for r in rows}
+    links = query("SELECT eventID, personID FROM app_census_links WHERE gedcom = %s AND personID IS NOT NULL"
+                  f" AND eventID IN ({','.join(['%s'] * len(by_event))})", [tree(), *by_event])
+    linked = people_by_id([x["personID"] for x in links])
+    for x in links:
+        p, h = linked.get(x["personID"]), by_event[x["eventID"]]
+        if p and rights(p)["both"] and p not in h["people"]:
+            h["people"].append(p)
     spouses = people_by_id([x for h in households.values() if h["family"]
                             for x in (h["family"]["husband"], h["family"]["wife"])])
     for h in households.values():

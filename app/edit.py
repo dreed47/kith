@@ -415,6 +415,8 @@ def delete_person(pid):
     comments = query("SELECT * FROM app_comments WHERE gedcom = %s AND kind = 'person' AND target = %s", (t, pid))
     execute("DELETE FROM app_comments WHERE gedcom = %s AND kind = 'person' AND target = %s", (t, pid))
     execute("DELETE FROM app_watches WHERE gedcom = %s AND personID = %s", (t, pid))
+    census = query("SELECT * FROM app_census_links WHERE gedcom = %s AND personID = %s", (t, pid))
+    execute("DELETE FROM app_census_links WHERE gedcom = %s AND personID = %s", (t, pid))
     execute("DELETE FROM people WHERE gedcom = %s AND personID = %s", (t, pid))
     execute("DELETE FROM children WHERE gedcom = %s AND personID = %s", (t, pid))
     delete_owned(pid, links)
@@ -439,6 +441,7 @@ def delete_person(pid):
             refresh_haskids(f["wife"])
 
     audit("delete person", "people", pid, {"people": p, **links, "app_face_tags": faces, "app_comments": comments,
+                                                   "app_census_links": census,
                                                    "removed_families": removed_families}, None)
     flash(f"Deleted {pname(p)} ({pid}).")
     parents = [c["familyID"] for c in links["children"]]

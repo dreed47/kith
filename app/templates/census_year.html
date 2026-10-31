@@ -9,7 +9,7 @@
   <h2>{% if place %}<a href="{{ url_for('places.place', name=place) }}">{{ place }}</a>{% else %}Place not recorded{% endif %}</h2>
   <ul class="census-households">
     {% for h in households %}
-    <li>{% if h.family %}<a href="{{ url_for('main.family', fid=h.family.familyID) }}">{% for p in h.heads %}{{ pname(p) }}{{ " & " if not loop.last }}{% endfor %}</a>{% else %}{{ person_link(h.heads[0]) }}{% endif %}
+    <li>{% if h.family %}<a href="{{ url_for('main.family', fid=h.family.familyID) }}">{% for p in h.heads %}{{ pname(p) }}{{ " & " if not loop.last }}{% endfor %}</a>{% else %}{% for p in h.people %}{{ person_link(p) }}{{ ", " if not loop.last }}{% endfor %}{% endif %}
       {% if h.family and h.people %}<span class="small muted">Counted:</span> {% for p in h.people %}{{ person_link(p) }}{{ ", " if not loop.last }}{% endfor %}{% endif %}
       {% for r in h.records %}<details><summary class="small">Census details</summary><div class="pre small">{{ r.info }}</div></details>{% endfor %}
     </li>

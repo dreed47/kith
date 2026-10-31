@@ -441,10 +441,11 @@ def main_photo(media):
                default=None)
 
 
-def timeline(p, events, families=(), folks=None, households=()):
+def timeline(p, events, families=(), folks=None, households=(), linked=()):
     """Birth and christening first, then events and marriages by date (undated last), then death and burial.
     Marriages and divorces live on the family record; families whose details the user can't see are left out.
-    Censuses recorded on a family the person was a child or spouse in (households) show too."""
+    Censuses recorded on a family the person was a child or spouse in (households) show too, and censuses whose
+    transcription an editor matched a line of to this person (linked: [(event, family or person it's on)])."""
     entries = []
     alt = p["altbirthtype"] if p["altbirthtype"] in ALT_BIRTH else "CHR"
     for order, (label, key, tag) in enumerate((("Birth", "birth", "BIRT"), (ALT_BIRTH[alt], "altbirth", alt),
@@ -476,10 +477,31 @@ def timeline(p, events, families=(), folks=None, households=()):
                 entries.append({"label": e["display"], "date": e["eventdate"], "tr": str(e["eventdatetr"]),
                                 "place": e["eventplace"], "info": e["info"], "address": e["address"], "event": e,
                                 "household": f, "group": 1, "order": 0, "key": str(e["eventID"])})
+    shown = {x["key"] for x in entries}
+    for e, owner in linked:
+        if str(e["eventID"]) not in shown and rights(owner)["both"]:
+            entries.append({"label": e["display"], "date": e["eventdate"], "tr": str(e["eventdatetr"]),
+                            "place": e["eventplace"], "info": e["info"], "address": e["address"], "event": e,
+                            "household" if "familyID" in owner else "counted_with": owner, "group": 1, "order": 0,
+                            "key": str(e["eventID"])})
     entries.sort(key=lambda x: (x["group"], x["tr"] == "0000-00-00", x["tr"], x["order"]))
     for x in entries:
         x["age"] = age_at(p["birthdatetr"], x["tr"]) if x["label"] != "Birth" else None
     return entries
+
+
+def linked_census(pid):
+    """Census records on someone else (a family or a person) with a line an editor matched to this person."""
+    out = []
+    for r in query("SELECT DISTINCT e.eventID, e.persfamID FROM app_census_links l JOIN events e"
+                   " ON e.gedcom = l.gedcom AND e.eventID = l.eventID WHERE l.gedcom = %s AND l.personID = %s"
+                   " AND e.persfamID <> %s", (tree(), pid, pid)):
+        owner = one("SELECT * FROM families WHERE gedcom = %s AND familyID = %s", (tree(), r["persfamID"])) or one(
+            "SELECT * FROM people WHERE gedcom = %s AND personID = %s", (tree(), r["persfamID"]))
+        e = next((e for e in events_for(r["persfamID"]) if e["eventID"] == r["eventID"]), None)
+        if owner and e:
+            out.append((e, owner))
+    return out
 
 
 def child_order():
@@ -568,7 +590,8 @@ def person_detail(p, r, fam):
     biography = [n for n in notes.get("", []) if n["ordernum"] < 0]  # see edit_events.set_biography
     notes[""] = [n for n in notes.get("", []) if n["ordernum"] >= 0]
     obituary = notes.pop("DEAT", [])  # notes about the death: GEDCOM's place for an obituary
-    life = timeline(p, events_for(pid), fam["spouse_fams"], fam["folks"], fam["parent_fams"] + fam["spouse_fams"])
+    life = timeline(p, events_for(pid), fam["spouse_fams"], fam["folks"], fam["parent_fams"] + fam["spouse_fams"],
+                    linked_census(pid))
     scans = fact_media([pid, *(f["familyID"] for f in fam["parent_fams"] + fam["spouse_fams"])])
     for x in life:
         x["notes"] = notes.pop(x["key"], [])

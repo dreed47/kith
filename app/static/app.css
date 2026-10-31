@@ -105,6 +105,7 @@ a:hover { text-decoration-color: currentColor; }
 .stat-label, .muted { color: var(--text-muted); }
 .surnames { columns: 12rem; padding: 0; list-style: none; }
 .census-households li { margin: 0.4rem 0; }
+.census-line { border-top: 1px solid var(--border); padding: 0.4rem 0; }
 .linklike { background: none; border: 0; padding: 0; font: inherit; cursor: pointer; text-decoration: underline; color: var(--link); }
 
 /* ---------- Forms and buttons ---------- */
