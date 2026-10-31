@@ -41,9 +41,11 @@ The screenshots show the made-up sample family that comes with Kith.
 - Privacy: living people are hidden from those who may not see them. Accounts have roles, and relatives can ask
   for an account and say "this is me".
 - Editing on the site: add relatives, merge duplicates, tidy place names (spellings, misspellings, record titles
-  where a place should be), link surname spellings, and data checks for impossible dates.
+  where a place should be), link surname spellings, and data checks for impossible dates and death dates that
+  differ from the obituary.
 - GEDCOM import (with undo) and export.
 - What's new, watching a person, and an optional weekly email.
+- Admin page with what's waiting, recent visits, and what's changed on the site lately (from its git history).
 - Five themes, which each person can choose for themselves, including large print.
 
 ## Install
