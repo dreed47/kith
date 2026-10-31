@@ -599,6 +599,19 @@ def map_pins(entries, spots=None):
     return list(pins.values())
 
 
+def married_names(p, fam):
+    """["Mary REED", ...]: her first name with each husband's surname, if it differs from hers, first marriage
+    first. Husbands whose name the user can't see, and families they can't see, are left out."""
+    out = []
+    for f in fam["spouse_fams"]:
+        h = fam["folks"].get(f["husband"])
+        if (f["wife"] == p["personID"] and h and h["lastname"] and rights(f)["both"] and rights(h)["living"]
+                and h["lastname"].upper() != (p["lastname"] or "").upper()):
+            name = " ".join(x for x in (p["firstname"], h["lnprefix"], h["lastname"]) if x)
+            out += [name] if name not in out else []
+    return out
+
+
 def person_detail(p, r, fam):
     """Life events (each with its notes), the other notes, sources and media of someone the user may see in full."""
     pid = p["personID"]
@@ -620,7 +633,7 @@ def person_detail(p, r, fam):
     return {"timeline": life, "pins": map_pins(life), "notes": record_notes(notes), "biography": biography, "obituary": obituary,
             "citations": citations_for(pid), "media": media,
             "photo": photo, "photo_tag": face_tag(pid, photo),
-            "age_at_death": age_at(p["birthdatetr"], p["deathdatetr"])}
+            "age_at_death": age_at(p["birthdatetr"], p["deathdatetr"]), "married_names": married_names(p, fam)}
 
 
 @bp.get("/person/<pid>")

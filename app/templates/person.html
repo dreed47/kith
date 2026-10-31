@@ -22,6 +22,7 @@
   <div class="person-summary">
     <h1>{{ pname(p) }}</h1>
     {% if r.both %}
+      {% if married_names %}<p class="muted">Later {{ married_names|join(", then ") }}</p>{% endif %}
       {% if p.nickname %}<p class="muted">Known as {{ p.nickname }}</p>{% endif %}
       {% set born, died = year(p.birthdatetr), year(p.deathdatetr) %}
       {% if born or died %}<p class="lifespan">{{ born or "?" }} – {{ died }}{% if age_at_death %} <span class="muted">(age {{ age_at_death }})</span>{% endif %}</p>{% endif %}

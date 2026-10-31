@@ -254,3 +254,19 @@ def test_relatives_show_their_photo(admin, media_ids):
     assert '<li class="person-row"><span class="avatar' in html  # initials for her
     family = admin.get("/family/XFAM").get_data(as_text=True)  # and everywhere else a circle shows
     assert f'<li class="person-row"><img class="avatar " src="/media/{media_ids["plain"]}/thumb"' in family
+
+
+def test_married_names(app, admin):
+    ids = make(app, ("Mary", "F", 0), ("Ned", "M", 0), ("Otto", "M", 0), ("Same", "M", 0), ("Alive", "M", 1))
+    sql(app, "UPDATE people SET lastname = 'LEWIS' WHERE personID = %s", (ids["Mary"],))
+    for who, last in (("Ned", "REED"), ("Otto", "SMITH"), ("Same", "LEWIS"), ("Alive", "JONES")):
+        sql(app, "UPDATE people SET lastname = %s WHERE personID = %s", (last, ids[who]))
+    with app.app_context():
+        for n, who in enumerate(("Ned", "Otto", "Same", "Alive"), 1):
+            insert("families", {"gedcom": "tree1", "familyID": f"{ids['Mary']}F{n}", "husband": ids[who],
+                                "wife": ids["Mary"], "wifeorder": n, "living": int(who == "Alive")})
+    html = text(admin.get(f"/person/{ids['Mary']}"))
+    assert "Later Mary REED, then Mary SMITH, then Mary JONES" in html  # her own surname again isn't news
+    guest = text(client_for(app, "fx_guest").get(f"/person/{ids['Mary']}"))
+    assert "Later Mary REED, then Mary SMITH<" in guest  # a living husband's name stays hidden
+    assert "Later" not in text(admin.get(f"/person/{ids['Ned']}"))
