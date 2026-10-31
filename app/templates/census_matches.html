@@ -16,6 +16,7 @@
     <form method="post" class="small">
       <input type="hidden" name="csrf" value="{{ csrf_token() }}"><input type="hidden" name="event" value="{{ r.event.eventID }}"><input type="hidden" name="line" value="{{ x.line }}"><input type="hidden" name="text" value="{{ x.text }}"><input type="hidden" name="person" value="{{ p.personID }}">
       <button class="small-button" aria-label="Yes, {{ x.name }} is {{ pname(p) }}">Yes</button> {{ person_link(p) }}{% if p.birthdate %} <span class="muted">born {{ p.birthdate|d }}</span>{% endif %}{% if score == 3 %} <span class="muted">· name and age fit</span>{% elif score == 1 %} <span class="muted">· first name only{% if x.age is not none and p.birthdate %}, age doesn't fit{% endif %}</span>{% endif %}
+      {% if not p.birthdate and x.age is not none and r.year != "0000" %}<label class="small"><input type="checkbox" name="birth" value="abt {{ r.year|int - x.age }}"> and set birth to abt {{ r.year|int - x.age }} ({{ x.age }} in {{ r.year }})</label>{% endif %}
     </form>
     {% endfor %}
     <form method="post" class="small">

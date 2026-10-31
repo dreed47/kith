@@ -7,8 +7,10 @@ from functools import lru_cache
 
 from flask import flash, g, redirect, render_template, request, url_for
 
-from .db import execute, query
-from .edit import audit, bp, require
+from .dates import convert_date
+from .db import execute, query, update
+from .edit import audit, bp, get_person, now, require
+from .privacy import rights
 from .views import tree
 
 ROLES = {"head", "wife", "husband", "spouse", "son", "daughter", "daughte", "mother", "father", "brother", "sister",
@@ -142,6 +144,13 @@ def census_matches():
             execute("REPLACE INTO app_census_links (gedcom, eventID, line, line_text, personID, decided_by, decided_at)"
                     " VALUES (%s, %s, %s, %s, %s, %s, NOW())", (tree(), eid, line, text, pid, g.user["username"]))
             audit("census match" if pid else "census no match", "app_census_links", f"{eid}:{line}", None, row)
+            birth = request.form.get("birth", "")
+            p = get_person(pid) if pid and re.fullmatch(r"abt \d{4}", birth) else None
+            if p and not p["birthdate"] and rights(p)["both"]:  # only fills an empty birth date, never replaces one
+                update("people", {"birthdate": birth, "birthdatetr": convert_date(birth), "changedate": now(),
+                                  "changedby": g.user["username"]}, {"gedcom": tree(), "personID": pid})
+                audit("edit person", "people", pid, p, get_person(pid))
+                flash(f"Birth set to {birth}.")
         return redirect(url_for("edit.census_matches"))
     todo = suggestions()
     recent = query("SELECT l.*, p.firstname, p.lastname, p.living, p.private, p.personID AS pid FROM app_census_links l"

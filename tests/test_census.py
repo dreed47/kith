@@ -107,7 +107,12 @@ def test_census_matches(app, admin):
     post = lambda **f: admin.post("/edit/census", data={"csrf": "x", "event": eid, **f})
     with admin.session_transaction() as s:
         s["csrf"] = "x"
-    post(line=1, text=f"Gran {tag} - mother-in-law - 70 yrs", person=ids["Gran"])
+    sql(app, "UPDATE people SET birthdate = '', birthdatetr = '0000-00-00' WHERE personID = %s", (ids["Gran"],))
+    assert "and set birth to abt 1712 (70 in 1782)" in " ".join(text(admin.get("/edit/census")).split())
+    post(line=1, text=f"Gran {tag} - mother-in-law - 70 yrs", person=ids["Gran"], birth="abt 1712")
+    gran = sql(app, "SELECT birthdate, birthdatetr FROM people WHERE personID = %s", (ids["Gran"],))[0]
+    assert gran["birthdate"] == "abt 1712" and str(gran["birthdatetr"]) == "1712-00-00"
+    assert sql(app, "SELECT 1 FROM app_audit WHERE action = 'edit person' AND record = %s", (ids["Gran"],))
     post(line=2, text=f"Kid {tag} - son - 10 yrs")  # none of these
     html = " ".join(text(admin.get("/edit/census")).split())
     assert f"Gran {tag} - mother-in-law" in html.split("Answered lately")[1] and "none of these" in html
@@ -122,7 +127,8 @@ def test_census_matches(app, admin):
     assert f"Gran {tag} - mother-in-law - 71 yrs" in text(admin.get("/edit/census")).split("Answered lately")[0]
     assert client_for(app, "fx_guest").get("/edit/census").status_code == 403
     post(line=0, text="gone", undo="1")  # undoing nothing is harmless
-    post(line=0, text=f"Pa {tag} - head - 40 yrs", person=ids["Pa"])  # himself, on his own record: listed once
+    post(line=0, text=f"Pa {tag} - head - 40 yrs", person=ids["Pa"], birth="abt 1999")  # himself: listed once
+    assert sql(app, "SELECT birthdate FROM people WHERE personID = %s", (ids["Pa"],))[0]["birthdate"] == "1742"
     assert text(admin.get("/census/1782")).count(f'/person/{ids["Pa"]}"') == 1
     # Kid matched on his parents' family census, which his page shows anyway: once
     census(app, ids["family"], "F", "1783", "Gramton, PA", info=f"Kid {tag} - son - 11 yrs")
