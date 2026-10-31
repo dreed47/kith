@@ -1,5 +1,6 @@
 {% extends "base.html" %}
-{% block title %}Site settings · {{ super() }}{% endblock %}
+{% block title %}Site settings · {{ super() }}<script src="{{ url_for('static', filename='picker.js') }}" defer></script>
+{% endblock %}
 {% block content %}
 <h1>Site settings</h1>
 {% if errors %}<div class="card error" role="alert"><ul>{% for e in errors %}<li>{{ e }}</li>{% endfor %}</ul></div>{% endif %}
@@ -14,6 +15,11 @@
     <label>Picture behind the home page banner and the welcome page
       <select name="hero_art">{% for file, name in art.items() %}<option value="{{ file }}"{% if v.hero_art == file %} selected{% endif %}>{{ name }}</option>{% endfor %}</select>
     </label>
+  </fieldset>
+  <fieldset>
+    <legend>Tree page</legend>
+    {% from "_picker.html" import picker %}{{ picker("tree_start", "Start the Tree page at", v.tree_start, start, url_for('main.find')) }}
+    <p class="muted small">For people whose account isn't linked to their own record: Tree opens an hourglass chart of this person. Linked people always start at themselves. Leave empty to show a "Whose tree?" box instead.</p>
   </fieldset>
   <fieldset>
     <legend>Wording</legend>

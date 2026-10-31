@@ -233,6 +233,17 @@ def test_hero_art(app):
         assert app.test_client().get(f"/static/{f}").status_code == 200
 
 
+def test_tree_start_setting(app):
+    c = site_admin(app)
+    assert "Start the Tree page at" in text(c.get("/admin/settings"))
+    assert "There is no person NOPE" in text(c.post("/admin/settings", data={"csrf": CSRF, "tree_start": "nope"}))
+    c.post("/admin/settings", data={"csrf": CSRF, "tree_start": "xhusb"})
+    assert sql(app, "SELECT value FROM app_settings WHERE name = 'tree_start'")[0]["value"] == "XHUSB"
+    assert 'value="XHUSB"' in text(c.get("/admin/settings"))
+    c.post("/admin/settings", data={"csrf": CSRF})  # empty: back to the "Whose tree?" page
+    assert not sql(app, "SELECT * FROM app_settings WHERE name = 'tree_start'")
+
+
 def test_site_settings_without_table(app, monkeypatch):
     def broken(*_):
         raise pymysql.err.ProgrammingError(1146, "Table 'app_settings' doesn't exist")

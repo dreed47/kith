@@ -13,7 +13,7 @@ from .db import execute, insert, query, update
 from .edit import audit, get_person, now
 from . import localtime
 from .me import pending_count
-from .settings import HERO_ART, SITE_TEXT, default_theme, hero_art, site_settings
+from .settings import HERO_ART, SITE_TEXT, default_theme, hero_art, site_settings, stored
 from .views import one, people_by_id
 
 bp = Blueprint("admin", __name__, url_prefix="/admin")
@@ -309,15 +309,19 @@ def weekly_email():
 @bp.route("/settings", methods=["GET", "POST"])
 def settings():
     themes = current_app.extensions["themes"]
-    current, errors = {**site_settings(), "theme": default_theme(), "hero_art": hero_art()}, []
+    current, errors = {**site_settings(), "theme": default_theme(), "hero_art": hero_art(),
+                       "tree_start": stored("tree_start") or ""}, []
     v = current
     if request.method == "POST":
-        v = {k: request.form.get(k, "").strip() for k in (*SITE_TEXT, "theme", "hero_art")}
+        v = {k: request.form.get(k, "").strip() for k in (*SITE_TEXT, "theme", "hero_art", "tree_start")}
+        v["tree_start"] = v["tree_start"].upper()
         v["theme"] = v["theme"] or current["theme"]
         v["hero_art"] = v["hero_art"] or current["hero_art"]
         errors = [f"{label} is longer than {n} characters." for k, (label, n, _) in SITE_TEXT.items() if len(v[k]) > n]
         if v["theme"] not in themes or v["hero_art"] not in HERO_ART:
             abort(400)
+        if v["tree_start"] and not get_person(v["tree_start"]):
+            errors.append(f"There is no person {v['tree_start']} to start the Tree page at.")
         if not errors:
             # The theme named by KITH_THEME and the fan are the defaults anyway; only another choice needs storing.
             for k, value in {**v, "theme": "" if v["theme"] == current_app.config["THEME"] else v["theme"],
@@ -327,10 +331,12 @@ def settings():
                 else:
                     execute("DELETE FROM app_settings WHERE name = %s", (k,))
             audit("edit settings", "app_settings", "site", current,
-                  {**site_settings(), "theme": default_theme(), "hero_art": hero_art()})
+                  {**site_settings(), "theme": default_theme(), "hero_art": hero_art(),
+                   "tree_start": stored("tree_start") or ""})
             flash("Saved.")
             return redirect(url_for("admin.settings"))
     return render_template("admin_settings.html", v=v, errors=errors, fields=SITE_TEXT, themes=themes, art=HERO_ART,
+                           start=get_person(v["tree_start"]) if v["tree_start"] else None,
                            defaults=current_app.extensions["theme"])
 
 

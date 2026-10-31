@@ -745,10 +745,14 @@ def faces(people):
 
 @bp.get("/tree")
 def tree_home():
-    """The Tree menu: your own pedigree if you're linked to your record, else a page to choose whose."""
+    """The Tree menu: an hourglass chart (recentres on whoever you click) of you if you're linked to your record,
+    else of the starting person an admin chose (Site settings), else a page to choose whose."""
+    from .settings import stored  # here: settings is imported by modules this one is imported by
     pid = request.args.get("pid", "").strip().upper() or g.user["personID"]
     if pid:
-        return redirect(url_for("main.pedigree", pid=pid))
+        return redirect(url_for("main.hourglass", pid=pid))
+    if start := stored("tree_start"):
+        return redirect(url_for("main.hourglass", pid=start, start=1))
     linked = [r["personID"] for r in query("SELECT DISTINCT personID FROM users WHERE personID <> ''")]
     starts = sorted((p for p in people_by_id(linked).values() if rights(p)["living"]),
                     key=lambda p: (p["lastname"], p["firstname"]))

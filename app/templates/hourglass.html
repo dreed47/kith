@@ -11,6 +11,14 @@
 {% endmacro %}
 {% block content %}
 <h1>Hourglass: {{ pname(root) }}</h1>
+{% if request.args.start %}
+<form class="card edit-form" action="{{ url_for('main.tree_home') }}">
+  {% from "_picker.html" import picker %}{{ picker("pid", "Whose tree?", "", None, url_for('main.find')) }}
+  <div class="form-actions"><button>Show tree</button></div>
+  <p class="small muted">Find yourself in the tree and press <strong>This is me</strong> on your page: then Tree opens your own.</p>
+</form>
+<script src="{{ url_for('static', filename='picker.js') }}" defer></script>
+{% endif %}
 {{ chart_tabs(root.personID, "main.hourglass") }}
 <div class="chart-options">{{ gens_picker(choices, gens) }}{{ photos_toggle(photos) }}</div>
 <div class="vped">

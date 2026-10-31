@@ -75,13 +75,19 @@ def test_tree_menu(app):
     guest = client_for(app, "fx_guest")
     page = text(guest.get("/tree"))
     assert 'href="/tree"' in page and "Whose tree?" in page and 'data-find="/find"' in page
-    assert guest.get("/tree?pid=xhusb").location.endswith("/pedigree/XHUSB")
+    assert guest.get("/tree?pid=xhusb").location.endswith("/hourglass/XHUSB")
     sql(app, "UPDATE users SET personID = 'XKID' WHERE username = 'fx_nonotes'")
     try:
         assert "Start from someone on the site" in text(guest.get("/tree")) and "/person/XKID" in text(guest.get("/tree"))
-        assert client_for(app, "fx_nonotes").get("/tree").location.endswith("/pedigree/XKID")  # linked: own tree
+        assert client_for(app, "fx_nonotes").get("/tree").location.endswith("/hourglass/XKID")  # linked: own tree
+        sql(app, "REPLACE INTO app_settings (name, value) VALUES ('tree_start', 'XHUSB')")
+        assert guest.get("/tree").location.endswith("/hourglass/XHUSB?start=1")  # not linked: the admin's choice
+        assert client_for(app, "fx_nonotes").get("/tree").location.endswith("/hourglass/XKID")  # linked still wins
+        html = text(guest.get("/hourglass/XHUSB?start=1"))
+        assert "Whose tree?" in html and "This is me" in html and "Whose tree?" not in text(guest.get("/hourglass/XHUSB"))
     finally:
         sql(app, "UPDATE users SET personID = '' WHERE username = 'fx_nonotes'")
+        sql(app, "DELETE FROM app_settings WHERE name = 'tree_start'")
 
 
 def test_photos_in_charts(app, admin):
