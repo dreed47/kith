@@ -68,6 +68,22 @@ def test_home_counts(app):
     assert "New account registrations" in html and "/admin/users?show=pending" in html
 
 
+def test_whats_changed(app, monkeypatch):
+    import subprocess
+    from app import admin
+    log = "2026-10-31\tFan chart: photos in the wedges\n2026-10-31\tChangelog: fan\n2026-10-30\tBranch book\nnoise\n"
+    monkeypatch.setattr(admin.subprocess, "run", lambda *a, **k: subprocess.CompletedProcess(a, 0, stdout=log))
+    html = " ".join(text(site_admin(app).get("/admin/")).split())
+    assert "What's changed" in html and "Changelog: fan" not in html
+    assert html.index("31 Oct 2026") < html.index("Fan chart: photos in the wedges") < html.index("30 Oct 2026")
+    assert html.index("30 Oct 2026") < html.index("Branch book")
+
+    def no_git(*a, **k):
+        raise OSError
+    monkeypatch.setattr(admin.subprocess, "run", no_git)
+    assert "What's changed" not in text(site_admin(app).get("/admin/"))
+
+
 def test_add_account_and_log_in(app):
     c = site_admin(app)
     r = c.post("/admin/users/new", data=form(username="newbie", email="newbie@example.com", personID="xhusb",
