@@ -14,7 +14,8 @@ Kith follows semantic versioning. Releases are on GitHub.
   Admin > Site settings.
 - Person page: a woman's married names ("Later Mary REED"), and newspaper searches (Chronicling America,
   Newspapers.com) next to the other outside links.
-- Where the lines begin (`/lines`): the earliest person of each surname with no parents in the tree.
+- Where the lines begin (`/lines`): the earliest person of each surname with no parents in the tree. Person pages
+  say how many generations down from the start of their surname line they are.
 - Relationship page: the path as a row of faces, from one person up to the common ancestor and down to the other.
 - Person map: a line through the places of a life, in the order of the events, with the order written under it.
 - Fan chart: photos in the wedges, and Print poster (just the fan, landscape).
