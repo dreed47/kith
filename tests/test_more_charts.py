@@ -3,6 +3,7 @@ import re
 
 from conftest import client_for, make, sql
 
+from app.db import insert
 from app.charts import fan_sectors, generation_name, short
 
 
@@ -24,7 +25,7 @@ def family_tree(app):
     return {**ids, "Granddad": up["Granddad"]}
 
 
-def test_vertical_and_fan(app, admin):
+def test_vertical_and_fan(app, admin, media_ids):
     ids = family_tree(app)
     html = text(admin.get(f"/pedigree/{ids['Kid']}/vertical?gens=3"))
     chart = html[html.index('class="vped"'):]  # past the options, whose links point at this same page
@@ -34,6 +35,15 @@ def test_vertical_and_fan(app, admin):
     fan = text(admin.get(f"/pedigree/{ids['Kid']}/fan?gens=3"))
     assert f"/pedigree/{ids['Granddad']}/fan?gens=3" in fan and "fan-slice empty" in fan and "fan-slice mother" in fan
     assert admin.get("/pedigree/NOPE/fan").status_code == 404
+    assert "Print poster" in fan and 'clip-path="url(#fan-circle)"' not in fan  # nobody here has a photo
+    with app.app_context():
+        for who in ("Granddad", "Kid"):
+            insert("medialinks", {"gedcom": "tree1", "linktype": "I", "personID": ids[who],
+                                  "mediaID": media_ids["plain"]})
+    fan = text(admin.get(f"/pedigree/{ids['Kid']}/fan?gens=3"))
+    assert fan.count('clip-path="url(#fan-circle)"') == 2 and 'y="-14" class="fan-name root-name"' in fan
+    assert "fan-circle" not in text(admin.get(f"/pedigree/{ids['Kid']}/fan?gens=3&photos=0")).split("<svg")[1]
+    admin.get("/pedigree/XKID?photos=1")  # photos back on for the other tests
 
 
 def test_fan_geometry():
@@ -43,6 +53,10 @@ def test_fan_geometry():
     assert sectors[0]["person"] and not sectors[1]["person"]
     assert all(-90 <= s["rotate"] <= 90 for s in sectors)  # no upside-down names
     assert short("Christopher Columbus", 8) == "Christo…" and short("Ann", 8) == "Ann"
+    with_photos = fan_sectors({2: {"x": 1}}, 4, photos=True)
+    assert all(s["photo"][2] > 0 for s in with_photos) and sectors[0]["photo"][2] == 0
+    assert abs(with_photos[0]["x"]) > abs(sectors[0]["x"])  # the name moves out to make room
+    assert with_photos[-1]["room"] == sectors[-1]["room"]  # wider rings: names keep their room
 
 
 def test_ahnentafel(app, admin):

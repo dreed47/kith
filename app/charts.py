@@ -14,6 +14,7 @@ FAN_GENS = range(3, 7)
 LIST_GENS = range(3, 11)
 HOURGLASS_GENS = range(1, 5)  # each way from the person
 FAN_RING = 70  # pixels per generation
+FAN_RING_PHOTOS = 95  # wider with photos, so names keep their room
 FAN_CENTER = 60  # radius of the middle (the person themselves)
 
 
@@ -76,14 +77,16 @@ def point(r, degrees):
     return round(r * math.cos(a), 1), round(-r * math.sin(a), 1)
 
 
-def fan_sectors(slots, gens):
+def fan_sectors(slots, gens, photos=False):
     """SVG pieces for a half-circle fan: father's side on the left, mother's on the right. Each generation is a
     ring; each ancestor gets an equal slice of it, with their name written along the slice (outer rings, where
-    slices are narrow, write it outward from the middle)."""
-    out = []
+    slices are narrow, write it outward from the middle). With photos, each slice keeps a circle for one at its
+    inner edge and the name moves outward."""
+    out, ring = [], FAN_RING_PHOTOS if photos else FAN_RING
     for g in range(1, gens):
         span = 180 / 2 ** g
-        inner, outer = FAN_CENTER + (g - 1) * FAN_RING, FAN_CENTER + g * FAN_RING
+        inner, outer = FAN_CENTER + (g - 1) * ring, FAN_CENTER + g * ring
+        radial = g >= 3  # thin slices: read along the radius
         for i, n in enumerate(range(2 ** g, 2 ** (g + 1))):
             start, end = 180 - i * span, 180 - (i + 1) * span
             (x1, y1), (x2, y2), (x3, y3), (x4, y4) = (point(inner, start), point(outer, start),
@@ -91,12 +94,15 @@ def fan_sectors(slots, gens):
             path = (f"M{x1},{y1} L{x2},{y2} A{outer},{outer} 0 0 1 {x3},{y3} L{x4},{y4}"
                     f" A{inner},{inner} 0 0 0 {x1},{y1} Z")
             mid, radius = (start + end) / 2, (inner + outer) / 2
-            x, y = point(radius, mid)
-            radial = g >= 3  # thin slices: read along the radius
-            room = (FAN_RING if radial else math.radians(span) * radius) / 6.5  # characters that fit
+            # A photo circle sits at the inner edge of the slice, as big as the slice allows; the name moves out
+            pr = round(min(12 if radial else 16, math.radians(span) * inner * 0.4), 1) if photos else 0
+            px, py = point(inner + pr + 4, mid)
+            x, y = point(radius + pr, mid)
+            # characters that fit
+            room = ((ring - 2 * pr - (4 if pr else 0)) if radial else math.radians(span) * radius) / 6.5
             angle = -mid if mid <= 90 else 180 - mid  # outward text, never upside down
             out.append({"n": n, "path": path, "x": x, "y": y, "rotate": round(angle if radial else 90 - mid, 1),
-                        "person": slots.get(n), "room": int(room)})
+                        "person": slots.get(n), "room": int(room), "photo": (px, py, pr)})
     return out
 
 
@@ -109,11 +115,13 @@ def fan_chart(pid):
     gens = gens_arg(FAN_GENS, 5)
     root = get_person(pid)
     slots, _ = ancestors(root, gens)
-    sectors = fan_sectors(slots, gens)
+    photos = chart_photos([root, *slots.values()])
+    sectors = fan_sectors(slots, gens, photos is not None)
     for s in sectors:
         s["label"] = short(display_name(s["person"]), s["room"]) if s["person"] else ""
-    size = FAN_CENTER + (gens - 1) * FAN_RING
-    return render_template("fan.html", root=root, sectors=sectors, gens=gens, choices=FAN_GENS, size=size)
+    size = FAN_CENTER + (gens - 1) * (FAN_RING_PHOTOS if photos is not None else FAN_RING)
+    return render_template("fan.html", root=root, sectors=sectors, gens=gens, choices=FAN_GENS, size=size,
+                           photos=photos)
 
 
 @bp.get("/ahnentafel/<pid>")

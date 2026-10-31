@@ -1,22 +1,30 @@
 {% extends "base.html" %}
-{% from "_macros.html" import gens_picker, lifespan %}
+{% from "_macros.html" import gens_picker, lifespan, photos_toggle %}
 {% from "_chart_tabs.html" import chart_tabs %}
 {% block title %}Fan chart: {{ pname(root) }} · {{ super() }}{% endblock %}
 {% block content %}
 <h1>Fan chart: {{ pname(root) }}</h1>
+<div class="no-print">
 {{ chart_tabs(root.personID, "main.fan_chart") }}
-{{ gens_picker(choices, gens) }}
+<div class="chart-options">{{ gens_picker(choices, gens) }}{{ photos_toggle(photos) }}
+  <p class="small gens"><button type="button" class="secondary small-button" onclick="window.print()">Print poster</button></p></div>
+</div>
+{% macro face(p, x, y, r) -%}
+{%- if photos and p.personID in photos %}{% set m, tag = photos[p.personID] %}<image href="{{ url_for('media.face', media_id=m.mediaID, tag_id=tag.id) if tag else url_for('media.thumb', media_id=m.mediaID) }}" x="{{ x - r }}" y="{{ y - r }}" width="{{ 2 * r }}" height="{{ 2 * r }}" preserveAspectRatio="xMidYMid slice" clip-path="url(#fan-circle)"/>{% endif -%}
+{%- endmacro %}
 <div class="fan">
 <svg viewBox="{{ -size - 5 }} {{ -size - 5 }} {{ 2 * size + 10 }} {{ size + 10 }}" role="img" aria-label="Fan chart of {{ pname(root) }}'s ancestors">
+  <clipPath id="fan-circle" clipPathUnits="objectBoundingBox"><circle cx="0.5" cy="0.5" r="0.5"/></clipPath>
   {% for s in sectors %}
   {% if s.person %}<a href="{{ url_for('main.fan_chart', pid=s.person.personID, gens=gens) }}"><title>{{ pname(s.person) }}</title>{% endif %}
   <path d="{{ s.path }}" class="fan-slice{% if not s.person %} empty{% elif s.n % 2 %} mother{% endif %}"/>
-  {% if s.person %}<text x="{{ s.x }}" y="{{ s.y }}" transform="rotate({{ s.rotate }} {{ s.x }} {{ s.y }})" class="fan-name">{{ s.label }}</text></a>{% endif %}
+  {% if s.person %}{% if photos is not none %}{{ face(s.person, *s.photo) }}{% endif %}<text x="{{ s.x }}" y="{{ s.y }}" transform="rotate({{ s.rotate }} {{ s.x }} {{ s.y }})" class="fan-name">{{ s.label }}</text></a>{% endif %}
   {% endfor %}
   <a href="{{ url_for('main.person', pid=root.personID) }}"><path d="M-60,0 A60,60 0 0 1 60,0 Z" class="fan-slice root"/>
-    <text y="-30" class="fan-name root-name">{{ pname(root)|truncate(18, True, "…") }}</text>
-    <text y="-14" class="fan-name small">{{ lifespan(root)|striptags }}</text></a>
+    {% if photos is not none %}{{ face(root, 0, -38, 17) }}{% endif %}
+    <text y="{{ -14 if photos and root.personID in photos else -30 }}" class="fan-name root-name">{{ pname(root)|truncate(18, True, "…") }}</text>
+    <text y="{{ -4 if photos and root.personID in photos else -14 }}" class="fan-name small">{{ lifespan(root)|striptags }}</text></a>
 </svg>
 </div>
-<p class="muted small">Father's side on the left, mother's on the right. Click someone to centre the fan on them.</p>
+<p class="muted small no-print">Father's side on the left, mother's on the right. Click someone to centre the fan on them. Print poster prints just the fan, sideways: pick a large paper size, or Save as PDF to have it printed at a shop.</p>
 {% endblock %}

@@ -650,7 +650,10 @@ label.theme-choice:has(input:checked) { border-color: var(--accent); box-shadow:
   .card { border: 0; box-shadow: none; padding: 0; }
   .book-entry { break-inside: avoid-page; }
   .book-title { break-after: page; text-align: center; padding-top: 30vh; }
+  .fan { page: poster; }
+  .fan svg { max-width: none; }
 }
+@page poster { size: landscape; margin: 1cm; }
 
 /* ---------- Branch book ---------- */
 .book-title { margin-bottom: var(--space-4); }
