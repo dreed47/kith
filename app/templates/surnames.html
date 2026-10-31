@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block content %}
 <h1>Surnames</h1>
-<p class="small"><a href="{{ url_for('main.firstnames') }}">First names instead</a></p>
+<p class="small"><a href="{{ url_for('main.firstnames') }}">First names instead</a> · <a href="{{ url_for('main.lines') }}">Where the lines begin</a></p>
 <ul class="surnames">
   {% for s in surnames %}<li><a href="{{ url_for('main.surname', name=s.lastname) }}">{{ s.lastname }}</a> <span class="muted">{{ s.n }}</span>{% if s.also %} <span class="muted small">(also {{ s.also|join(", ") }})</span>{% endif %}</li>{% endfor %}
 </ul>

@@ -4,7 +4,7 @@ import re
 
 from conftest import client_for, make, sql
 
-from app import reports
+from app import relations, reports
 from app.db import insert
 from app.reports import roman, when_where
 
@@ -166,3 +166,27 @@ def test_calendar(admin, monkeypatch):
     assert 'class="today"' in html and f"/anniversaries?month={today.month}&amp;day=3" in html
     other = today.month % 12 + 1
     assert 'class="today"' not in text(admin.get(f"/anniversaries/calendar?month={other}"))
+
+
+def test_where_lines_begin(app, admin, monkeypatch):
+    ids = chain(app)  # Top -> Mid -> Low -> End: Top has 3 descendants
+    monkeypatch.setattr(reports, "LINE_MIN", 3)
+    tag = sql(app, "SELECT lastname FROM people WHERE personID = %s", (ids["Top"],))[0]["lastname"]
+    sql(app, "UPDATE people SET birthdate = '1800', birthdatetr = '1800-00-00' WHERE personID = %s", (ids["Top"],))
+    relations.invalidate()  # the family graph is cached
+    html = " ".join(text(admin.get("/lines")).split())
+    row = html[html.index(f"<th>{tag}</th>"):][:900]
+    assert f"/person/{ids['Top']}" in row and "3 descendants" in row and "born 1800" in row
+    assert f"/descendants/{ids['Top']}" in row and f"/map?pid={ids['Top']}" in row
+    assert "Where the lines begin" in text(admin.get("/surnames"))
+    other = chain(app)  # a second, later line: listed under its own made-up surname, and with Top's name, counted
+    sql(app, "UPDATE people SET lastname = %s, birthdate = '1810', birthdatetr = '1810-00-00' WHERE personID = %s",
+        (tag, other["Top"]))
+    relations.invalidate()
+    row = " ".join(text(admin.get("/lines")).split())
+    row = row[row.index(f"<th>{tag}</th>"):][:900]
+    assert f"/person/{ids['Top']}" in row and "1 other line of this name" in row
+    monkeypatch.setattr(reports, "LINES_SHOWN", 1)
+    assert "The biggest 1 of" in text(admin.get("/lines"))
+    monkeypatch.setattr(reports, "LINE_MIN", 10 ** 6)
+    assert "No lines with" in text(admin.get("/lines"))

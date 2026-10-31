@@ -7,7 +7,7 @@ import re
 from flask import abort, redirect, render_template, request, url_for
 from markupsafe import Markup
 
-from . import localtime
+from . import localtime, relations
 from .dates import display as display_date
 from .db import query
 from .privacy import display_name as pname, families_filter, people_filter, rights
@@ -228,6 +228,48 @@ def migration_map():
     return render_template("migration.html", surname=surname, root=root, gens=gens, choices=DESCEND_GENS,
                            born_from=born_from, born_to=born_to, people=people, pins=map_pins(entries, spots),
                            lines=lines)
+
+
+LINE_MIN = 10  # descendants a person needs to count as where a line begins
+LINES_SHOWN = 100  # the biggest lines; the rest are only counted
+
+
+@bp.get("/lines")
+def lines():
+    """Where the lines begin: for each surname, the earliest person with no parents in the tree and at least
+    LINE_MIN descendants (the edge of the tree), the biggest lines first. Other such people of the same surname
+    are only counted."""
+    g = relations.graph()
+    kids = {}
+    for child, fams in g["parents"].items():
+        for _, husband, wife in fams:
+            for x in (husband, wife):
+                if x:
+                    kids.setdefault(x, set()).add(child)
+    counts = {}
+    for root in kids.keys() - g["parents"].keys():
+        seen, todo = set(), list(kids[root])
+        while todo:
+            x = todo.pop()
+            if x not in seen:
+                seen.add(x)
+                todo.extend(kids.get(x, ()))
+        if len(seen) >= LINE_MIN:
+            counts[root] = len(seen)
+    cond, params = people_filter("p")
+    people = query(f"SELECT * FROM people p WHERE p.gedcom = %s AND {cond} AND p.lastname <> ''"
+                   f" AND p.personID IN ({','.join(['%s'] * len(counts))})", [tree(), *params, *counts]
+                   ) if counts else []
+    year = lambda p: int(str(p["birthdatetr"] or "0000")[:4]) or 9999
+    by_name = {}
+    for p in people:
+        by_name.setdefault(p["lastname"].upper(), []).append(p)
+    rows = []
+    for same in by_name.values():
+        same.sort(key=lambda p: (year(p), -counts[p["personID"]]))
+        rows.append({"person": same[0], "descendants": counts[same[0]["personID"]], "others": len(same) - 1})
+    rows.sort(key=lambda r: (-r["descendants"], r["person"]["lastname"].upper()))
+    return render_template("lines.html", rows=rows[:LINES_SHOWN], total=len(rows), least=LINE_MIN)
 
 
 def dated_events(month, day=None, kinds=DEFAULT_KINDS):

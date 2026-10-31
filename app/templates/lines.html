@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% from "_macros.html" import person_link %}
+{% block title %}Where the lines begin · {{ super() }}{% endblock %}
+{% block content %}
+<h1>Where the lines begin</h1>
+<p class="muted">For each surname, the earliest person with no parents in the tree and at least {{ least }} descendants: the edge of the tree, the biggest lines first.{% if total > rows|length %} The biggest {{ rows|length }} of {{ total }} surnames.{% endif %} <a href="{{ url_for('main.surnames') }}">Surnames</a></p>
+{% if rows %}
+<table class="facts">
+  {% for r in rows %}{% set p = r.person %}
+  <tr><th>{{ p.lastname }}</th>
+    <td>{{ person_link(p) }}{% if rights(p).both and (p.birthdate or p.birthplace) %}<div class="muted small">born {{ p.birthdate|d }}{% if p.birthplace %}{{ "," if p.birthdate }} {{ p.birthplace }}{% endif %}</div>{% endif %}</td>
+    <td>{{ r.descendants }} descendants{% if r.others %} <span class="muted small">· {{ r.others }} other line{{ "s" if r.others != 1 }} of this name</span>{% endif %}</td>
+    <td class="small"><a href="{{ url_for('main.descendants', pid=p.personID) }}">Descendants</a> · <a href="{{ url_for('main.migration_map', pid=p.personID) }}">Map</a></td></tr>
+  {% endfor %}
+</table>
+{% else %}<p>No lines with {{ least }} or more descendants yet.</p>{% endif %}
+{% endblock %}
