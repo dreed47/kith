@@ -15,6 +15,9 @@ Kith follows semantic versioning. Releases are on GitHub.
 - Person page: a woman's married names ("Later Mary REED"), and newspaper searches (Chronicling America,
   Newspapers.com) next to the other outside links.
 - Where the lines begin (`/lines`): the earliest person of each surname with no parents in the tree.
+- Relationship page: the path as a row of faces, from one person up to the common ancestor and down to the other.
+- Person map: a line through the places of a life, in the order of the events, with the order written under it.
+- Fan chart: photos in the wedges, and Print poster (just the fan, landscape).
 - Branch book (`/book/<id>`) and family map (`/map`).
 - Hourglass: spouses shown, and an Hourglass button on person pages. Place page map.
 - Tidy places: possible misspellings, and moving the real place out of census notes where a record title sits in

@@ -24,10 +24,12 @@ The screenshots show the made-up sample family that comes with Kith.
 ## What it does
 
 - Person and family pages with life events, sources and citations (with scans of the record), notes, a life
-  story, a map of where a life happened, a woman's married names, and links that search FamilySearch, Find a
+  story, a map of where a life happened (a line through the places, in the order of the events), a woman's
+  married names, and links that search FamilySearch, Find a
   Grave, Ancestry and newspapers (Chronicling America, Newspapers.com) for the person.
-- Charts: ancestors, descendants and hourglass. The Tree menu opens an hourglass of you, or of a starting person
-  an admin picks.
+- Charts: ancestors, descendants, hourglass and a fan chart with photos that prints as a poster. The Tree menu
+  opens an hourglass of you, or of a starting person an admin picks. The relationship page shows the path between
+  two people as a row of faces.
 - A branch book (the life stories of a person's descendants, to print), a family map (where a surname's people
   or a person's descendants were born and died), and "Where the lines begin" (the earliest person of each
   surname).
