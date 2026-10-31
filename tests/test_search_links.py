@@ -18,7 +18,8 @@ def params(links, site):
 
 def test_search_links():
     links = search_links(person())
-    assert [site for site, _ in links] == ["FamilySearch", "Find a Grave", "Ancestry", "Google"]
+    assert [site for site, _ in links] == ["FamilySearch", "Find a Grave", "Ancestry", "Google",
+                                           "Chronicling America", "Newspapers.com"]
     assert params(links, "FamilySearch") == {
         "q.givenName": "Walter James", "q.surname": "HOLLIS", "q.birthLikeDate.from": "1896",
         "q.birthLikeDate.to": "1900", "q.deathLikeDate.from": "1968", "q.deathLikeDate.to": "1972",
@@ -28,6 +29,10 @@ def test_search_links():
     assert params(links, "Ancestry") == {"name": "Walter James_HOLLIS", "birth": "1898_Brookville, PA",
                                          "death": "1970"}
     assert params(links, "Google") == {"q": '"Walter James HOLLIS" 1898 1970'}
+    assert params(links, "Chronicling America") == {"q": '"Walter HOLLIS"', "dates": "1898/1971"}
+    assert params(links, "Newspapers.com") == {"keyword": '"Walter HOLLIS"', "date-start": "1898", "date-end": "1971"}
+    assert params(search_links(person(birthdatetr=None)), "Chronicling America")["dates"] == "1880/1971"
+    assert params(search_links(person(deathdatetr=None)), "Newspapers.com")["date-end"] == "1988"
 
 
 def test_search_links_missing_facts():
@@ -36,6 +41,7 @@ def test_search_links_missing_facts():
     assert params(links, "FamilySearch") == {"q.surname": "van Dyke"}
     assert params(links, "Find a Grave") == {"lastname": "van Dyke"}
     assert params(links, "Ancestry") == {"name": "_van Dyke"} and params(links, "Google") == {"q": '"van Dyke"'}
+    assert params(links, "Chronicling America") == {"q": '"van Dyke"'}
     assert search_links(person(firstname="", lastname="")) == []
     assert search_links(person(living=1)) == []  # their name isn't sent anywhere
 

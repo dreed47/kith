@@ -416,6 +416,8 @@ def search_links(p):
     born, died = (str(p[k] or "")[:4] for k in ("birthdatetr", "deathdatetr"))
     born, died = (y if y.strip("0") else "" for y in (born, died))
     q = lambda base, **kw: f"{base}?{urlencode({k: v for k, v in kw.items() if v})}"  # noqa: E731
+    short = " ".join(filter(None, (given.split(" ")[0], surname)))
+    span = (born or str(int(died) - 90), str(int(died) + 1) if died else str(int(born) + 90)) if born or died else ()
     return [
         ("FamilySearch", q("https://www.familysearch.org/search/record/results", **{
             "q.givenName": given, "q.surname": surname, "q.birthLikeDate.from": born and int(born) - 2,
@@ -428,6 +430,11 @@ def search_links(p):
                        birth="_".join(x for x in (born, p["birthplace"]) if x), death=died)),
         ("Google", q("https://www.google.com/search",
                      q=" ".join(x for x in (f'"{" ".join(filter(None, (given, surname)))}"', born, died) if x))),
+        # Newspapers: their first name and surname as a phrase, from birth to a year after death (the obituary)
+        ("Chronicling America", q("https://www.loc.gov/collections/chronicling-america/", q=f'"{short}"',
+                                  dates=span and "/".join(span))),
+        ("Newspapers.com", q("https://www.newspapers.com/search/", keyword=f'"{short}"',
+                             **{"date-start": span and span[0], "date-end": span and span[1]})),
     ]
 
 
