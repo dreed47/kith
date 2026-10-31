@@ -24,13 +24,22 @@ The screenshots show the made-up sample family that comes with Kith.
 ## What it does
 
 - Person and family pages with life events, sources and citations (with scans of the record), notes, a life
-  story, and a map of where a life happened.
-- Charts: ancestors, descendants and hourglass.
+  story, a map of where a life happened, a woman's married names, and links that search FamilySearch, Find a
+  Grave, Ancestry and newspapers (Chronicling America, Newspapers.com) for the person.
+- Charts: ancestors, descendants and hourglass. The Tree menu opens an hourglass of you, or of a starting person
+  an admin picks.
+- A branch book (the life stories of a person's descendants, to print), a family map (where a surname's people
+  or a person's descendants were born and died), and "Where the lines begin" (the earliest person of each
+  surname).
+- Census by year: each census year's households, by place. Census matches suggests which person in the tree
+  each name typed in a census transcription is, and can fill in a birth year from the age; an editor says yes.
+- Places drill down from state to county to town, with everyone in an area on one list.
 - Photos and documents, with faces tagged to people, comments, and PDF thumbnails.
 - Search by name (including married names and spelling variants), by family, and by place.
 - Privacy: living people are hidden from those who may not see them. Accounts have roles, and relatives can ask
   for an account and say "this is me".
-- Editing on the site: add relatives, merge duplicates, tidy place names, and data checks for impossible dates.
+- Editing on the site: add relatives, merge duplicates, tidy place names (spellings, misspellings, record titles
+  where a place should be), link surname spellings, and data checks for impossible dates.
 - GEDCOM import (with undo) and export.
 - What's new, watching a person, and an optional weekly email.
 - Five themes, which each person can choose for themselves, including large print.
@@ -86,7 +95,8 @@ Settings are environment variables (`/etc/kith.env`, or `docker/.env`):
 | `KITH_THEME` | The site's theme (default `default`). |
 | `KITH_MAX_UPLOAD_MB` | Largest upload (default 50). |
 
-The site title, tagline and welcome page text are set under Admin > Site settings.
+The site title, tagline, welcome page text, banner picture and where the Tree page starts for people not linked
+to their own record are set under Admin > Site settings.
 
 Two scheduled jobs. The Proxmox installer sets them up as systemd timers (`deploy/jobs.sh`); elsewhere run them
 from cron:
