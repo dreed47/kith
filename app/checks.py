@@ -1,7 +1,9 @@
 """Data checks (TNG's data validation report): dates in an impossible order, ages that can't be right, and links
 that don't make sense. Only dates that can be read count (unreadable ones are on "Dates to fix"); "0000" years
 are skipped, and an event is only compared with another when both have a year."""
-from flask import render_template
+import re
+
+from flask import g, render_template
 
 from .db import query
 from .edit import bp, require
@@ -82,10 +84,43 @@ CHECKS = [
 ]
 
 
+MONTHS = "january february march april may june july august september october november december".split()
+_MONTH = r"(" + "|".join(MONTHS) + r")\.?"
+# "died March 11, 1923", "passed away on 11 March 1923": the first full date after the words about dying
+OBIT_DATE = re.compile(r"(?:died|passed away|death)\b[^.]{0,80}?(?:" + _MONTH + r"\s+(\d{1,2}),?\s+(\d{4})|"
+                       r"(\d{1,2})\s+" + _MONTH + r",?\s+(\d{4}))", re.I)
+
+
+def obituary_rows():
+    """People whose obituary (a note on their death) gives a death date the death field doesn't match: only the
+    parts the field has (a year alone is compared as a year). The obituary may be about someone else's death,
+    so these are for an editor to look at, never fixed by themselves."""
+    out = []
+    for r in query("SELECT p.personID, p.deathdate, p.deathdatetr, x.note FROM notelinks n JOIN xnotes x"
+                   " ON x.gedcom = n.gedcom AND x.ID = n.xnoteID JOIN people p ON p.gedcom = n.gedcom"
+                   " AND p.personID = n.persfamID WHERE n.gedcom = %s AND n.eventID = 'DEAT' AND (n.secret = 0 OR %s)",
+                   (tree(), int(g.user["allow_private_notes"] == 1))):
+        m = OBIT_DATE.search(r["note"] or "")
+        if not m:
+            continue
+        month = MONTHS.index((m[1] or m[5]).lower()) + 1
+        said = (int(m[3] or m[6]), month, int(m[2] or m[4]))
+        field = [int(x) for x in str(r["deathdatetr"] or "0000-00-00").split("-")]
+        if any(f and f != s for f, s in zip(field, said)):
+            # a few words before it too: "her husband died ..." means someone else
+            words = " ".join(r["note"][max(m.start() - 40, 0):m.end()].split())
+            out.append({"pid": r["personID"], "fid": "", "detail": f"death {r['deathdate'] or 'not given'};"
+                        f" obituary: \u201c{words}\u201d"})
+    return out
+
+
 def run(selects):
     """A check's findings the user may see: [{pid, fid, detail, person, family}]."""
     rows = [r for sql in selects for r in query(sql, (tree(),))]
-    rows = [dict(zip(("pid", "fid", "detail"), r.values())) for r in rows]
+    return visible([dict(zip(("pid", "fid", "detail"), r.values())) for r in rows])
+
+
+def visible(rows):
     folks = people_by_id([r["pid"] for r in rows])
     fids = list({r["fid"] for r in rows if r["fid"]})
     fams = {f["familyID"]: f for f in query(
@@ -103,5 +138,6 @@ def run(selects):
 def checks():
     require("allow_edit")
     results = [(key, label, run(selects)) for key, label, selects in CHECKS]
+    results.append(("obituary_death", "Death date differs from the obituary", visible(obituary_rows())))
     return render_template("checks.html", results=results, shown=SHOWN,
                            total=sum(len(found) for _, _, found in results))
