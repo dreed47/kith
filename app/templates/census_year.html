@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% from "_macros.html" import person_link %}
+{% block title %}{{ year }} census · {{ super() }}{% endblock %}
+{% block content %}
+<h1>{{ year }} census</h1>
+<p><a href="{{ url_for('places.census_years') }}">All census years</a> · {{ count }} household{{ "s" if count != 1 }} in {{ groups|length }} place{{ "s" if groups|length != 1 }}</p>
+{% for place, households in groups %}
+<section class="card">
+  <h2>{% if place %}<a href="{{ url_for('places.place', name=place) }}">{{ place }}</a>{% else %}Place not recorded{% endif %}</h2>
+  <ul class="census-households">
+    {% for h in households %}
+    <li>{% if h.family %}<a href="{{ url_for('main.family', fid=h.family.familyID) }}">{% for p in h.heads %}{{ pname(p) }}{{ " & " if not loop.last }}{% endfor %}</a>{% else %}{{ person_link(h.heads[0]) }}{% endif %}
+      {% if h.family and h.people %}<span class="small muted">Counted:</span> {% for p in h.people %}{{ person_link(p) }}{{ ", " if not loop.last }}{% endfor %}{% endif %}
+      {% for r in h.records %}<details><summary class="small">Census details</summary><div class="pre small">{{ r.info }}</div></details>{% endfor %}
+    </li>
+    {% endfor %}
+  </ul>
+</section>
+{% endfor %}
+{% endblock %}

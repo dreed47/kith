@@ -3,7 +3,7 @@ from collections import Counter
 from flask import Blueprint, abort, render_template, request, url_for
 
 from .db import query
-from .privacy import families_filter, media_filter, people_filter
+from .privacy import families_filter, media_filter, people_filter, rights
 from .views import coordinates, people_by_id, tree
 
 bp = Blueprint("places", __name__)
@@ -141,3 +141,94 @@ def cemetery(cid):
     buried = buried_in([cid]).get(cid, [])
     pin = map_pin(c, len(buried), len(media))
     return render_template("cemetery.html", c=c, media=media, buried=buried, pins=[pin] if pin else [])
+
+
+def census_rows(year=None):
+    """Census records this user may see, on people (type I) and on families (type F), dated; a year ("1850") limits
+    them to that year."""
+    pcond, pparams = people_filter("p")
+    fcond, fparams = families_filter("f")
+    return query(
+        "SELECT e.eventID, e.eventplace, e.info, e.persfamID, et.type, LEFT(e.eventdatetr, 4) AS year FROM events e"
+        " JOIN eventtypes et ON et.eventtypeID = e.eventtypeID"
+        " LEFT JOIN people p ON et.type = 'I' AND p.gedcom = e.gedcom AND p.personID = e.persfamID"
+        " LEFT JOIN families f ON et.type = 'F' AND f.gedcom = e.gedcom AND f.familyID = e.persfamID"
+        f" WHERE e.gedcom = %s AND et.tag = 'CENS' AND et.ldsevent = 0 AND LEFT(e.eventdatetr, 4) {'=' if year else '<>'} %s"
+        f" AND COALESCE(p.personID, f.familyID) IS NOT NULL AND (p.personID IS NULL OR {pcond})"
+        f" AND (f.familyID IS NULL OR {fcond})", [tree(), year or "0000", *pparams, *fparams])
+
+
+@bp.get("/census")
+def census_years():
+    years = Counter(r["year"] for r in census_rows())
+    return render_template("census.html", years=sorted(years.items()))
+
+
+@bp.get("/census/<int:year>")
+def census(year):
+    """One census year's households, by place. A family's census record is a household; a person's record joins
+    the family (they're a child or spouse in) with the most of its members counted at the same place that year,
+    a family married by then first on a tie. Nobody else of theirs counted there: a household of their own."""
+    rows = census_rows(f"{year:04d}")
+    if not rows:
+        abort(404)
+    pids = [r["persfamID"] for r in rows if r["type"] == "I"]
+    marks = ",".join(["%s"] * len(pids))
+    parents, spouses_of = {}, {}
+    if pids:
+        for c in query(f"SELECT personID, familyID FROM children WHERE gedcom = %s AND personID IN ({marks})",
+                       [tree(), *pids]):
+            parents.setdefault(c["personID"], []).append(c["familyID"])
+        for f in query(f"SELECT familyID, husband, wife, marrdatetr FROM families WHERE gedcom = %s"
+                       f" AND (husband IN ({marks}) OR wife IN ({marks}))", [tree(), *pids, *pids]):
+            for pid in {f["husband"], f["wife"]} & set(pids):
+                spouses_of.setdefault(pid, []).append(f)
+    fids = {r["persfamID"] for r in rows if r["type"] == "F"} | {x for v in parents.values() for x in v} | {
+        f["familyID"] for v in spouses_of.values() for f in v} or {""}  # "IN ()" isn't valid SQL
+    fmarks = ",".join(["%s"] * len(fids))
+    fams = {f["familyID"]: f for f in query(f"SELECT * FROM families WHERE gedcom = %s AND familyID IN ({fmarks})",
+                                            [tree(), *fids])}
+    members = {fid: {f["husband"], f["wife"]} - {""} for fid, f in fams.items()}
+    for c in query(f"SELECT familyID, personID FROM children WHERE gedcom = %s AND familyID IN ({fmarks})",
+                   [tree(), *fids]):
+        members[c["familyID"]].add(c["personID"])
+    counted = {(r["persfamID"], r["eventplace"]) for r in rows if r["type"] == "I"} | {
+        (m, r["eventplace"]) for r in rows if r["type"] == "F" for m in members.get(r["persfamID"], ())}
+    family_counted = {(r["persfamID"], r["eventplace"]) for r in rows if r["type"] == "F"}
+    folks = people_by_id(pids)
+
+    def family_of(pid, place):
+        mine = spouses_of.get(pid, [])
+        married = [f["familyID"] for f in mine if "0000" < str(f["marrdatetr"] or "0000")[:4] <= f"{year:04d}"]
+        choices = [fid for fid in married + parents.get(pid, []) + [f["familyID"] for f in mine]
+                   if fid in fams and rights(fams[fid])["both"]]
+        score = lambda fid: 100 * ((fid, place) in family_counted) + sum(
+            (m, place) in counted for m in members[fid] - {pid})
+        best = max(choices, key=score, default=None)  # max keeps the first of a tie
+        return best if best and score(best) else None
+
+    households = {}
+    for r in rows:
+        place = r["eventplace"]
+        if r["type"] == "F":
+            key = (place, r["persfamID"])
+        else:
+            fid = family_of(r["persfamID"], place)
+            key = (place, fid or "person " + r["persfamID"])
+        h = households.setdefault(key, {"family": fams.get(key[1]), "people": [], "records": []})
+        if r["type"] == "I" and folks.get(r["persfamID"]):
+            h["people"].append(folks[r["persfamID"]])
+        h["records"] += [r] if r["info"] else []
+    spouses = people_by_id([x for h in households.values() if h["family"]
+                            for x in (h["family"]["husband"], h["family"]["wife"])])
+    for h in households.values():
+        h["heads"] = [spouses[x] for x in (h["family"]["husband"], h["family"]["wife"]) if x in spouses
+                      ] if h["family"] else h["people"][:1]
+    households = {k: h for k, h in households.items() if h["heads"]}
+    by_place = {}
+    for (place, _), h in households.items():
+        by_place.setdefault(place, []).append(h)
+    name = lambda p: ((p["lastname"] or "").lower(), (p["firstname"] or "").lower())
+    groups = [(place, sorted(hs, key=lambda h: name(h["heads"][0])))
+              for place, hs in sorted(by_place.items(), key=lambda x: (not x[0], segments(x[0].lower())[::-1]))]
+    return render_template("census_year.html", year=year, groups=groups, count=len(households))
