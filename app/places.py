@@ -10,6 +10,7 @@ bp = Blueprint("places", __name__)
 
 PERSON_PLACES = {"birthplace": "Birth", "altbirthplace": "Christening", "deathplace": "Death", "burialplace": "Burial"}
 FAMILY_PLACES = {"marrplace": "Marriage", "divplace": "Divorce"}
+AREA_MAX = 1000  # events listed for an area; more than that, pick a smaller one
 
 
 def segments(place):
@@ -21,18 +22,23 @@ def places():
     """Drill down one level at a time from the last comma segment, like TNG ("PA" -> "Clarion, PA" -> ...)."""
     within = request.args.get("within", "")
     depth = len(segments(within))
-    groups, exact = Counter(), None
+    groups, exact, inside = Counter(), None, []
     for r in query("SELECT place FROM places WHERE gedcom = %s AND place <> ''", (tree(),)):
         segs = segments(r["place"])
         if segs[len(segs) - depth:] != segments(within) or len(segs) < depth:
             continue
+        inside.append(r["place"])
         if len(segs) == depth:
             exact = r["place"]
         else:
             groups[", ".join(segs[len(segs) - depth - 1:])] += 1
     if within and not groups and not exact:
         abort(404)
-    return render_template("places.html", within=within, exact=exact,
+    # ?everyone=1: every event in this place and the places inside it, on request (a whole state is slow)
+    hits, spouses = hits_at(inside) if within and request.args.get("everyone") else ([], {})
+    hits.sort(key=lambda h: (h["place"].lower(), h["label"], str(h["date"] or "")))
+    return render_template("places.html", within=within, exact=exact, hits=hits[:AREA_MAX], total=len(hits),
+                           spouses=spouses, everyone=bool(request.args.get("everyone")),
                            groups=sorted(groups.items(), key=lambda g: g[0].lower()))
 
 
@@ -42,28 +48,43 @@ def place():
     if not name.strip():  # a blank name would list every record with no place: slow, and no use to anyone
         abort(404)
     info = query("SELECT * FROM places WHERE gedcom = %s AND place = %s", (tree(), name))
+    hits, spouses = hits_at([name])
+    if not hits and not info:
+        abort(404)
+    spot = coordinates([name]).get(name.lower())
+    pins = [{"lat": spot[0], "lon": spot[1], "approx": spot[2], "events": [{"label": name, "date": "", "place": ""}]}
+            ] if spot else []
+    return render_template("place.html", name=name, info=info[0] if info else None, hits=hits, spouses=spouses,
+                           parents=segments(name), pins=pins)
+
+
+def hits_at(names):
+    """Births, christenings, marriages, deaths, burials and other events at any of these places, of people and
+    families this user may see: ([{label, date, place, person or family}], {spouse ID: person})."""
+    marks = ",".join(["%s"] * len(names))
     pcond, pparams = people_filter("p")
     fcond, fparams = families_filter("f")
     hits = []
     for col, label in PERSON_PLACES.items():
         date = col.replace("place", "date")
-        for p in query(f"SELECT p.*, p.{date} AS evdate FROM people p WHERE p.gedcom = %s AND p.{col} = %s"
-                       f" AND {pcond}", [tree(), name, *pparams]):
-            hits.append({"label": label, "date": p["evdate"], "person": p})
+        for p in query(f"SELECT p.*, p.{date} AS evdate, p.{col} AS evplace FROM people p WHERE p.gedcom = %s"
+                       f" AND p.{col} IN ({marks}) AND {pcond}", [tree(), *names, *pparams]):
+            hits.append({"label": label, "date": p["evdate"], "place": p["evplace"], "person": p})
     for col, label in FAMILY_PLACES.items():
         date = col.replace("place", "date")
-        for f in query(f"SELECT f.*, f.{date} AS evdate FROM families f WHERE f.gedcom = %s AND f.{col} = %s"
-                       f" AND {fcond}", [tree(), name, *fparams]):
-            hits.append({"label": label, "date": f["evdate"], "family": f})
+        for f in query(f"SELECT f.*, f.{date} AS evdate, f.{col} AS evplace FROM families f WHERE f.gedcom = %s"
+                       f" AND f.{col} IN ({marks}) AND {fcond}", [tree(), *names, *fparams]):
+            hits.append({"label": label, "date": f["evdate"], "place": f["evplace"], "family": f})
     for e in query(
-            "SELECT e.eventdate, et.display, p.personID AS pid, f.familyID AS fid FROM events e"
+            "SELECT e.eventdate, e.eventplace, et.display, p.personID AS pid, f.familyID AS fid FROM events e"
             " JOIN eventtypes et ON et.eventtypeID = e.eventtypeID"
             " LEFT JOIN people p ON p.gedcom = e.gedcom AND p.personID = e.persfamID"
             " LEFT JOIN families f ON f.gedcom = e.gedcom AND f.familyID = e.persfamID"
-            f" WHERE e.gedcom = %s AND e.eventplace = %s AND et.ldsevent = 0"
+            f" WHERE e.gedcom = %s AND e.eventplace IN ({marks}) AND et.ldsevent = 0"
             f" AND (p.personID IS NULL OR {pcond}) AND (f.familyID IS NULL OR {fcond})",
-            [tree(), name, *pparams, *fparams]):
-        hits.append({"label": e["display"], "date": e["eventdate"], "pid": e["pid"], "fid": e["fid"]})
+            [tree(), *names, *pparams, *fparams]):
+        hits.append({"label": e["display"], "date": e["eventdate"], "place": e["eventplace"], "pid": e["pid"],
+                     "fid": e["fid"]})
     # Event rows only carry IDs; load the people/families they point at in one go each.
     folks = people_by_id([h["pid"] for h in hits if h.get("pid")])
     fids = [h["fid"] for h in hits if h.get("fid")]
@@ -77,13 +98,7 @@ def place():
             h["family"] = fams.get(h["fid"])
     hits = [h for h in hits if h.get("person") or h.get("family")]
     spouses = people_by_id([x for h in hits if h.get("family") for x in (h["family"]["husband"], h["family"]["wife"])])
-    if not hits and not info:
-        abort(404)
-    spot = coordinates([name]).get(name.lower())
-    pins = [{"lat": spot[0], "lon": spot[1], "approx": spot[2], "events": [{"label": name, "date": "", "place": ""}]}
-            ] if spot else []
-    return render_template("place.html", name=name, info=info[0] if info else None, hits=hits, spouses=spouses,
-                           parents=segments(name), pins=pins)
+    return hits, spouses
 
 
 def buried_in(cids):

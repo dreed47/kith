@@ -551,8 +551,25 @@ def face_tag(pid, m):
 
 def coordinates(names):
     """{place name, lower case: (lat, lon, approx)} for the names that have coordinates. approx is what the lookup
-    matched when only the town or county could be found (app/geocode.py)."""
+    matched when only the town or county could be found (app/geocode.py). A place with no coordinates of its own
+    shows at the nearest place it's in ("Madison Twp, Clarion Cnty, PA" at "Clarion Cnty, PA", approx naming it),
+    but never at just a state or country."""
     names = list({n for n in names if n})
+    spots = _coordinates(names)
+    parents = {}
+    for n in names:
+        segs = [s.strip() for s in n.split(",") if s.strip()]
+        if n.lower() not in spots:
+            parents[n] = [", ".join(segs[i:]) for i in range(1, len(segs) - 1)]
+    found = _coordinates({x for ps in parents.values() for x in ps})
+    for n, ps in parents.items():
+        if near := next((x for x in ps if x.lower() in found), None):
+            spots[n.lower()] = (*found[near.lower()][:2], near)
+    return spots
+
+
+def _coordinates(names):
+    names = list(names)
     if not names:
         return {}
     spots = {}

@@ -90,3 +90,30 @@ def test_cemetery_maps_and_people(app, admin):
     assert 'id="cemetery-map"' not in admin.get(f"/cemeteries/{far}").get_data(as_text=True)
     with app.test_request_context():
         assert buried_in([]) == {}
+
+
+def test_everyone_in_an_area(app, admin, guest, monkeypatch):
+    from app import places
+    html = admin.get("/places?within=Testshire").get_data(as_text=True)
+    assert "everyone=1" in html and "Everyone in Testshire" in html
+    html = admin.get("/places?within=Testshire&everyone=1").get_data(as_text=True)
+    assert "/person/XHUSB" in html and "/family/XFAM" in html and "Census" in html
+    assert "place?name=Synthville,+Testshire" in html or "place?name=Synthville%2C+Testshire" in html
+    p = sql(app, "SELECT * FROM people WHERE living = 1 AND private = 0 AND birthplace LIKE '%%Testshire' LIMIT 1")
+    if p:
+        assert f"/person/{p[0]['personID']}" not in guest.get("/places?within=Testshire&everyone=1").get_data(as_text=True)
+    monkeypatch.setattr(places, "AREA_MAX", 1)
+    assert "the first 1 are shown" in admin.get("/places?within=Testshire&everyone=1").get_data(as_text=True)
+    assert "No events recorded here" in admin.get("/places?within=Emptyplace, Testshire&everyone=1").get_data(as_text=True)
+
+
+def test_pin_falls_back_to_the_place_it_is_in(app):
+    from app.views import coordinates
+    with app.app_context():
+        from app.db import insert
+        insert("places", {"gedcom": "tree1", "place": "Xcounty, Xstate", "latitude": "41", "longitude": "-79"})
+        insert("places", {"gedcom": "tree1", "place": "Xtwp, Xcounty, Xstate"})
+        spots = coordinates(["Xtwp, Xcounty, Xstate", "Ytwp, Xcounty, Xstate", "Zcounty, Xstate", ""])
+    assert spots["xtwp, xcounty, xstate"] == (41.0, -79.0, "Xcounty, Xstate")
+    assert spots["ytwp, xcounty, xstate"][2] == "Xcounty, Xstate"  # not in the places table at all
+    assert "zcounty, xstate" not in spots  # never just the state

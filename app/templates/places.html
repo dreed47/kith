@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "_macros.html" import person_link %}
 {% block content %}
 <h1>{{ within or "Places" }}</h1>
 {% if not within %}<p><a href="{{ url_for('places.census_years') }}">Census by year</a></p>{% endif %}
@@ -7,4 +8,19 @@
 <ul class="surnames">
   {% for g, n in groups %}<li><a href="{{ url_for('places.places', within=g) }}">{{ g.split(',', 1)[0] }}</a> <span class="muted">{{ n }}</span></li>{% endfor %}
 </ul>
+{% if within %}
+{% if everyone %}
+<h2>Everyone in {{ within }}</h2>
+{% if total > hits|length %}<p class="muted">{{ total }} events; the first {{ hits|length }} are shown. Pick a smaller area above to see the rest.</p>{% endif %}
+{% if hits %}
+<table class="facts">
+  {% for h in hits %}
+  <tr><th>{{ h.label }}</th><td>{{ h.date|d if (h.person and rights(h.person).both) or (h.family and rights(h.family).both) }}</td>
+    <td>{% if h.person %}{{ person_link(h.person) }}{% else %}<a href="{{ url_for('main.family', fid=h.family.familyID) }}">{{ pname(spouses.get(h.family.husband)) }} &amp; {{ pname(spouses.get(h.family.wife)) }}</a>{% endif %}</td>
+    <td class="small"><a href="{{ url_for('places.place', name=h.place) }}">{{ h.place }}</a></td></tr>
+  {% endfor %}
+</table>
+{% else %}<p>No events recorded here.</p>{% endif %}
+{% else %}<p><a href="{{ url_for('places.places', within=within, everyone=1) }}">Everyone in {{ within }}</a> <span class="muted small">births, marriages, deaths, burials and other events here and in the places inside it</span></p>{% endif %}
+{% endif %}
 {% endblock %}
