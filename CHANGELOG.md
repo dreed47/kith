@@ -21,6 +21,7 @@ Kith follows semantic versioning. Releases are on GitHub.
 - Fan chart: photos in the wedges, and Print poster (just the fan, landscape).
 - Admin: What's changed, the newest changes to the site by date.
 - Data checks: death date differs from the obituary.
+- Person page: half-siblings, grouped by the parent's other marriage.
 - Branch book (`/book/<id>`) and family map (`/map`).
 - Hourglass: spouses shown, and an Hourglass button on person pages. Place page map.
 - Tidy places: possible misspellings, and moving the real place out of census notes where a record title sits in
