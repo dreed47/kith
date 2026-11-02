@@ -111,6 +111,14 @@
       · <a href="{{ url_for('edit.new_person', parent_of=p.personID, role='wife', return_to=p.personID) }}">Add mother</a>
       · <a href="{{ url_for('edit.new_family', child=p.personID) }}">Parents already in the tree</a></p>{% endif %}
     {% endfor %}
+    {% if half_siblings %}
+    <h3>Half-siblings</h3>
+    {% for h in half_siblings %}
+    <p class="small muted">{{ pname(folks.get(h.parent)) }}'s children with {% if folks.get(h.other) %}{{ person_link(folks.get(h.other)) }}{% else %}an unknown spouse{% endif %}
+      · <a href="{{ url_for('main.family', fid=h.family.familyID) }}">family</a></p>
+    <ul class="people-list">{% for s in h.kids %}{{ person_row(s) }}{% endfor %}</ul>
+    {% endfor %}
+    {% endif %}
   </div>
   <div>
     {% for f in spouse_fams %}

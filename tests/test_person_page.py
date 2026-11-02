@@ -281,3 +281,22 @@ def test_married_names(app, admin):
     guest = text(client_for(app, "fx_guest").get(f"/person/{ids['Mary']}"))
     assert "Later Mary REED, then Mary SMITH<" in guest  # a living husband's name stays hidden
     assert "Later" not in text(admin.get(f"/person/{ids['Ned']}"))
+
+
+def test_half_siblings(app, admin):
+    ids = make(app, ("Pop", "M", 0), ("Mom", "F", 0), ("Me", "F", 0), ("Step", "F", 0), ("Half", "M", 0),
+               ("Halfmom", "M", 0), family=("Pop", "Mom"), kids=("Me",))
+    with app.app_context():  # Pop's second marriage, to Step, with a son; Mom's other family has a child of unknown father
+        insert("families", {"gedcom": "tree1", "familyID": ids["family"] + "2", "husband": ids["Pop"], "wife": ids["Step"]})
+        insert("children", {"gedcom": "tree1", "familyID": ids["family"] + "2", "personID": ids["Half"], "ordernum": 1})
+        insert("families", {"gedcom": "tree1", "familyID": ids["family"] + "3", "wife": ids["Mom"]})
+        insert("children", {"gedcom": "tree1", "familyID": ids["family"] + "3", "personID": ids["Halfmom"], "ordernum": 1})
+        insert("families", {"gedcom": "tree1", "familyID": ids["family"] + "4", "husband": ids["Pop"]})  # no children
+    glance = " ".join(text(admin.get(f"/person/{ids['Me']}")).split('class="card family-glance"')[1]
+                      .split("</section>")[0].split())
+    assert "<h3>Half-siblings</h3>" in glance
+    assert f'Pop T' in glance and f'children with <a href="/person/{ids["Step"]}">' in glance
+    assert glance.index(f"/person/{ids['Step']}") < glance.index(f"/person/{ids['Half']}")
+    assert "children with an unknown spouse" in glance and f"/person/{ids['Halfmom']}" in glance
+    assert f'/family/{ids["family"]}4' not in glance  # a marriage with no children isn't listed
+    assert "Half-siblings" not in text(admin.get(f"/person/{ids['Pop']}"))

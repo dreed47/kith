@@ -545,8 +545,31 @@ def relatives(pid):
                        f" WHERE c.gedcom = %s AND c.familyID IN ({','.join(['%s'] * len(ids))}) AND c.personID != %s"
                        f" ORDER BY {child_order()}", [tree(), *ids, pid]):
             siblings.setdefault(c["familyID"], []).append(c)
-    folks = people_by_id([x for f in parent_fams + spouse_fams for x in (f["husband"], f["wife"])])
-    return {"parent_fams": parent_fams, "spouse_fams": spouse_fams, "kids": kids, "siblings": siblings, "folks": folks}
+    # Half-siblings: a parent's children from their other marriages, [{parent, family, other, kids}]
+    parents = list({x for f in parent_fams for x in (f["husband"], f["wife"]) if x})
+    half = []
+    if parents:
+        marks = ",".join(["%s"] * len(parents))
+        others = [f for f in query(f"SELECT * FROM families WHERE gedcom = %s AND (husband IN ({marks})"
+                                   f" OR wife IN ({marks})) ORDER BY familyID", [tree(), *parents, *parents])
+                  if f["familyID"] not in {x["familyID"] for x in parent_fams}]
+        by_fam = {}
+        if others:
+            ids = [f["familyID"] for f in others]
+            for c in query("SELECT c.familyID, p.* FROM children c JOIN people p"
+                           " ON p.personID = c.personID AND p.gedcom = c.gedcom"
+                           f" WHERE c.gedcom = %s AND c.familyID IN ({','.join(['%s'] * len(ids))}) AND c.personID != %s"
+                           f" ORDER BY {child_order()}", [tree(), *ids, pid]):
+                by_fam.setdefault(c["familyID"], []).append(c)
+        for f in others:
+            for parent in (f["husband"], f["wife"]):
+                if parent in parents and by_fam.get(f["familyID"]):
+                    half.append({"parent": parent, "family": f, "other": f["wife"] if parent == f["husband"]
+                                 else f["husband"], "kids": by_fam[f["familyID"]]})
+    folks = people_by_id([x for f in parent_fams + spouse_fams for x in (f["husband"], f["wife"])]
+                         + [x for h in half for x in (h["parent"], h["other"])])
+    return {"parent_fams": parent_fams, "spouse_fams": spouse_fams, "kids": kids, "siblings": siblings, "folks": folks,
+            "half_siblings": half}
 
 
 def face_tag(pid, m):
