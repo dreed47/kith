@@ -27,6 +27,10 @@ def convert_date(old):
     # some as zero and rejects others outright in strict mode, so they all become "no date" here.
     if not (0 <= year <= 9999 and 0 <= month <= 12 and 0 <= day <= 31):
         return "0000-00-00"
+    # A one- or two-digit "year" is a day ("May 2" is not May of the year 2), or a year typed short: no date.
+    # shortcut: genealogy dates are never before AD 100; a real one would need a calendar-era marker.
+    if 0 < year < 100:
+        return "0000-00-00"
     if year and month and day > calendar.monthrange(year, month)[1]:
         return "0000-00-00"
     return f"{year:04d}-{month:02d}-{day:02d}"
@@ -127,6 +131,9 @@ def describe(text):
         other = f" (read as month/day/year; for day/month type {found[1][0]})" if len(found) > 1 else ""
         return f"Will be saved as {found[0][0]}{other}.", True
     sort = convert_date(text)
+    if sort == "0000-00-00" and (dm := DAY_MONTH.match(text)) and month_number(dm["m1"] or dm["m2"]):
+        return ("Day and month only: the year is missing. If the family shows it, add it (2 MAY 1885), or save an"
+                " estimate such as abt 1885 and keep the day and month in a note.", False)
     if sort == "0000-00-00":
         y, m, d = parse(text)
         if 1 <= m <= 12 and d > 0 and y > 0:
@@ -147,6 +154,8 @@ NUMERIC = re.compile(_QUAL + r"(?P<a>\d{1,2})(?P<sep>[/.-])(?P<b>\d{1,2})(?P=sep
 ISO = re.compile(_QUAL + r"(?P<y>\d{4})-(?P<m>\d{1,2})-(?P<d>\d{1,2})$")
 MONTH_FIRST = re.compile(_QUAL + r"(?P<m>[A-Za-z]{3,})\.?\s+(?P<d>\d{1,2}),?\s+(?P<y>\d{3,4})$")
 YEAR_FIRST = re.compile(_QUAL + r"(?P<y>\d{3,4}),?\s+(?P<m>[A-Za-z]{3,})\.?(?:\s+(?P<d>\d{1,2}))?$")
+DAY_MONTH = re.compile(r"(?:\d{1,2}\s+(?P<m1>[A-Za-z]{3,})\.?|(?P<m2>[A-Za-z]{3,})\.?\s+\d{1,2})$")  # 2 May, May 2
+MONTH_YEAR = re.compile(_QUAL + r"(?P<m>\d{1,2})[/.-](?P<y>\d{4})$")  # 5/1890: May 1890
 PLAIN = re.compile(r"(?:\d{1,2}\s+)?(?:(?P<m>[A-Za-z]{3,})\s+)?\d{3,4}$")  # 15 APR 1933, APR 1933, 1933
 QUALIFIER_LAST = re.compile(r"(?P<rest>.+?),?\s+(?P<q>[A-Za-z.]+)$")
 
@@ -162,7 +171,7 @@ def month_number(word):
 
 
 def readings(text):
-    """Ways a date typed as numbers ("1/3/1964", "1964-01-03"), month or year first ("Feb 19 1993", "1751 Sep"),
+    """Ways a date typed as numbers ("1/3/1964", "1964-01-03", "5/1890"), month or year first ("Feb 19 1993", "1751 Sep"),
     or with "after" etc. at the end ("15 APR 1933 after") could be meant,
     written the standard way: [("3 JAN 1964", "month/day/year"), ("1 MAR 1964", "day/month/year")]. US
     month/day order comes first. Only dates that exist; empty when the text isn't one of these shapes."""
@@ -175,6 +184,8 @@ def readings(text):
         tries = [(int(m["d"]), int(m["m"]), "")]
     elif (m := MONTH_FIRST.match(text)) and month_number(m["m"]):
         tries = [(int(m["d"]), month_number(m["m"]), "")]
+    elif m := MONTH_YEAR.match(text):
+        tries = [(0, int(m["m"]), "")]  # day 0: month and year only
     elif (m := YEAR_FIRST.match(text)) and month_number(m["m"]):
         tries = [(int(m["d"] or 0), month_number(m["m"]), "")]  # day 0: month and year only
     elif (m := QUALIFIER_LAST.match(text)) and (q := GEDCOM_QUALIFIER.get(m["q"].upper())) \

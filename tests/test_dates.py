@@ -3,7 +3,8 @@ import pytest
 from app.dates import convert_date
 
 # Expected values are TNG 15's own convertDate output (run with PHP on the live server), except where
-# TNG produces an impossible date that MySQL stores as zero; those expect "0000-00-00".
+# TNG produces an impossible date that MySQL stores as zero, or a year under 100 (TNG reads "1900-10" as the
+# year 10 and "May 2" as May of the year 2); those expect "0000-00-00".
 CASES = """
 1900	1900-00-00
 abt 1895	1895-00-00
@@ -40,12 +41,12 @@ c. 1850	1850-00-00
 WFT Est. 1850-1900	1900-00-00
 15 6 1900	1900-06-15
 x 15 JUN 1900	1900-06-15
-BEF JUN 0001	0001-05-31
+BEF JUN 0001	0000-00-00
 1800/1	1801-00-00
-1x/32	0032-00-00
+1x/32	0000-00-00
 ab/cd	0000-00-00
-1900-10	0010-00-00
-abt 1900-5	0005-00-00
+1900-10	0000-00-00
+abt 1900-5	0000-00-00
 """
 
 
@@ -102,6 +103,11 @@ def test_describe(text, message, ok):
     ("Circa 2/14/1988", [("ABT 14 FEB 1988", "")]),
     ("Feb 19 1993", [("19 FEB 1993", "")]),
     ("1964-01-03", [("3 JAN 1964", "")]),
+    ("5/1890", [("MAY 1890", "")]),          # month and year only
+    ("12-1913", [("DEC 1913", "")]),
+    ("aft 7/1860", [("AFT JUL 1860", "")]),
+    ("13/1890", []),                         # no 13th month
+    ("5/90", []),                            # a two-digit year could be anything
     ("2/30/1900", []),        # no such day either way
     ("13/13/1900", []),
     ("1/2-1900", []),         # mixed separators
@@ -150,3 +156,13 @@ def test_readings(text, found):
 def test_display(raw, shown):
     from app.dates import display
     assert display(raw) == shown
+
+
+def test_day_and_month_only():
+    from app.dates import convert_date, describe
+    for text in ("May 2", "Sept 3", "Jan 15", "2 May", "02 MAY"):
+        assert convert_date(text) == "0000-00-00", text  # not the year 2, 3 or 15
+        message, ok = describe(text)
+        assert message.startswith("Day and month only") and not ok, text
+    assert not describe("Foo 3")[0].startswith("Day and month")  # not a month
+    assert convert_date("15 APR 1933") == "1933-04-15" and convert_date("abt 1885") == "1885-00-00"
