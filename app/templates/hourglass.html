@@ -7,7 +7,11 @@
   {%- if key == "a1" and spouses %}<span class="small hg-spouses">m. {% for s in spouses %}<a href="{{ url_for('main.hourglass', pid=s.personID, gens=gens) }}">{{ pname(s) }}</a>{{ ", " if not loop.last }}{% endfor %}</span>{% endif %}{% endif %}</div>
 {% endmacro %}
 {% macro node(p, key, up, extra="") %}
-<div class="hg-node">{{ box(p, key, up, extra) }}{% if kids_of[p.personID] %}<div class="hg-kids">{% for c in kids_of[p.personID] %}{{ node(c, "d" ~ c.personID, key) }}{% endfor %}</div>{% endif %}</div>
+{% set groups = kids_of[p.personID] or [] %}
+<div class="hg-node">{{ box(p, key, up, extra) }}{% if groups %}<div class="hg-kids">{% for f, kids in groups %}
+  {%- if groups|length > 1 %}{% set o = others.get(f.wife if f.husband == p.personID else f.husband) %}<div class="hg-group"><span class="hg-with small">with {% if o %}{{ pname(o) }}{% else %}unknown spouse{% endif %}</span><div class="hg-kids">{% endif -%}
+  {% for c in kids %}{{ node(c, "d" ~ c.personID, key) }}{% endfor %}
+  {%- if groups|length > 1 %}</div></div>{% endif %}{% endfor %}</div>{% endif %}</div>
 {% endmacro %}
 {% block content %}
 <h1>Hourglass: {{ pname(root) }}</h1>

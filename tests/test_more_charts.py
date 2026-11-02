@@ -137,6 +137,21 @@ def test_hourglass(app, admin):
     below = text(admin.get(f"/hourglass/{loop['Loopy']}")).split("hg-root")[1]
     assert f"/hourglass/{loop['Loopy']}?" in below.split("</div>")[0]  # the person's own box...
     assert below.count(f"/hourglass/{loop['Loopy']}?") == 1  # ...and not again as their own child
+    # Children of two marriages: grouped, each under the other parent's name; one marriage gets no label
+    two = make(app, ("Twice", "M", 0), ("Firstwife", "F", 0), ("Firstkid", "M", 0), ("Secondkid", "F", 0),
+               family=("Twice", "Firstwife"), kids=("Firstkid",))
+    with app.app_context():
+        insert("families", {"gedcom": "tree1", "familyID": two["family"] + "2", "husband": two["Twice"]})
+        insert("children", {"gedcom": "tree1", "familyID": two["family"] + "2", "personID": two["Secondkid"],
+                            "ordernum": 1})
+    html = " ".join(text(admin.get(f"/hourglass/{two['Twice']}")).split())
+    assert html.count('class="hg-group"') == 2 and "with Firstwife" in html and "with unknown spouse" in html
+    groups = html.split('class="hg-group"')[1:]  # in marriage order; each holds its own label and child
+    first = next(g for g in groups if "with Firstwife" in g)
+    second = next(g for g in groups if "with unknown spouse" in g)
+    assert f"/hourglass/{two['Firstkid']}" in first.split("hg-group")[0] and two["Secondkid"] not in first
+    assert f"/hourglass/{two['Secondkid']}" in second.split("hg-group")[0]
+    assert "hg-group" not in text(admin.get(f"/hourglass/{ids['Dad']}?gens=2"))
     one_gen = text(admin.get(f"/hourglass/{ids['Granddad']}?gens=1"))
     assert f"/hourglass/{ids['Dad']}?" in one_gen and f"/hourglass/{ids['Kid']}?" not in one_gen
     assert admin.get("/hourglass/NOPE").status_code == 404

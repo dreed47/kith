@@ -37,22 +37,27 @@ def vertical_pedigree(pid):
 
 
 def descendant_rows(root, gens):
-    """Each generation below root as a row of groups, one per parent: [[(parent, [child, ...]), ...], ...]."""
+    """Each generation below root as a row, one entry per parent with their children by marriage:
+    [[(parent, [(family, [child, ...]), ...]), ...], ...]."""
     rows, seen, current = [], {root["personID"]}, [root]
     for _ in range(gens):
         fams = families_of([p["personID"] for p in current])
         kids = children_by_family([f["familyID"] for fs in fams.values() for f in fs])
         row = []
         for p in current:
-            mine = [c for f in fams.get(p["personID"], []) for c in kids.get(f["familyID"], [])
-                    if c["personID"] not in seen]  # a loop in bad data stops instead of repeating
-            seen.update(c["personID"] for c in mine)
-            if mine:
-                row.append((p, mine))
+            groups = []
+            for f in fams.get(p["personID"], []):
+                mine = [c for c in kids.get(f["familyID"], [])
+                        if c["personID"] not in seen]  # a loop in bad data stops instead of repeating
+                seen.update(c["personID"] for c in mine)
+                if mine:
+                    groups.append((f, mine))
+            if groups:
+                row.append((p, groups))
         if not row:
             break
         rows.append(row)
-        current = [c for _, cs in row for c in cs]
+        current = [c for _, groups in row for _, cs in groups for c in cs]
     return rows
 
 
@@ -65,10 +70,14 @@ def hourglass(pid):
     above = [[(n, slots.get(n)) for n in range(2 ** g, 2 ** (g + 1))] for g in reversed(range(1, gens + 1))]
     above = [row for row in above if any(p for _, p in row)]  # no empty rows past the furthest known generation
     below = descendant_rows(root, gens)
-    everyone = [root, *(p for row in above for _, p in row), *(c for row in below for _, cs in row for c in cs)]
-    kids_of = {parent["personID"]: kids for row in below for parent, kids in row}
+    everyone = [root, *(p for row in above for _, p in row),
+                *(c for row in below for _, groups in row for _, cs in groups for c in cs)]
+    kids_of = {parent["personID"]: groups for row in below for parent, groups in row}
+    # Someone with children from more than one marriage gets each marriage's children under the other parent's name
+    others = people_by_id([f["wife"] if f["husband"] == pid else f["husband"] for pid, groups in kids_of.items()
+                           if len(groups) > 1 for f, _ in groups])
     folks = people_by_id([f["wife"] if f["husband"] == pid else f["husband"] for f in families_of([pid]).get(pid, [])])
-    return render_template("hourglass.html", root=root, above=above, kids_of=kids_of, gens=gens,
+    return render_template("hourglass.html", root=root, above=above, kids_of=kids_of, others=others, gens=gens,
                            choices=HOURGLASS_GENS, photos=chart_photos(everyone), spouses=list(folks.values()))
 
 
