@@ -23,6 +23,8 @@ Kith follows semantic versioning. Releases are on GitHub.
 - Data checks: death date differs from the obituary.
 - Person page: half-siblings, grouped by the parent's other marriage.
 - Hourglass: children grouped by marriage when someone married more than once.
+- Dates: "5/1890" saves as MAY 1890; "May 2" is no longer read as the year 2; day-and-month-only dates get a
+  hint on Dates to fix.
 - Branch book (`/book/<id>`) and family map (`/map`).
 - Hourglass: spouses shown, and an Hourglass button on person pages. Place page map.
 - Tidy places: possible misspellings, and moving the real place out of census notes where a record title sits in
