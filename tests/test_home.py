@@ -1,6 +1,7 @@
 import datetime
 import html as htmllib
 import subprocess
+import tomllib
 
 import pytest
 from flask import g
@@ -248,13 +249,14 @@ def test_public_welcome_page(app, plain_app):
 
 
 def test_version(monkeypatch):
-    assert kith.version().startswith("0.1.0 (")  # a git checkout: the commit too
+    v = tomllib.loads((kith.ROOT / "pyproject.toml").read_text())["project"]["version"]  # so a release edits one file
+    assert kith.version().startswith(f"{v} (")  # a git checkout: the commit too
     monkeypatch.setattr(subprocess, "run", lambda *a, **k: subprocess.CompletedProcess(a, 128, "", "not a repo"))
-    assert kith.version() == "0.1.0"  # a tarball or Docker copy
+    assert kith.version() == v  # a tarball or Docker copy
     def missing(*a, **k):
         raise FileNotFoundError("git")
     monkeypatch.setattr(subprocess, "run", missing)
-    assert kith.version() == "0.1.0"  # no git installed
+    assert kith.version() == v  # no git installed
 
 
 def test_public_page_contact_and_defaults(tmp_path, monkeypatch):

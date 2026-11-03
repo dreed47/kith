@@ -16,6 +16,7 @@ line.
 |---|---|
 | ![Descendants chart](docs/screenshots/chart.png) | ![Home page](docs/screenshots/home.png) |
 | ![Dark theme](docs/screenshots/person-dark.png) | ![Welcome page before logging in](docs/screenshots/welcome.png) |
+| ![Hourglass chart: parents above, children below](docs/screenshots/hourglass.png) | ![Census by year: households by place](docs/screenshots/census.png) |
 
 <img src="docs/screenshots/person-phone.png" alt="A person's page on a phone" width="260">
 

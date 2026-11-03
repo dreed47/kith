@@ -23,7 +23,7 @@ def env(name, default=None):
 
 
 def version():
-    """For the footer: pyproject's version, plus the commit when the code is a git checkout, e.g. "0.1.0 (34f4426)"."""
+    """For the footer: pyproject's version, plus the commit when the code is a git checkout, e.g. "0.2.0 (34f4426)"."""
     v = tomllib.loads((ROOT / "pyproject.toml").read_text())["project"]["version"]
     try:  # safe.directory: the checkout is owned by root but the site runs as its own user
         commit = subprocess.run(["git", "-C", str(ROOT), "-c", "safe.directory=*", "rev-parse", "--short", "HEAD"],

@@ -4,6 +4,8 @@ Kith follows semantic versioning. Releases are on GitHub.
 
 ## Unreleased
 
+## 0.2.0 (2026-11-03)
+
 - Census by year (`/census`): each census year's households, by place, linked from Places.
 - Census matches (Admin > Tidy the tree): suggests which person in the tree each name typed in a census
   transcription is, for an editor to confirm; a confirmed person gets that census on their page, and a birth year
