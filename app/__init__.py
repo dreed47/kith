@@ -109,6 +109,8 @@ def create_app(config=None):
         MAX_CONTENT_LENGTH=int(env("MAX_UPLOAD_MB", "50")) * 1024 * 1024,
         # Set to 1 when running behind the reverse proxy, so client IPs (used by login throttling) are real.
         TRUSTED_PROXIES=int(env("TRUSTED_PROXIES", "0")),
+        # 0 turns off the daily version check (app/updates.py) for good, whatever Site settings say.
+        UPDATE_CHECK=env("UPDATE_CHECK", "1") != "0",
     )
     if config:
         app.config.update(config)

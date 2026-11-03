@@ -6,7 +6,7 @@ import urllib.error
 import pytest
 from conftest import CSRF, client_for, sql
 
-from app import release, updates
+from app import create_app, release, updates
 from app.db import execute
 
 
@@ -83,3 +83,21 @@ def test_command(app, project):
     assert "Up to date" in runner.invoke(args=["updates", "check"]).output
     answer["latest"] = urllib.error.URLError("down")
     assert "No answer" in runner.invoke(args=["updates", "check"]).output
+
+
+def test_turned_off_by_the_server(app, project):
+    sent, _ = project
+    c = client_for(app, "fx_siteadmin")
+    app.config["UPDATE_CHECK"] = False
+    try:
+        page = c.get("/admin/settings").get_data(as_text=True)
+        assert "KITH_UPDATE_CHECK=0" in page and 'name="update_check" value="1" checked' not in page
+        with app.app_context():
+            assert updates.check() is None and updates.newer() is None
+        assert "Turned off" in app.test_cli_runner().invoke(args=["updates", "check"]).output
+        c.post("/admin/settings", data={"csrf": CSRF, "update_check": "1"})  # saving keeps the admin's choice
+        assert not sql(app, "SELECT * FROM app_settings WHERE name = 'update_check'")
+    finally:
+        app.config["UPDATE_CHECK"] = True
+    assert not sent
+    assert create_app({"TESTING": True}).config["UPDATE_CHECK"] is True

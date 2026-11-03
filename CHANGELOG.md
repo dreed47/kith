@@ -6,8 +6,9 @@ Kith follows semantic versioning. Releases are on GitHub.
 
 - Version check: once a day the site asks kithgenealogy.org for the newest version, and Admin says when there's
   one. It sends a random site ID and the version number, nothing else; the Kith project counts running sites from
-  it. On by default, off under Admin > Site settings. Proxmox installs get a `kith-updates` timer (re-run
-  `deploy/jobs.sh` on an existing install). The other end is `worker/`, a Cloudflare Worker.
+  it. On by default, off under Admin > Site settings, or for good with `KITH_UPDATE_CHECK=0`. Proxmox installs get
+  a `kith-updates` timer (re-run `deploy/jobs.sh` on an existing install). The other end is `worker/`, a
+  Cloudflare Worker. README: new "What leaves your server" section listing every outside connection.
 
 ## 0.2.0 (2026-11-03)
 

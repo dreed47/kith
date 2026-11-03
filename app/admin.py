@@ -356,6 +356,7 @@ def settings():
             return redirect(url_for("admin.settings"))
     return render_template("admin_settings.html", v=v, errors=errors, fields=SITE_TEXT, themes=themes, art=HERO_ART,
                            start=get_person(v["tree_start"]) if v["tree_start"] else None,
+                           check_locked=not current_app.config["UPDATE_CHECK"],
                            defaults=current_app.extensions["theme"])
 
 

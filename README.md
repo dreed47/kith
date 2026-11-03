@@ -101,6 +101,7 @@ Settings are environment variables (`/etc/kith.env`, or `docker/.env`):
 | `KITH_SMTP_HOST`, `_PORT`, `_USER`, `_PASSWORD`, `KITH_MAIL_FROM` | Outgoing email: account confirmations, password resets, invitations. Off until `KITH_SMTP_USER` is set. |
 | `KITH_THEME` | The site's theme (default `default`). |
 | `KITH_MAX_UPLOAD_MB` | Largest upload (default 50). |
+| `KITH_UPDATE_CHECK=0` | Never check for new versions (see "What leaves your server"). |
 
 The site title, tagline, welcome page text, banner picture, where the Tree page starts for people not linked
 to their own record, and the version check are set under Admin > Site settings.
@@ -111,11 +112,37 @@ from cron:
 - `flask --app app geocode run`: looks up map coordinates for places that have none (OpenStreetMap's Nominatim,
   one a second). Only place names leave the server.
 - `flask --app app digest send`: the weekly email, once an admin turns it on.
-- `flask --app app updates check`: daily, asks kithgenealogy.org whether a newer Kith is out, so Admin can say
-  so. It sends a random ID for the site and its version number, nothing else, and the Kith project counts running
-  sites from it. Turn it off under Admin > Site settings. The other end is `worker/`.
+- `flask --app app updates check`: daily, asks kithgenealogy.org whether a newer Kith is out (see "What leaves
+  your server").
 
 Back up the database (`mariadb-dump`) and the photos folder. On Proxmox, the container's own backups cover both.
+
+## What leaves your server
+
+Kith has no ads, trackers or analytics, and nothing about your tree goes anywhere unless you set it up. These are
+all the connections it makes, and how to stop each one:
+
+- **Version check** (on by default). Once a day the site asks kithgenealogy.org for the newest version, and Admin
+  says when there's one. It sends a random ID made for this site and its version number (`{"site":
+  "4f1c…", "version": "0.2.0"}`), nothing else: no names, no address, no tree data. The Kith project counts
+  running sites from it, keeping only the ID, the version and the first and last days it asked (`worker/`). The
+  first check is the morning after install. To turn it off, any of:
+  - Admin > Site settings > Updates: untick **Check for new versions of Kith**, then Save.
+  - `KITH_UPDATE_CHECK=0` in `/etc/kith.env` (or `docker/.env`), then restart: off for good, whatever Site
+    settings say.
+  - Proxmox: `systemctl disable --now kith-updates.timer`. Elsewhere: leave out its cron line.
+- **Map coordinates.** The nightly geocode job sends place names only (no people) to OpenStreetMap's Nominatim.
+  Stop it: `systemctl disable --now kith-geocode.timer`, or leave out its cron line. Coordinates can still be typed
+  in by hand.
+- **Map pictures.** Pages with a map have each visitor's browser load the map tiles from OpenStreetMap, which sees
+  that visitor's address, as any website does. Pages without maps don't.
+- **Email** goes only through the SMTP server you set (`KITH_SMTP_*`), and only once you set one.
+- **Feedback reports** are copied to a GitHub repository's issues only when `KITH_GITHUB_REPO` and
+  `KITH_GITHUB_TOKEN` are set.
+- **Search links** on person pages (FamilySearch, Find a Grave, Ancestry, newspapers) are plain links: nothing is
+  sent until someone clicks one.
+
+Fonts, icons and scripts are all served by the site itself.
 
 ## Themes
 

@@ -23,7 +23,9 @@
   </fieldset>
   <fieldset>
     <legend>Updates</legend>
-    <label class="check"><input type="checkbox" name="update_check" value="1"{% if v.update_check != "off" %} checked{% endif %}> Check for new versions of Kith</label>
+    {% if check_locked %}<p>Checking for new versions is turned off for good on this server (<code>KITH_UPDATE_CHECK=0</code>).</p>
+    <input type="hidden" name="update_check" value="{{ '' if v.update_check == 'off' else '1' }}">
+    {% else %}<label class="check"><input type="checkbox" name="update_check" value="1"{% if v.update_check != "off" %} checked{% endif %}> Check for new versions of Kith</label>{% endif %}
     <p class="muted small">Once a day this site asks kithgenealogy.org for the newest version, and Admin says when there's one.
       It sends a random ID for this site and its version number, nothing else, so the Kith project can count how many
       sites run it.</p>

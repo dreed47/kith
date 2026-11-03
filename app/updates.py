@@ -1,6 +1,6 @@
 """Once a day, ask the Kith project whether a newer version is out, so Admin can say so. The question carries this
 site's random ID and its version, nothing else (no names, address or tree data); the project counts running sites
-from it. Off under Admin > Site settings. The kith-updates timer runs `flask --app app updates check`. The other
+from it. Off under Admin > Site settings, or for good with KITH_UPDATE_CHECK=0. The kith-updates timer runs `flask --app app updates check`. The other
 end is worker/ in the Kith repo."""
 import json
 import re
@@ -9,7 +9,7 @@ import urllib.request
 import uuid
 
 import click
-from flask import Blueprint
+from flask import Blueprint, current_app
 
 from . import release
 from .db import execute
@@ -21,7 +21,8 @@ VERSION = re.compile(r"\d{1,4}\.\d{1,4}\.\d{1,4}")
 
 
 def enabled():
-    return stored("update_check") != "off"
+    """On unless KITH_UPDATE_CHECK=0, or an admin turned it off."""
+    return current_app.config["UPDATE_CHECK"] and stored("update_check") != "off"
 
 
 def site_id():
@@ -67,7 +68,7 @@ def newer():
 def check_command():
     """Ask whether a newer Kith is out (the timer runs this daily)."""
     if not enabled():
-        return click.echo("Turned off (Admin > Site settings).")
+        return click.echo("Turned off (Admin > Site settings, or KITH_UPDATE_CHECK=0).")
     latest = check()
     click.echo("No answer; trying again tomorrow." if latest is None else
                f"Kith {latest} is available." if newer() else f"Up to date ({release()}).")
