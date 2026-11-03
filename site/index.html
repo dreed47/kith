@@ -75,7 +75,7 @@ nav a.link:hover { color: var(--ink-text); }
   box-shadow: 0 -10px 60px -10px rgb(227 166 106 / .25), 0 30px 80px rgb(0 0 0 / .5); }
 .browser .bar { display: flex; gap: 7px; padding: 12px 14px; background: #3a2c20; }
 .browser .bar i, .terminal .bar i { width: 11px; height: 11px; border-radius: 50%; background: #5c4836; }
-.browser img { aspect-ratio: 1280 / 760; object-fit: cover; object-position: top; width: 100%; }
+.browser video { display: block; width: 100%; height: auto; aspect-ratio: 1280 / 800; background: var(--ink); }
 .phone { position: absolute; right: -28px; bottom: 24px; width: 210px; border-radius: 30px; padding: 8px;
   background: #0d0906; box-shadow: 0 20px 60px rgb(0 0 0 / .6); transform: rotate(3deg); }
 .phone img { border-radius: 23px; aspect-ratio: 390 / 700; object-fit: cover; object-position: top; }
@@ -197,7 +197,8 @@ footer span { margin-right: auto; }
     </div>
     <div class="stage">
       <div class="browser"><div class="bar"><i></i><i></i><i></i></div>
-        <img src="screenshots/person.png" alt="A person's page in Kith: dates, places, parents, spouse and children" width="1280" height="860"></div>
+        <video id="tour" src="tour.mp4" poster="tour-poster.jpg" width="1280" height="800" autoplay muted loop playsinline
+          aria-label="A one-minute tour of Kith: importing a GEDCOM file, search, a person's page, tagging faces in an old photo, charts, relationships, places and maps, the census and dark mode"></video></div>
       <div class="phone"><img src="screenshots/person-phone.png" alt="The same page on a phone" width="780" height="1688"></div>
     </div>
   </div>
@@ -414,13 +415,17 @@ footer span { margin-right: auto; }
 <footer>
   <div class="wrap">
     <span>Kith is free software under the <a href="https://github.com/dreed47/kith/blob/main/LICENSE">AGPL</a>.
-      Screenshots show the made-up sample family that comes with it.</span>
+      Screenshots show the made-up sample family that comes with it. The 1889 portrait in the tour is a public-domain photo from <a href="https://commons.wikimedia.org/wiki/File:Peter_Anton_and_Ella_Francis_Wagner,_Pine_City,_Washington,_circa_1889_-_DPLA_-_5b76771ed0daa109039738770456b5c7.jpg">Wikimedia Commons</a>.</span>
     <a href="https://github.com/dreed47/kith/blob/main/CHANGELOG.md">What's new</a>
     <a href="https://github.com/dreed47/kith/issues">Report a problem</a>
   </div>
 </footer>
 
 <script>
+  // The hero tour plays on its own, unless the visitor asked for less motion.
+  const tour = document.getElementById("tour");
+  if (matchMedia("(prefers-reduced-motion: reduce)").matches) { tour.removeAttribute("autoplay"); tour.pause();
+    tour.controls = true; }
   const copy = document.getElementById("copy");
   if (navigator.clipboard) {
     copy.hidden = false;
