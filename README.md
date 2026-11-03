@@ -102,15 +102,18 @@ Settings are environment variables (`/etc/kith.env`, or `docker/.env`):
 | `KITH_THEME` | The site's theme (default `default`). |
 | `KITH_MAX_UPLOAD_MB` | Largest upload (default 50). |
 
-The site title, tagline, welcome page text, banner picture and where the Tree page starts for people not linked
-to their own record are set under Admin > Site settings.
+The site title, tagline, welcome page text, banner picture, where the Tree page starts for people not linked
+to their own record, and the version check are set under Admin > Site settings.
 
-Two scheduled jobs. The Proxmox installer sets them up as systemd timers (`deploy/jobs.sh`); elsewhere run them
+Three scheduled jobs. The Proxmox installer sets them up as systemd timers (`deploy/jobs.sh`); elsewhere run them
 from cron:
 
 - `flask --app app geocode run`: looks up map coordinates for places that have none (OpenStreetMap's Nominatim,
   one a second). Only place names leave the server.
 - `flask --app app digest send`: the weekly email, once an admin turns it on.
+- `flask --app app updates check`: daily, asks kithgenealogy.org whether a newer Kith is out, so Admin can say
+  so. It sends a random ID for the site and its version number, nothing else, and the Kith project counts running
+  sites from it. Turn it off under Admin > Site settings. The other end is `worker/`.
 
 Back up the database (`mariadb-dump`) and the photos folder. On Proxmox, the container's own backups cover both.
 

@@ -22,6 +22,13 @@
     <p class="muted small">For people whose account isn't linked to their own record: Tree opens an hourglass chart of this person. Linked people always start at themselves. Leave empty to show a "Whose tree?" box instead.</p>
   </fieldset>
   <fieldset>
+    <legend>Updates</legend>
+    <label class="check"><input type="checkbox" name="update_check" value="1"{% if v.update_check != "off" %} checked{% endif %}> Check for new versions of Kith</label>
+    <p class="muted small">Once a day this site asks kithgenealogy.org for the newest version, and Admin says when there's one.
+      It sends a random ID for this site and its version number, nothing else, so the Kith project can count how many
+      sites run it.</p>
+  </fieldset>
+  <fieldset>
     <legend>Wording</legend>
   <p class="muted small">Leave a box empty to use the theme's default, shown in grey.</p>
   {% for key, (label, n, multiline) in fields.items() %}

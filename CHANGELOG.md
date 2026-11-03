@@ -4,6 +4,11 @@ Kith follows semantic versioning. Releases are on GitHub.
 
 ## Unreleased
 
+- Version check: once a day the site asks kithgenealogy.org for the newest version, and Admin says when there's
+  one. It sends a random site ID and the version number, nothing else; the Kith project counts running sites from
+  it. On by default, off under Admin > Site settings. Proxmox installs get a `kith-updates` timer (re-run
+  `deploy/jobs.sh` on an existing install). The other end is `worker/`, a Cloudflare Worker.
+
 ## 0.2.0 (2026-11-03)
 
 - Census by year (`/census`): each census year's households, by place, linked from Places.

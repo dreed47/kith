@@ -5,8 +5,11 @@ set -euo pipefail
 # Place coordinates (app/geocode.py, OpenStreetMap; only place names leave the server): nightly, only places that
 # have none, so the first night takes a few hours and later ones seconds. The weekly email (app/digest.py) sends
 # nothing until an admin turns it on (Admin > Email everyone).
-for job in "geocode run|Kith place coordinates|*-*-* 02:30" "digest send|Kith weekly email|Mon *-*-* 13:00 UTC"; do
-  IFS="|" read -r cmd desc when <<<"$job"
+# The version check (app/updates.py) asks kithgenealogy.org daily whether a newer Kith is out; off under Admin >
+# Site settings. Its time is spread over an hour so sites don't all ask at once.
+for job in "geocode run|Kith place coordinates|*-*-* 02:30" "digest send|Kith weekly email|Mon *-*-* 13:00 UTC" \
+           "updates check|Kith version check|*-*-* 04:00|1h"; do
+  IFS="|" read -r cmd desc when spread <<<"$job"
   name="kith-${cmd%% *}"
   cat <<EOF2 >"/etc/systemd/system/${name}.service"
 [Unit]
@@ -32,6 +35,7 @@ Description=${desc}
 
 [Timer]
 OnCalendar=${when}
+RandomizedDelaySec=${spread:-0}
 Persistent=true
 
 [Install]
@@ -39,4 +43,4 @@ WantedBy=timers.target
 EOF2
 done
 systemctl daemon-reload
-systemctl enable -q --now kith-geocode.timer kith-digest.timer
+systemctl enable -q --now kith-geocode.timer kith-digest.timer kith-updates.timer

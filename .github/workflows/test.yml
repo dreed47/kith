@@ -1,5 +1,5 @@
 # Every push and pull request: the whole test suite against MariaDB, as on a real site (100% coverage required),
-# plus a check that the Docker image builds.
+# plus a check that the Docker image builds and the tests of the version-check Worker (worker/).
 name: test
 on:
   push:
@@ -31,3 +31,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: docker build -f docker/Dockerfile .
+  worker:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: node --test worker/test.mjs

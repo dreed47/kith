@@ -22,9 +22,14 @@ def env(name, default=None):
     return os.environ.get(f"KITH_{name}", os.environ.get(f"GENEALOGY_{name}", default))
 
 
+def release():
+    """pyproject's version, e.g. "0.2.0"."""
+    return tomllib.loads((ROOT / "pyproject.toml").read_text())["project"]["version"]
+
+
 def version():
     """For the footer: pyproject's version, plus the commit when the code is a git checkout, e.g. "0.2.0 (34f4426)"."""
-    v = tomllib.loads((ROOT / "pyproject.toml").read_text())["project"]["version"]
+    v = release()
     try:  # safe.directory: the checkout is owned by root but the site runs as its own user
         commit = subprocess.run(["git", "-C", str(ROOT), "-c", "safe.directory=*", "rev-parse", "--short", "HEAD"],
                                 capture_output=True, text=True, timeout=5).stdout.strip()
@@ -201,7 +206,7 @@ def create_app(config=None):
         return response
 
     db.init_app(app)
-    from . import account, admin, auth, backups, charts, checks, comments, digest, edit, edit_events, edit_family, edit_media, edit_places, event_types, feedback, gedcom, geocode, gedcom_import, home, legacy, living, me, media, merge, news, places, reports, setup, sources, statistics, surname_aliases, census_links, timeline, views, watch  # noqa: F401 (backups/edit_*/gedcom/home/reports add routes)
+    from . import account, admin, auth, backups, charts, checks, comments, digest, edit, edit_events, edit_family, edit_media, edit_places, event_types, feedback, gedcom, geocode, gedcom_import, home, legacy, living, me, media, merge, news, places, reports, setup, sources, statistics, surname_aliases, census_links, timeline, updates, views, watch  # noqa: F401 (backups/edit_*/gedcom/home/reports add routes)
     app.register_blueprint(auth.bp)
     app.register_blueprint(views.bp)
     app.register_blueprint(media.bp)
@@ -216,4 +221,5 @@ def create_app(config=None):
     app.register_blueprint(digest.bp)
     app.register_blueprint(geocode.bp)
     app.register_blueprint(setup.bp)
+    app.register_blueprint(updates.bp)
     return app

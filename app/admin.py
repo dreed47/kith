@@ -13,7 +13,7 @@ from .account import approved_email, link, send_reset, site_name
 from .auth import password_fields
 from .db import execute, insert, query, update
 from .edit import audit, get_person, now
-from . import localtime
+from . import localtime, updates
 from .me import pending_count
 from .settings import HERO_ART, SITE_TEXT, default_theme, hero_art, site_settings, stored
 from .views import one, people_by_id
@@ -105,7 +105,7 @@ def home():
     https = request.is_secure or request.headers.get("X-Forwarded-Proto") == "https"
     insecure_cookies = https and not current_app.config["SESSION_COOKIE_SECURE"]
     return render_template("admin_home.html", counts=counts, visits=visits, insecure_cookies=insecure_cookies,
-                           changes=recent_changes())
+                           changes=recent_changes(), newer=updates.newer())
 
 
 @bp.get("/users")
@@ -328,11 +328,12 @@ def weekly_email():
 def settings():
     themes = current_app.extensions["themes"]
     current, errors = {**site_settings(), "theme": default_theme(), "hero_art": hero_art(),
-                       "tree_start": stored("tree_start") or ""}, []
+                       "tree_start": stored("tree_start") or "", "update_check": stored("update_check") or ""}, []
     v = current
     if request.method == "POST":
         v = {k: request.form.get(k, "").strip() for k in (*SITE_TEXT, "theme", "hero_art", "tree_start")}
         v["tree_start"] = v["tree_start"].upper()
+        v["update_check"] = "" if request.form.get("update_check") else "off"  # on unless turned off
         v["theme"] = v["theme"] or current["theme"]
         v["hero_art"] = v["hero_art"] or current["hero_art"]
         errors = [f"{label} is longer than {n} characters." for k, (label, n, _) in SITE_TEXT.items() if len(v[k]) > n]
@@ -350,7 +351,7 @@ def settings():
                     execute("DELETE FROM app_settings WHERE name = %s", (k,))
             audit("edit settings", "app_settings", "site", current,
                   {**site_settings(), "theme": default_theme(), "hero_art": hero_art(),
-                   "tree_start": stored("tree_start") or ""})
+                   "tree_start": stored("tree_start") or "", "update_check": stored("update_check") or ""})
             flash("Saved.")
             return redirect(url_for("admin.settings"))
     return render_template("admin_settings.html", v=v, errors=errors, fields=SITE_TEXT, themes=themes, art=HERO_ART,

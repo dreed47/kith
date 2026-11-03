@@ -1,0 +1,18 @@
+# Kith's version check and site count. Deploy steps: README.md.
+name = "kith-check"
+main = "src/index.js"
+compatibility_date = "2026-06-01"
+workers_dev = false  # only reachable at the two addresses below, so the stats page can't skip Access
+routes = [
+  { pattern = "check.kithgenealogy.org", custom_domain = true },
+  { pattern = "stats.kithgenealogy.org", custom_domain = true },
+]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "kith-sites"
+database_id = "REPLACE-with-the-id-from-wrangler-d1-create"
+
+[vars]
+STATS_HOST = "stats.kithgenealogy.org"
+# ACCESS_TEAM and ACCESS_AUD are set with `wrangler secret put` (README.md), so they stay out of this public repo.

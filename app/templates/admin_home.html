@@ -7,6 +7,9 @@
 {% if insecure_cookies %}<p class="card error" role="alert">This site is reached over HTTPS, but the login cookie can
   still be sent without it. Set <code>KITH_SECURE_COOKIES=1</code> in the site's settings (and
   <code>KITH_TRUSTED_PROXIES=1</code> behind a reverse proxy), then restart.</p>{% endif %}
+{% if newer %}<p class="card">Kith {{ newer }} is out (this site runs {{ kith_version }}).
+  <a href="https://github.com/dreed47/kith/blob/main/CHANGELOG.md">What's new</a>. To update, run the
+  install command again inside the container, or see the README.</p>{% endif %}
 <section class="card">
   <h2 class="card-title">{{ icon("inbox") }}Waiting on someone</h2>
   <div class="queue">
