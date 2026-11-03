@@ -11,7 +11,7 @@ routes = [
 [[d1_databases]]
 binding = "DB"
 database_name = "kith-sites"
-database_id = "REPLACE-with-the-id-from-wrangler-d1-create"
+database_id = "1d7d4075-20ae-478e-958e-78dba56058fa"
 
 [vars]
 STATS_HOST = "stats.kithgenealogy.org"
