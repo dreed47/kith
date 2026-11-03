@@ -1,0 +1,35 @@
+# The kithgenealogy.org landing page: site/ plus the README's screenshots, one font pair and the tree icon.
+name: pages
+on:
+  push:
+    branches: [main]
+    paths: [site/**, docs/screenshots/**, .github/workflows/pages.yml]
+  workflow_dispatch:
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+concurrency:
+  group: pages
+  cancel-in-progress: true
+jobs:
+  deploy:
+    runs-on: ubuntu-24.04
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build
+        run: |
+          cp -r site _site
+          cp -r docs/screenshots _site/screenshots
+          mkdir _site/fonts
+          cp app/static/fonts/fraunces-latin-wght-normal.woff2 app/static/fonts/inter-latin-wght-normal.woff2 _site/fonts/
+          cp app/static/tree.svg _site/
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+      - id: deployment
+        uses: actions/deploy-pages@v4
