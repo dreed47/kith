@@ -3,6 +3,8 @@
 A private family history website for your relatives: people, families, photos, documents and stories, with
 living people kept private. Free and open source (AGPL), written in Python/Flask on MariaDB.
 
+Website: https://kithgenealogy.org
+
 Kith is a "here's the code" project. It runs a real family's site every day. Pull requests are welcome, but there
 are no support promises.
 
