@@ -141,6 +141,9 @@ The tests build `kith_test` from an empty database (`app/schema.sql` plus `app/m
 sample family (`app/sample.ged`, made by `scripts/make_sample_gedcom.py`). A database change is a new numbered
 file in `app/migrations/`. It runs once on every site at its next start, so it must be safe to run twice.
 
+The landing page at kithgenealogy.org is `site/`, published by `.github/workflows/pages.yml`. Its tour video is
+recorded by `scripts/tour/record.sh` (needs Playwright, Chromium and ffmpeg; see the script's header).
+
 See `CONTRIBUTING.md`.
 
 ## License

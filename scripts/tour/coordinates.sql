@@ -1,0 +1,12 @@
+UPDATE places SET latitude='41.0799898', longitude='-85.1386015', zoom='0' WHERE place='Fort Wayne, Allen Cnty, IN';
+UPDATE places SET latitude='40.6938609', longitude='-89.5891008', zoom='0' WHERE place='Peoria, Peoria Cnty, IL';
+UPDATE places SET latitude='41.2148975', longitude='-79.3857047', zoom='0' WHERE place='Clarion, Clarion Cnty, PA';
+UPDATE places SET latitude='40.8164531', longitude='-79.5219893', zoom='0' WHERE place='Kittanning, Armstrong Cnty, PA';
+UPDATE places SET latitude='40.9436303', longitude='-78.9710780', zoom='0' WHERE place='Punxsutawney, Jefferson Cnty, PA';
+UPDATE places SET latitude='41.1604348', longitude='-79.0794702', zoom='0' WHERE place='Brookville, Jefferson Cnty, PA';
+UPDATE places SET latitude='40.7980976', longitude='-81.9397733', zoom='0' WHERE place='Wooster, Wayne Cnty, OH';
+UPDATE places SET latitude='39.6766157', longitude='-104.9623745', zoom='0' WHERE place='Denver, Denver Cnty, CO';
+UPDATE places SET latitude='40.7985464', longitude='-81.3749508', zoom='0' WHERE place='Canton, Stark Cnty, OH';
+UPDATE places SET latitude='41.1575570', longitude='-81.2420470', zoom='0' WHERE place='Ravenna, Portage Cnty, OH';
+UPDATE places SET latitude='40.6229748', longitude='-79.1546786', zoom='0' WHERE place='Indiana, Indiana Cnty, PA';
+UPDATE places SET latitude='41.3978360', longitude='-79.8314440', zoom='0' WHERE place='Franklin, Venango Cnty, PA';
