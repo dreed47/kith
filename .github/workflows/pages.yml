@@ -1,4 +1,4 @@
-# The kithgenealogy.org landing page: site/ plus the README's screenshots, one font pair and the tree icon.
+# The kithgenealogy.org landing page: site/ plus the README's screenshots, fonts, icons and the tree drawing.
 name: pages
 on:
   push:
@@ -25,8 +25,8 @@ jobs:
           cp -r site _site
           cp -r docs/screenshots _site/screenshots
           mkdir _site/fonts
-          cp app/static/fonts/fraunces-latin-wght-normal.woff2 app/static/fonts/inter-latin-wght-normal.woff2 _site/fonts/
-          cp app/static/tree.svg _site/
+          cp app/static/fonts/fraunces-latin-wght-*.woff2 app/static/fonts/inter-latin-wght-normal.woff2 _site/fonts/
+          cp app/static/tree.svg app/static/icons.svg _site/
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
