@@ -52,7 +52,7 @@ The screenshots show the made-up sample family that comes with Kith.
 - GEDCOM import (with undo) and export, with steps for getting a tree out of Ancestry, MyHeritage, FamilySearch,
   Geneanet and WikiTree, and a one-time import of a whole TNG site (see [Moving from TNG](#moving-from-tng)).
 - What's new, watching a person, and an optional weekly email.
-- Admin page with what's waiting, recent visits, and what's changed on the site lately (from its git history).
+- Admin page with what's waiting, recent visits, and what's new in the latest Kith releases.
 - Five themes, which each person can choose for themselves, including large print.
 
 ## Install

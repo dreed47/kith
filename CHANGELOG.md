@@ -2,6 +2,15 @@
 
 Kith follows semantic versioning. Releases are on GitHub.
 
+## 0.4.1 (2026-11-04)
+
+- GEDCOM import warns when a file looks already imported (the same people's _UIDs as an earlier import, or most of
+  them already in the tree by name and birth year), and imports it only with "Import anyway" ticked.
+- GEDCOM export writes adopted, foster and step children's relationship (PEDI, or _FREL and _MREL), and import
+  reads it back.
+- Admin's "What's changed" lists the latest releases from the changelog. It was empty on installs made from a
+  release download, which have no git history.
+
 ## 0.4.0 (2026-11-04)
 
 - GEDCOM import takes Ancestry's export as it is: a .zip holding one .ged file.

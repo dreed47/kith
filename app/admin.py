@@ -4,7 +4,6 @@ import datetime
 import json
 import re
 import secrets
-import subprocess
 
 from flask import Blueprint, abort, current_app, flash, g, redirect, render_template, request, url_for
 
@@ -30,8 +29,7 @@ TEXT = {"username": 100, "realname": 50, "email": 50, "phone": 30, "description"
 SECRET = ("password", "reset_pwd_code")  # never copied into the edit history
 MIN_PASSWORD = 8
 PER_PAGE = 50
-RECENT_CHANGES = 25
-DOCS_ONLY = re.compile(r"^(README|Changelog|Roadmap|Docs?)\b", re.I)  # changes to the notes, not the site
+RECENT_RELEASES = 3
 RECENT_VISITS = 15
 NOISE = {"changedate", "changedby", "edituser", "edittime"}  # bookkeeping fields, left out of change lists
 
@@ -83,16 +81,22 @@ def waiting_count():
 
 
 def recent_changes():
-    """[(date, what changed)], newest first: the site's latest code changes, from its git history. The commit
-    titles are written to be read ("Fan chart: photos in the wedges"). Empty when the code isn't a git checkout."""
+    """[(release, [what changed])], newest first: the last few releases in CHANGELOG.md, which every install has
+    (a release download has no git history). "0.4.0 (2026-11-04)" reads as "0.4.0 · 4 Nov 2026"."""
     from . import ROOT
-    try:  # safe.directory: the checkout is owned by root but the site runs as its own user
-        out = subprocess.run(["git", "-C", str(ROOT), "-c", "safe.directory=*", "log", f"-{RECENT_CHANGES * 2}",
-                              "--date=short", "--format=%ad%x09%s"], capture_output=True, text=True, timeout=5).stdout
-    except (OSError, subprocess.SubprocessError):  # no git installed
+    try:
+        text = (ROOT / "CHANGELOG.md").read_text()
+    except OSError:
         return []
-    rows = [line.split("\t", 1) for line in out.splitlines() if "\t" in line]
-    return [(datetime.date.fromisoformat(d), what) for d, what in rows if not DOCS_ONLY.match(what)][:RECENT_CHANGES]
+    out = []
+    for block in re.split(r"^## ", text, flags=re.M)[1:RECENT_RELEASES + 1]:
+        heading, _, body = block.partition("\n")
+        m = re.fullmatch(r"(\S+) \((\d{4}-\d\d-\d\d)\)", heading.strip())
+        if m:
+            heading = f"{m[1]} · {datetime.date.fromisoformat(m[2]).strftime('%-d %b %Y')}"
+        items = re.split(r"^- ", body, flags=re.M)[1:]
+        out.append((heading.strip(), [" ".join(b.split()).replace("`", "") for b in items]))
+    return out
 
 
 @bp.get("/")

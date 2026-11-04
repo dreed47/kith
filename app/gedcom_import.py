@@ -203,7 +203,8 @@ def add_event_types(new):
 
 def child_relations(by):
     """(child, family) -> (frel, mrel) when the file says, as PEDI under a person's FAMC or as Ancestry's _FREL and
-    _MREL under a family's CHIL. Adopted, foster, step...; birth is the default."""
+    _MREL (under a family's CHIL, or a person's FAMC as Kith writes them). Adopted, foster, step...; birth is the
+    default."""
     def rel(value):
         v = value.strip().lower()
         return {"natural": "birth", "biological": "birth", "unknown": ""}.get(v, v)[:20]
@@ -212,6 +213,8 @@ def child_relations(by):
         for c in p["children"]:
             if c["tag"] == "FAMC" and val(c, "PEDI"):
                 out[p["xref"], c["value"]] = (rel(val(c, "PEDI")),) * 2
+            elif c["tag"] == "FAMC" and (val(c, "_FREL") or val(c, "_MREL")):
+                out[p["xref"], c["value"]] = (rel(val(c, "_FREL")), rel(val(c, "_MREL")))
     for f in by["FAM"]:
         for c in f["children"]:
             if c["tag"] == "CHIL" and (val(c, "_FREL") or val(c, "_MREL")):
@@ -231,6 +234,26 @@ def possible_duplicates(people):
             if hit:
                 out.append((v, hit))
     return out
+
+
+def earlier_import(people):
+    """The earlier import, not undone, that most of these people came in with, going by the _UID genealogy programs
+    give each person: (import, how many), or None."""
+    uids = {val(p, "_UID") for p in people} - {""}
+    best = None
+    for imp in query("SELECT id, at, filename, created FROM app_imports WHERE undone_at IS NULL") if uids else []:
+        n = len(uids & set(json.loads(imp["created"]).get("uids", [])))
+        if n and (not best or n > best[1]):
+            best = (imp, n)
+    return best
+
+
+def imported_before(people, dupes=None):
+    """Whether this file seems to have come in already: an earlier import has its people's _UIDs, or most of them
+    match someone here by name and birth year. Importing it then needs a tick ("import anyway")."""
+    if dupes is None:
+        dupes = possible_duplicates(people)
+    return bool(earlier_import(people)) or len(dupes) * 2 > len(people)
 
 
 def upload_dir():
@@ -270,10 +293,11 @@ def import_gedcom():
         token = secrets.token_urlsafe(24)
         (upload_dir() / f"{token}.ged").write_bytes(data)
         by, skipped, new = plan(records)
-        born = birth_bounds(by)
+        born, dupes = birth_bounds(by), possible_duplicates(by["INDI"])
         return render_template("admin_import_preview.html", token=token, filename=upload.filename, by=by,
                                people=[person_values(p, born[p["xref"]]) for p in by["INDI"][:100]],
-                               warning=warning, skipped=sorted(skipped.items()), dupes=possible_duplicates(by["INDI"]),
+                               warning=warning, skipped=sorted(skipped.items()), dupes=dupes,
+                               again=earlier_import(by["INDI"]), seen=imported_before(by["INDI"], dupes),
                                new=[(EVENT_NAMES.get(tag, tag), KINDS[kind], n)
                                     for (tag, kind), n in sorted(new.items())])
     history = query("SELECT * FROM app_imports ORDER BY id DESC")
@@ -308,6 +332,7 @@ def write(records):
     types, t = event_types(), tree()
     made = {"people": [], "families": [], "sources": [], "xnotes": [], "events": []}
     added, made["eventtypes"] = add_event_types(new)
+    made["uids"] = [u for u in (val(p, "_UID") for p in by["INDI"]) if u]  # to spot this file coming in again
     types.update(added)
     ids, places, next_id = {}, set(), id_allocator()
     for s in by["SOUR"]:
@@ -408,6 +433,10 @@ def write(records):
 def confirm_import(token):
     path = stashed(token)
     records = parse(decode(path.read_bytes())[0])
+    if request.form.get("anyway") != "1" and imported_before(plan(records)[0]["INDI"]):
+        flash("Nothing imported: this file looks already imported. Undo the earlier import first, or tick"
+              " \"Import anyway\".")
+        return redirect(url_for("admin.import_gedcom"))
     made = write(records)
     path.unlink()
     # Not insert(): that fills unset columns TNG-style, and undone_at must stay NULL.

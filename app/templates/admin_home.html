@@ -35,10 +35,10 @@
 {% if changes %}
 <section class="card">
   <h2 class="card-title">{{ icon("calendar") }}What's changed</h2>
-  <p class="muted small">The newest changes to the site, newest first.</p>
-  {% for day, items in changes|groupby(0)|reverse %}
-  <h3 class="small">{{ day.strftime("%-d %b %Y") }}</h3>
-  <ul class="small changes">{% for _, what in items %}<li>{{ what }}</li>{% endfor %}</ul>
+  <p class="muted small">The latest Kith releases, newest first.</p>
+  {% for release, items in changes %}
+  <h3 class="small">{{ release }}</h3>
+  <ul class="small changes">{% for what in items %}<li>{{ what }}</li>{% endfor %}</ul>
   {% endfor %}
 </section>
 {% endif %}

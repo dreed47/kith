@@ -50,6 +50,16 @@ def event_lines(level, tag, date, place, extra=()):
     return [f"{level} {tag}", *body] if body else []
 
 
+def child_relation(frel, mrel):
+    """GEDCOM's PEDI when both parents agree on one it knows; otherwise Ancestry's _FREL and _MREL (step...)."""
+    frel, mrel = frel or "birth", mrel or "birth"
+    if frel == mrel == "birth":
+        return []
+    if frel == mrel and frel in ("adopted", "foster", "sealing"):
+        return [f"2 PEDI {frel}"]
+    return [f"2 _FREL {frel}", f"2 _MREL {mrel}"]
+
+
 def gedcom_lines(user):
     def rows(sql):
         return query(sql, (tree(),))
@@ -62,7 +72,7 @@ def gedcom_lines(user):
     for c in rows("SELECT c.* FROM children c JOIN people p ON p.gedcom = c.gedcom AND p.personID = c.personID"
                   f" WHERE c.gedcom = %s ORDER BY {child_order()}"):
         if c["personID"] in people and c["familyID"] in families:
-            famc[c["personID"]].append((c["parentorder"], c["familyID"]))
+            famc[c["personID"]].append((c["parentorder"], c["familyID"], c["frel"].lower(), c["mrel"].lower()))
             chil[c["familyID"]].append(c["personID"])
     for f in families.values():
         for x, order in ((f["husband"], f["husborder"]), (f["wife"], f["wifeorder"])):
@@ -163,7 +173,10 @@ def gedcom_lines(user):
                                         (alt, "CHR", p["altbirthdate"], p["altbirthplace"]),
                                         ("DEAT", "DEAT", p["deathdate"], p["deathplace"]),
                                         (burial, "BURI", p["burialdate"], p["burialplace"])], done=["NAME"])
-        yield from (f"1 FAMC @{f}@" for _, f in sorted(famc[pid]))
+        for _, f, frel, mrel in sorted(famc[pid]):
+            yield f"1 FAMC @{f}@"
+            if r["both"]:
+                yield from child_relation(frel, mrel)
         yield from (f"1 FAMS @{f}@" for _, f in sorted(fams[pid]))
     for fid, f in families.items():
         r = rights(f, user)

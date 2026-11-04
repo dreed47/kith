@@ -68,19 +68,18 @@ def test_home_counts(app):
     assert "New account registrations" in html and "/admin/users?show=pending" in html
 
 
-def test_whats_changed(app, monkeypatch):
-    import subprocess
-    from app import admin
-    log = "2026-10-31\tFan chart: photos in the wedges\n2026-10-31\tChangelog: fan\n2026-10-30\tBranch book\nnoise\n"
-    monkeypatch.setattr(admin.subprocess, "run", lambda *a, **k: subprocess.CompletedProcess(a, 0, stdout=log))
+def test_whats_changed(app, monkeypatch, tmp_path):
+    import app as kith
+    (tmp_path / "CHANGELOG.md").write_text(
+        "# Changelog\n\nIntro.\n\n## Unreleased\n\n- Soon\n\n## 0.2.0 (2026-10-31)\n\n- Fan chart: photos in\n  the wedges\n"
+        "- `/census` page\n\n## 0.1.1 (2026-10-30)\n\n- Branch book\n\n## 0.1.0 (2026-10-29)\n\n- Too old\n")
+    monkeypatch.setattr(kith, "ROOT", tmp_path)
     html = " ".join(text(site_admin(app).get("/admin/")).split())
-    assert "What's changed" in html and "Changelog: fan" not in html
-    assert html.index("31 Oct 2026") < html.index("Fan chart: photos in the wedges") < html.index("30 Oct 2026")
-    assert html.index("30 Oct 2026") < html.index("Branch book")
-
-    def no_git(*a, **k):
-        raise OSError
-    monkeypatch.setattr(admin.subprocess, "run", no_git)
+    assert "What's changed" in html and "Too old" not in html and "/census page" in html
+    assert html.index("Unreleased") < html.index("Soon") < html.index("0.2.0 · 31 Oct 2026")
+    assert html.index("Fan chart: photos in the wedges") < html.index("0.1.1 · 30 Oct 2026")
+    assert html.index("0.1.1 · 30 Oct 2026") < html.index("Branch book")
+    monkeypatch.setattr(kith, "ROOT", tmp_path / "missing")
     assert "What's changed" not in text(site_admin(app).get("/admin/"))
 
 

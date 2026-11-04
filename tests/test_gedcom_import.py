@@ -162,13 +162,17 @@ def test_preview_and_errors(app, importer):
     assert "REPO (1)" in html and "OBJE (1)" in html and "Possibly already in the tree (1)" in html
     assert "Grandkid Importson" in html and '<span class="tag">living</span>' in html
     assert "accented letters" in text(preview(importer, GED.replace("Zed", "Zéd").encode("latin-1")))
+    assert "look like people already in the tree" not in html
+    zed_only = "0 HEAD\n0 @I1@ INDI\n1 NAME Zed Quentin /Importson/\n1 BIRT\n2 DATE 1850\n0 TRLR"
+    assert "1 of the 1 people in this file look like people already in the tree" in text(preview(importer, zed_only))
 
 
 def test_import_and_undo(app, importer):
     sql(app, "INSERT INTO places (gedcom, place, temple, geoignore, changedate, changedby)"
              " VALUES (%s, 'Sea', 0, 0, '2000-01-01', 'x')", (app.config["TREE"],))
     html = text(preview(importer))
-    r = importer.post(f"/admin/import/{token_of(html)}", data={"csrf": CSRF, "filename": "family.ged"})
+    r = importer.post(f"/admin/import/{token_of(html)}", data={"csrf": CSRF, "filename": "family.ged",
+                                                                     "anyway": "1"})
     assert r.status_code == 302 and "Imported 4 people and 2 families" in text(importer.get("/admin/import"))
     imp = sql(app, "SELECT * FROM app_imports ORDER BY id DESC LIMIT 1")[0]
     made = json.loads(imp["created"])
@@ -216,7 +220,7 @@ def test_import_and_undo(app, importer):
 
 
 def run_import(app, importer, data=GED):
-    importer.post(f"/admin/import/{token_of(text(preview(importer, data)))}", data={"csrf": CSRF})
+    importer.post(f"/admin/import/{token_of(text(preview(importer, data)))}", data={"csrf": CSRF, "anyway": "1"})
     imp = sql(app, "SELECT * FROM app_imports ORDER BY id DESC LIMIT 1")[0]
     return imp, json.loads(imp["created"])
 
@@ -279,6 +283,7 @@ SITE_GED = """0 HEAD
 1 CHAR UTF-8
 0 @I1@ INDI
 1 NAME Pa /Sitefile/
+1 _UID 1A2B3C
 1 RESI
 2 DATE 1900
 2 PLAC Ohio
@@ -292,17 +297,24 @@ SITE_GED = """0 HEAD
 1 FAMS @F1@
 0 @I2@ INDI
 1 NAME Adopted /Sitefile/
+1 _UID 4D5E6F
 1 FAMC @F1@
 2 PEDI adopted
 0 @I3@ INDI
 1 NAME Step /Sitefile/
 1 FAMC @F1@
+0 @I4@ INDI
+1 NAME Foster /Sitefile/
+1 FAMC @F1@
+2 _FREL foster
+2 _MREL birth
 0 @F1@ FAM
 1 HUSB @I1@
 1 CHIL @I2@
 1 CHIL @I3@
 2 _FREL STEP
 2 _MREL Natural
+1 CHIL @I4@
 1 ENGA
 2 DATE 1899
 0 TRLR
@@ -320,7 +332,7 @@ def zipped(files):
 def test_zip_uploads(app, importer):
     html = text(preview(importer, zipped({"tree.ged": GED, "__MACOSX/._tree.ged": "junk"}), "tree.zip"))
     assert "<strong>4</strong> people" in html
-    importer.post(f"/admin/import/{token_of(html)}", data={"csrf": CSRF, "filename": "tree.zip"})
+    importer.post(f"/admin/import/{token_of(html)}", data={"csrf": CSRF, "filename": "tree.zip", "anyway": "1"})
     assert "Imported 4 people" in text(importer.get("/admin/import"))
     for files, message in (({"a.ged": GED, "b.ged": GED}, "holds 2"), ({"x.txt": "x"}, "holds 0")):
         preview(importer, zipped(files), "tree.zip")
@@ -342,7 +354,7 @@ def test_new_kinds_of_event_and_child_relations(app, importer):
     importer.post(f"/admin/import/{token_of(html)}", data={"csrf": CSRF})
     imp = sql(app, "SELECT * FROM app_imports ORDER BY id DESC LIMIT 1")[0]
     made = json.loads(imp["created"])
-    pa, adopted, step = made["people"]
+    pa, adopted, step, foster = made["people"]
     events = sql(app, "SELECT et.tag, et.display, e.eventplace FROM events e JOIN eventtypes et USING (eventtypeID)"
                       " WHERE persfamID IN (%s, %s) ORDER BY e.eventID", (pa, made["families"][0]))
     assert [(e["tag"], e["eventplace"]) for e in events] == [("RESI", "Ohio"), ("RESI", "Iowa"), ("_MILT", ""),
@@ -350,10 +362,15 @@ def test_new_kinds_of_event_and_child_relations(app, importer):
     assert events[0]["display"] == "Residence" and len(made["eventtypes"]) == 3
     rels = {c["personID"]: (c["frel"], c["mrel"]) for c in sql(app, "SELECT * FROM children WHERE familyID = %s",
                                                                  (made["families"][0],))}
-    assert rels == {adopted: ("adopted", "adopted"), step: ("step", "birth")}
+    assert rels == {adopted: ("adopted", "adopted"), step: ("step", "birth"), foster: ("foster", "birth")}
     assert "Adopted child" in text(importer.get(f"/person/{adopted}"))
     assert "Father: step · mother: birth" in text(importer.get(f"/person/{step}"))
     assert "child</p>" not in text(importer.get(f"/person/{pa}"))
+    assert made["uids"] == ["1A2B3C", "4D5E6F"]
+    again = text(preview(importer, SITE_GED, "again.ged"))
+    assert "2 of the 4 people in this file came in with an earlier file on" in again and 'name="anyway"' in again
+    r = importer.post(f"/admin/import/{token_of(again)}", data={"csrf": CSRF}, follow_redirects=True)
+    assert "Nothing imported" in text(r) and sql(app, "SELECT MAX(id) AS n FROM app_imports")[0]["n"] == imp["id"]
     # A second import reuses the kinds of event the first added. Undoing the first keeps them while the second
     # uses them; after that they stay, unused, for an admin to delete under Event types.
     imp2, made2 = run_import(app, importer, SITE_GED)

@@ -57,6 +57,18 @@ def test_export_structure(app):
     assert "XNOFAMILY" not in body and "XNOSUCHFAM" not in body  # links to missing families are dropped
 
 
+def test_export_child_relations(app):
+    sql(app, "UPDATE children SET frel = 'Adopted', mrel = 'adopted' WHERE personID = 'XKID'")
+    sql(app, "UPDATE children SET frel = 'step', mrel = '' WHERE personID = 'XHUSB'")
+    try:
+        body = client_for(app, "fx_ged_admin").get("/export.ged").get_data(as_text=True)
+        assert "1 FAMC @XFAM@\n2 PEDI adopted\n" in record(body, "XKID")
+        assert "1 FAMC @XFAM2@\n2 _FREL step\n2 _MREL birth\n" in record(body, "XHUSB")
+        assert "1 FAMC @XFAM3@\n1" in record(body, "XGPA")  # birth: nothing to say
+    finally:
+        sql(app, "UPDATE children SET frel = '', mrel = '' WHERE personID IN ('XKID', 'XHUSB')")
+
+
 def test_export_child_order(app):
     ids = make(app, ("Dad", "M", 0), ("A", "F", 0), ("B", "F", 0), family=("Dad", None), kids=("A", "B"))
     sql(app, "UPDATE people SET birthdatetr = '1900-01-01' WHERE personID = %s", (ids["B"],))
