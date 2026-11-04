@@ -1,5 +1,6 @@
 """Starting a new site: `flask --app app setup db` fills an empty database with the tables and the first admin;
-`flask --app app setup sample` adds a made-up family (app/sample.ged) to try the site with.
+`flask --app app setup sample` adds a made-up family (app/sample.ged) to try the site with;
+`flask --app app setup import-tng dump.sql` starts it from a TNG site instead (app/tng_import.py).
 
 Database upgrades: each change to the tables is a numbered file in app/migrations, run once, in order, by
 `flask --app app setup upgrade` (update.sh runs it on each deploy) and recorded in app_migrations. MariaDB can't
@@ -8,11 +9,13 @@ from pathlib import Path
 
 import click
 from flask import Blueprint, current_app, g
+from pymysql import MySQLError
 
 from .admin import RIGHTS
 from .auth import password_fields
 from .db import insert, query
 from .edit import now
+from . import tng_import
 from .gedcom_import import parse, write
 
 bp = Blueprint("setup", __name__)
@@ -86,3 +89,39 @@ def sample_command():
     g.user = {"username": "setup"}
     made = write(parse(SAMPLE.read_text()))
     click.echo(f"Added {len(made['people'])} people and {len(made['families'])} families.")
+
+
+@bp.cli.command("import-tng")
+@click.argument("dump", type=click.Path(exists=True, dir_okay=False, path_type=Path))
+@click.option("--tree", help="The TNG tree to import, when the dump holds more than one.")
+def import_tng_command(dump, tree):
+    """Start this site from a dump of a TNG database: the tree, its sources and media records, and the users."""
+    tables = {next(iter(r.values())) for r in query("SHOW TABLES")}
+    if tables and ("people" not in tables or query("SELECT 1 FROM people LIMIT 1")):
+        raise click.ClickException("This database already has a tree, or isn't a Kith site."
+                                   " The import only runs on a new site.")
+    if tables:  # a new site with no one in it yet, as the installer leaves it: the TNG site replaces it
+        tng_import.empty_database()
+        click.echo("Replaced the new, empty site (its admin account too: log in with a TNG account).")
+    try:
+        loaded = tng_import.load(dump)
+        prefix = tng_import.prefix_of(loaded)
+        tree = tng_import.pick_tree(prefix, tree)
+        load_schema()
+        counts = tng_import.copy(prefix, tree)
+        behind = tng_import.left_behind(prefix, loaded)
+        tng_import.drop_held()
+    except (click.ClickException, MySQLError) as e:
+        tng_import.empty_database()
+        message = e.message if isinstance(e, click.ClickException) else f"The database said: {e.args[-1]}"
+        raise click.ClickException(f"{message}\nNothing was imported; the database is empty again.")
+    click.echo(f"Imported tree {tree!r} from TNG:")
+    for table, n in counts.items():
+        click.echo(f"  {table}: {'not in the dump' if n is None else n}")
+    if behind:
+        click.echo("Left behind (Kith has no place for these): "
+                   + ", ".join(f"{t} ({n} row{'s' * (n != 1)})" for t, n in behind.items()))
+    if found := tng_import.folders():
+        click.echo(f"Now copy these folders from your TNG site into {current_app.config['MEDIA_ROOT']}: "
+                   + ", ".join(f"{r['folder']} ({r['n']} file{'s' * (r['n'] != 1)})" for r in found))
+    click.echo("TNG users log in with their TNG usernames and passwords.")

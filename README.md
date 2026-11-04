@@ -5,6 +5,9 @@ living people kept private. Free and open source (AGPL), written in Python/Flask
 
 Website: https://kithgenealogy.org
 
+Coming from TNG? Your whole site moves over in one command, user accounts and passwords included. See
+[Moving from TNG](#moving-from-tng).
+
 Kith is a "here's the code" project. It runs a real family's site every day. Pull requests are welcome, but there
 are no support promises.
 
@@ -46,7 +49,8 @@ The screenshots show the made-up sample family that comes with Kith.
 - Editing on the site: add relatives, merge duplicates, tidy place names (spellings, misspellings, record titles
   where a place should be), link surname spellings, and data checks for impossible dates and death dates that
   differ from the obituary.
-- GEDCOM import (with undo) and export.
+- GEDCOM import (with undo) and export, and a one-time import of a whole TNG site (see
+  [Moving from TNG](#moving-from-tng)).
 - What's new, watching a person, and an optional weekly email.
 - Admin page with what's waiting, recent visits, and what's changed on the site lately (from its git history).
 - Five themes, which each person can choose for themselves, including large print.
@@ -201,6 +205,65 @@ as the site starts.
 
 Import a GEDCOM file from your genealogy program under Admin > Import GEDCOM. Photos and documents are uploaded
 on the site. A GEDCOM file names them, but doesn't carry them.
+
+## Moving from TNG
+
+Kith grew out of [TNG](https://www.tngsitebuilding.com/) and keeps its table layout, so a TNG site moves over in
+one command, from a dump of its database. It takes seconds: a tree of 22,000 people took 5.
+
+**Comes over:**
+
+- People, families, children, events, places (with their map coordinates), sources, citations, repositories,
+  notes, cemeteries, addresses and branches.
+- Media records (photos, documents, headstones, histories) and what they're linked to. The files themselves you
+  copy by hand (step 3).
+- User accounts with their passwords, roles and rights. Relatives log in as before.
+- The event types and media collections the TNG site used.
+
+**Doesn't come over** (Kith has no place for these): albums, DNA tests, associations, "most wanted", TNG's photo
+tags (tag faces again in Kith), and TNG's templates, reports, custom pages and settings. Set the site's name,
+wording and theme again under Admin > Site settings. The import lists each of these tables that had anything in
+it, so you know what was left behind.
+
+**Limits:**
+
+- **Once, onto a new site.** It runs only on a new Kith site with no one in it yet. It doesn't merge into a tree
+  you've started, and it doesn't keep the two sites in step: after the move, edit in Kith.
+- **One tree.** Kith has one tree per site. If the TNG site has several, pick one with `--tree NAME` (the command
+  lists them). Records TNG keeps for all trees come too.
+- **TNG 15 is tested.** An older TNG should work: columns it lacks are left blank. Check a few people afterwards.
+- **A database dump, not TNG's Backup utility**, which writes its own format. See step 1.
+- **The new site's admin account is replaced.** Log in with a TNG admin account afterwards.
+
+**Steps:**
+
+1. Make a dump of the TNG database on the TNG server:
+
+       mysqldump --default-character-set=utf8mb4 --skip-triggers YOUR_TNG_DATABASE > tng.sql
+
+   On shared hosting, phpMyAdmin's Export (format SQL) works too.
+2. Install Kith (see "Install"), then load the dump straight away, before adding anyone:
+   - Proxmox or Debian, as root in the container or on the server, with `tng.sql` copied to `/root`:
+
+         systemctl stop kith
+         systemd-run --wait --pty --working-directory=/opt/kith -p EnvironmentFile=/etc/kith.env \
+           /opt/kith/.venv/bin/flask --app app setup import-tng /root/tng.sql
+         systemctl start kith
+
+   - Docker, in `kith/docker`, with `tng.sql` copied there:
+
+         docker compose cp tng.sql app:/tmp/tng.sql
+         docker compose exec app flask --app app setup import-tng /tmp/tng.sql
+
+   It ends with a report: how many rows each table got, what was left behind, and which media folders to copy.
+   If anything goes wrong, nothing is kept and the database is left empty: fix the dump and run it again, or run
+   `flask --app app setup db` to start a new site instead.
+3. Copy the media folders the report names (for example `photos` and `headstones`) from the TNG site's folder
+   into Kith's media folder, keeping the folder names:
+   - Proxmox or Debian: into `/srv/kith/media`, then `chown -R kith:kith /srv/kith/media`.
+   - Docker: `docker compose cp photos app:/data/media/` for each folder.
+4. Put Kith at the TNG site's old address. Links people saved to TNG pages (`getperson.php?personID=I12` and the
+   rest) then go straight to the matching Kith page.
 
 ## Settings
 

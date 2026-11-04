@@ -2,8 +2,10 @@
 
 Kith follows semantic versioning. Releases are on GitHub.
 
-## Unreleased
+## 0.3.1 (2026-11-04)
 
+- Moving from TNG: `flask --app app setup import-tng tng.sql` starts a new site from a dump of a TNG database,
+  user accounts and passwords included. See "Moving from TNG" in the README.
 - Logins last 90 days from the last visit. Before, phones logged people out whenever they closed the browser.
   Existing logins need one fresh login to pick this up.
 - Docker: the site no longer fails to start (the image was missing `pyproject.toml`; broken since 0.2.0).
