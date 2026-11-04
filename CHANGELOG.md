@@ -2,6 +2,13 @@
 
 Kith follows semantic versioning. Releases are on GitHub.
 
+## 0.4.3 (2026-11-04)
+
+- GEDCOM import keeps the cause of death, as a note on the death. Before, it was left out.
+- GEDCOM 7 files import: the .gdz package (the file picker shows them; its media files are left out), shared notes (SNOTE), UID for spotting a
+  file imported twice, and name types such as professional names. "Never married" (NO) and record-keeping dates
+  (CREA) no longer turn into kinds of event.
+
 ## 0.4.2 (2026-11-04)
 
 - GEDCOM import keeps a person's other names (married, maiden, aliases, _MARNM married surnames) as "Also known

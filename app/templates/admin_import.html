@@ -5,7 +5,7 @@
 <p class="muted">For a file from a genealogy site or program (see below for how to get one). Everyone in it comes in as new people and families, linked among themselves; nothing already in the tree changes. You'll see what's in the file before anything is imported, and an import can be undone until someone edits what it brought in.</p>
 <form method="post" enctype="multipart/form-data" class="card edit-form">
   <input type="hidden" name="csrf" value="{{ csrf_token() }}">
-  <label>GEDCOM file (.ged, or the .zip Ancestry gives you) <input type="file" name="file" accept=".ged,.GED,.zip,text/plain,application/zip" required></label>
+  <label>GEDCOM file (.ged, the .zip Ancestry gives you, or a GEDCOM 7 .gdz) <input type="file" name="file" accept=".ged,.GED,.zip,.gdz,text/plain,application/zip" required></label>
   <div class="form-actions"><button>Look at the file</button><a href="{{ url_for('admin.home') }}">Cancel</a></div>
 </form>
 <section class="card"><h2>Getting a file from another site</h2>

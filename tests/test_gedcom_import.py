@@ -336,6 +336,63 @@ SITE_GED = """0 HEAD
 """
 
 
+GED7 = """0 HEAD
+1 GEDC
+2 VERS 7.0
+1 SCHMA
+2 TAG _SKYPEID http://xmlns.com/foaf/0.1/skypeID
+0 @N1@ SNOTE From the family Bible
+0 @I1@ INDI
+1 NAME Seven /Version/
+2 TYPE OTHER
+3 PHRASE ignored on the first name
+1 NAME Sev /Version/
+2 TYPE PROFESSION
+1 NAME Sevvy
+2 TYPE OTHER
+3 PHRASE Pet name
+1 UID 9f0e7d4a-0000-4000-8000-000000000007
+1 EXID 12345
+2 TYPE https://www.familysearch.org/ark:/61903/4:1:
+1 CREA
+2 DATE 1 JAN 2020
+1 NO MARR
+2 DATE TO 1950
+1 DEAT
+2 DATE 1960
+2 CAUS Influenza
+1 SNOTE @N1@
+1 FAMC @F1@
+2 PEDI ADOPTED
+1 INIL
+2 DATE 1990
+0 @F1@ FAM
+1 HUSB @VOID@
+1 CHIL @I1@
+0 TRLR
+"""
+
+
+def test_gedcom_7_and_cause_of_death(app, importer):
+    html = text(preview(importer, zipped({"gedcom.ged": GED7, "media/photo.jpg": "x"}), "tree.gdz"))
+    assert "<strong>1</strong> people" in html and "Also known as (person, 2)" in html
+    assert "NO (1)" in html and "INIL (1)" in html and "CREA" not in html and "EXID" not in html
+    importer.post(f"/admin/import/{token_of(html)}", data={"csrf": CSRF, "anyway": "1"})
+    imp = sql(app, "SELECT * FROM app_imports ORDER BY id DESC LIMIT 1")[0]
+    made = json.loads(imp["created"])
+    pid = made["people"][0]
+    assert made["uids"] == ["9f0e7d4a-0000-4000-8000-000000000007"]
+    notes = {(n["eventID"], n["note"]) for n in sql(app, "SELECT nl.eventID, x.note FROM notelinks nl JOIN xnotes x"
+                                                         " ON x.ID = nl.xnoteID WHERE nl.persfamID = %s", (pid,))}
+    assert notes == {("", "From the family Bible"), ("DEAT", "Cause of death: Influenza")}
+    akas = sql(app, "SELECT e.info FROM events e JOIN eventtypes et USING (eventtypeID) WHERE persfamID = %s"
+                    " AND et.tag = '_AKA' ORDER BY e.eventID", (pid,))
+    assert [a["info"] for a in akas] == ["Professional name: Sev Version", "Pet name: Sevvy"]
+    assert sql(app, "SELECT frel FROM children WHERE personID = %s", (pid,))[0]["frel"] == "adopted"
+    assert "Cause of death: Influenza" in text(importer.get(f"/person/{pid}"))
+    importer.post(f"/admin/import/{imp['id']}/undo", data={"csrf": CSRF})
+
+
 def zipped(files):
     buf = io.BytesIO()
     with zipfile.ZipFile(buf, "w") as z:

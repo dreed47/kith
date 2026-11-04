@@ -33,8 +33,9 @@ from .views import one, tree
 VITALS = {"BIRT": "birth", "CHR": "altbirth", "BAPM": "altbirth", "DEAT": "death", "BURI": "burial", "CREM": "burial"}
 FAMILY_VITALS = {"MARR": "marr", "DIV": "div"}
 NAME_PARTS = {"NPFX": "prefix", "NSFX": "suffix", "NICK": "nickname", "SPFX": "lnprefix"}
-HANDLED = {"NAME", "SEX", "FAMC", "FAMS", "NOTE", "SOUR", "HUSB", "WIFE", "CHIL", "CHAN", "_UID", "RIN", "UID"}
-LDS = {"BAPL", "CONL", "ENDL", "INIT", "SLGC", "SLGS", "WAC"}
+HANDLED = {"NAME", "SEX", "FAMC", "FAMS", "NOTE", "SNOTE", "SOUR", "HUSB", "WIFE", "CHIL", "CHAN", "CREA", "_UID",
+           "RIN", "UID", "EXID"}  # SNOTE, CREA (when created), EXID: GEDCOM 7
+LDS = {"BAPL", "CONL", "ENDL", "INIL", "INIT", "SLGC", "SLGS", "WAC"}
 # Names for kinds of event a file may bring in; any other tag is named as itself (rename it under Event types).
 EVENT_NAMES = {"RESI": "Residence", "EMIG": "Emigration", "NATU": "Naturalization", "_MILT": "Military service",
                "PROB": "Probate", "RETI": "Retirement", "CONF": "Confirmation", "CHRA": "Adult christening",
@@ -43,7 +44,7 @@ EVENT_NAMES = {"RESI": "Residence", "EMIG": "Emigration", "NATU": "Naturalizatio
                "ENGA": "Engagement", "MARB": "Marriage banns", "MARC": "Marriage contract",
                "MARS": "Marriage settlement", "ANUL": "Annulment", "_AKA": "Also known as"}
 NAME_TYPES = {"married": "Married name", "maiden": "Maiden name", "birth": "Birth name", "aka": "Also known as",
-              "immigrant": "Immigrant name"}
+              "immigrant": "Immigrant name", "profession": "Professional name", "other": "Also known as"}
 KINDS = {"I": "person", "F": "family"}
 
 
@@ -170,9 +171,9 @@ def other_names(indi):
         given, last, suffix = split_name(name["value"])
         given, last = val(name, "GIVN") or given, val(name, "SURN") or last
         if n:
-            kind = val(name, "TYPE")
+            kind = val(first(name, "TYPE"), "PHRASE") or NAME_TYPES.get(val(name, "TYPE").lower(), val(name, "TYPE"))
             text = " ".join(x for x in (given, last, suffix) if x)
-            out.append((f"{NAME_TYPES.get(kind.lower(), kind)}: {text}" if kind else text, name))
+            out.append((f"{kind}: {text}" if kind else text, name))
         if val(name, "_MARNM"):
             out.append((f"Married name: {' '.join(x for x in (given, val(name, '_MARNM')) if x)}", None))
     return [(text, name) for text, name in out if text]
@@ -184,8 +185,8 @@ TAGS = re.compile(r"</?(p|br|div|span|b|i|u|em|strong|a|ul|ol|li|ref|references|
 
 def plain(text):
     """Note text without the HTML some sites write into it (WikiTree biographies): paragraphs and line breaks
-    become new lines, list items "- ", citations [in brackets], other tags go, &amp; and the like become characters. Text with none of
-    these tags is left as it is, so a "<" in ordinary notes survives."""
+    become new lines, list items "- ", citations [in brackets], other tags go, &amp; and the like become
+    characters. Text with none of these tags is left as it is, so a "<" in ordinary notes survives."""
     if not TAGS.search(text):
         return text
     text = re.sub(r"<(br|hr)\b[^>]*>|</(p|div|li|h[1-6]|tr|blockquote)>", "\n", text, flags=re.I)
@@ -199,14 +200,15 @@ def plain(text):
 def plan(records):
     """What the file holds and what won't come in: counts, people, left-out tags (tag -> times) and kinds of event
     the import will add ((tag, I or F) -> times)."""
-    by = {k: [r for r in records if r["tag"] == k] for k in ("INDI", "FAM", "SOUR", "NOTE")}
+    by = {k: [r for r in records if r["tag"] == k] for k in ("INDI", "FAM", "SOUR")}
+    by["NOTE"] = [r for r in records if r["tag"] in ("NOTE", "SNOTE")]  # GEDCOM 7 calls shared notes SNOTE
     types = event_types()
     skipped = Counter(r["tag"] for r in records if r["tag"] not in ("HEAD", "TRLR", "SUBM", "INDI", "FAM", "SOUR",
-                                                                     "NOTE"))
+                                                                     "NOTE", "SNOTE"))
     facts = [(c, kind) for kind, recs in (("I", by["INDI"]), ("F", by["FAM"])) for r in recs for c in r["children"]
              if not (c["tag"] in HANDLED or c["tag"] in VITALS and kind == "I"
                      or c["tag"] in FAMILY_VITALS and kind == "F" or (c["tag"], kind) in types)]
-    eventish = {(c["tag"], kind) for c, kind in facts if c["tag"] not in LDS
+    eventish = {(c["tag"], kind) for c, kind in facts if c["tag"] not in LDS and c["tag"] != "NO"  # 7: "never married"
                 and re.fullmatch(r"_?[A-Z][A-Z0-9_]{0,8}", c["tag"]) and (first(c, "DATE") or first(c, "PLAC"))}
     new = Counter((c["tag"], kind) for c, kind in facts if (c["tag"], kind) in eventish)
     aka = sum(len(other_names(p)) for p in by["INDI"])
@@ -276,10 +278,14 @@ def possible_duplicates(people):
     return out
 
 
+def uid(indi):
+    return val(indi, "_UID") or val(indi, "UID")  # GEDCOM 5.5.1 programs, GEDCOM 7
+
+
 def earlier_import(people):
     """The earlier import, not undone, that most of these people came in with, going by the _UID genealogy programs
     give each person: (import, how many), or None."""
-    uids = {val(p, "_UID") for p in people} - {""}
+    uids = {uid(p) for p in people} - {""}
     best = None
     for imp in query("SELECT id, at, filename, created FROM app_imports WHERE undone_at IS NULL") if uids else []:
         n = len(uids & set(json.loads(imp["created"]).get("uids", [])))
@@ -372,7 +378,7 @@ def write(records):
     types, t = event_types(), tree()
     made = {"people": [], "families": [], "sources": [], "xnotes": [], "events": []}
     added, made["eventtypes"] = add_event_types(new)
-    made["uids"] = [u for u in (val(p, "_UID") for p in by["INDI"]) if u]  # to spot this file coming in again
+    made["uids"] = [u for u in (uid(p) for p in by["INDI"]) if u]  # to spot this file coming in again
     types.update(added)
     ids, places, next_id = {}, set(), id_allocator()
     for s in by["SOUR"]:
@@ -388,7 +394,7 @@ def write(records):
 
     def notes_and_sources(node, owner, event_id=""):
         for c in node["children"]:
-            if c["tag"] == "NOTE":
+            if c["tag"] in ("NOTE", "SNOTE"):
                 xid = shared_notes.get(c["value"].strip())
                 if xid is None:
                     _, xid = insert("xnotes", {"gedcom": t, "note": plain(c["value"])})
@@ -409,6 +415,10 @@ def write(records):
             if c["tag"] in vitals and vitals[c["tag"]] not in used:
                 used.add(vitals[c["tag"]])
                 notes_and_sources(c, owner, "BURI" if c["tag"] == "CREM" else c["tag"])
+                if c["tag"] == "DEAT" and val(c, "CAUS"):  # the person record has no place for it: a note on the death
+                    _, xid = insert("xnotes", {"gedcom": t, "note": f"Cause of death: {val(c, 'CAUS')}"})
+                    made["xnotes"].append(xid)
+                    insert("notelinks", {"gedcom": t, "persfamID": owner, "xnoteID": xid, "eventID": "DEAT"})
             elif (c["tag"], kind) in types and c["tag"] not in HANDLED:  # TNG even has a "SEX" event type
                 date, kind_of = val(c, "DATE"), val(c, "TYPE")
                 _, eid = insert("events", {"gedcom": t, "persfamID": owner, "eventtypeID": types[c["tag"], kind],
