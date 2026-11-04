@@ -2,7 +2,7 @@
 
 Kith follows semantic versioning. Releases are on GitHub.
 
-## Unreleased
+## 0.3.0 (2026-11-04)
 
 - Version check: once a day the site asks kithgenealogy.org for the newest version, and Admin says when there's
   one. It sends a random site ID and the version number, nothing else; the Kith project counts running sites from
