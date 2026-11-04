@@ -5,8 +5,9 @@ living people kept private. Free and open source (AGPL), written in Python/Flask
 
 Website: https://kithgenealogy.org
 
-Coming from TNG? Your whole site moves over in one command, user accounts and passwords included. See
-[Moving from TNG](#moving-from-tng).
+Coming from Ancestry, MyHeritage, FamilySearch or a desktop program? Export a GEDCOM file there and import it. See
+[Your tree](#your-tree). Coming from TNG? Your whole site moves over in one command, user accounts and passwords
+included. See [Moving from TNG](#moving-from-tng).
 
 Kith is a "here's the code" project. It runs a real family's site every day. Pull requests are welcome, but there
 are no support promises.
@@ -195,11 +196,20 @@ newest release (`kith-update --force` installs it again). Photos, settings and t
 
 ## Your tree
 
-Import a GEDCOM file from your genealogy program or site under Admin > Import GEDCOM. Ancestry's .zip export can
-be uploaded as it is, and the import page explains how to get a file out of Ancestry, MyHeritage, FamilySearch,
-Geneanet and WikiTree. Facts this tree has no kind of event for yet, such as residence or military service, add
-that kind of event. Photos and documents are uploaded on the site. A GEDCOM file names them, but doesn't carry
-them.
+Import a GEDCOM file under Admin > Import GEDCOM. Every genealogy site and program exports one. The import page
+has the steps for Ancestry, MyHeritage, FamilySearch, Geneanet and WikiTree, and Ancestry's .zip export can be
+uploaded as it is.
+
+**Comes over:** people and families, other names (married names, aliases), births, marriages, deaths and other
+events (residence, military service and the like bring their kind of event with them), adopted and step children,
+notes, sources, citations and places.
+
+**Doesn't:** photos and documents (a GEDCOM file names them but doesn't carry them; upload them on the site), and
+DNA matches, hints and record images, which stay on the site they came from. FamilySearch has no GEDCOM download
+for its shared tree: copy your branch into a desktop program such as RootsMagic first, and export from there.
+
+You see what's in the file before anything changes, and an import can be undone until someone edits what it
+brought in. Importing the same file twice would make copies of everyone, so Kith asks first.
 
 ## Moving from TNG
 

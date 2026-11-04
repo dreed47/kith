@@ -77,7 +77,7 @@
     <h2 class="card-title">{{ icon("book") }}Import, export, backups</h2>
     <ul class="admin-links">
       {{ row(url_for('admin.backups'), "Backups", "make one now, see them, put the site back to one") }}
-      {{ row(url_for('admin.import_gedcom'), "Import a GEDCOM file", "add people from a relative's genealogy program") }}
+      {{ row(url_for('admin.import_gedcom'), "Import a GEDCOM file", "from Ancestry, MyHeritage or a genealogy program") }}
       {% if g.user.allow_ged == 1 %}{{ row(url_for('main.export'), "Export the whole tree as GEDCOM", "for other genealogy programs") }}
       {% else %}<li><span>Export as GEDCOM</span><span class="muted small">needs the Download GEDCOM right on your account (User accounts)</span></li>{% endif %}
     </ul>

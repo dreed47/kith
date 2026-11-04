@@ -2,11 +2,17 @@
 
 Kith follows semantic versioning. Releases are on GitHub.
 
-## Unreleased
+## 0.4.2 (2026-11-04)
 
 - GEDCOM import keeps a person's other names (married, maiden, aliases, _MARNM married surnames) as "Also known
   as" events under Life events, with their notes and sources. Before, they were left out. Search doesn't find
   people by them.
+- GEDCOM import turns HTML in notes and sources (WikiTree biographies) into plain text: paragraphs become lines,
+  citations go [in brackets].
+- Proxmox updates no longer print four "curl: (22) ... 404" lines: the community-scripts engine looked for a Kith
+  banner it doesn't have, and `ct/kith.sh` now gives it one.
+- README and kithgenealogy.org: how to bring a tree from Ancestry, MyHeritage, FamilySearch or a desktop program,
+  and what comes over.
 
 ## 0.4.1 (2026-11-04)
 

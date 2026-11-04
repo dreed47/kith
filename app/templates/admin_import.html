@@ -2,7 +2,7 @@
 {% block title %}Import GEDCOM · {{ super() }}{% endblock %}
 {% block content %}
 <h1>Import a GEDCOM file</h1>
-<p class="muted">For a file from a relative's genealogy program. Everyone in it comes in as new people and families, linked among themselves; nothing already in the tree changes. You'll see what's in the file before anything is imported, and an import can be undone until someone edits what it brought in.</p>
+<p class="muted">For a file from a genealogy site or program (see below for how to get one). Everyone in it comes in as new people and families, linked among themselves; nothing already in the tree changes. You'll see what's in the file before anything is imported, and an import can be undone until someone edits what it brought in.</p>
 <form method="post" enctype="multipart/form-data" class="card edit-form">
   <input type="hidden" name="csrf" value="{{ csrf_token() }}">
   <label>GEDCOM file (.ged, or the .zip Ancestry gives you) <input type="file" name="file" accept=".ged,.GED,.zip,text/plain,application/zip" required></label>

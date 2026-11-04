@@ -20,6 +20,19 @@ var_version="${var_version:-13}"
 var_arm64="${var_arm64:-no}"
 var_unprivileged="${var_unprivileged:-1}"
 
+# The engine draws each script's banner from its own repo, which has none for Kith: every miss printed a curl 404
+# during updates. Seed the engine's banner cache instead (the path it reads; it never overwrites a cached banner).
+_kith_header="$(declare -f community_scripts_dir >/dev/null 2>&1 && community_scripts_dir || echo /usr/local/community-scripts)/headers/ct/kith"
+if [[ ! -s "$_kith_header" ]] && mkdir -p "$(dirname "$_kith_header")" 2>/dev/null; then
+  cat >"$_kith_header" <<'EOF' || true
+    __ __ _ __  __
+   / //_/(_) /_/ /_
+  / ,<  / / __/ __ \
+ / /| |/ / /_/ / / /
+/_/ |_/_/\__/_/ /_/
+EOF
+fi
+
 header_info "$APP"
 variables
 color

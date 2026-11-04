@@ -46,6 +46,7 @@ GED = """0 HEAD
 2 TYPE County fair
 1 NOTE @N1@
 1 NOTE Inline note with @@ sign
+1 NOTE <p>Biography &amp; more</p>
 1 SOUR A source written inline
 1 OBJE
 2 FILE photo.jpg
@@ -117,6 +118,14 @@ def test_parse():
                          ("0 TRLR", "should start with 0 HEAD"), ("", "should start with 0 HEAD")):
         with pytest.raises(gi.GedcomError, match=message):
             gi.parse(bad)
+
+
+def test_plain():
+    wikitree = ("<p>Born in <b>Ohio</b>.<ref name=\"c\">Census, 1900</ref><ref name=\"c\" /></p><p>Farmer &amp; miller.<br/>Moved west.</p>"
+                "<ul><li>One</li><li>Two</li></ul>")
+    assert gi.plain(wikitree) == "Born in Ohio. [Census, 1900]\nFarmer & miller.\nMoved west.\n- One\n- Two"
+    assert gi.plain("Born <1900 & died > 1950 &amp; more") == "Born <1900 & died > 1950 &amp; more"
+    assert gi.plain("<p>a</p>\n\n\n\n<p>b</p>") == "a\n\nb"
 
 
 def test_decode_and_names():
@@ -193,6 +202,7 @@ def test_import_and_undo(app, importer):
                      " WHERE persfamID = %s", (zed,))
     assert {"eventID": "", "note": "A shared note\non two lines"} in notes
     assert {"eventID": "", "note": "Inline note with @ sign"} in notes
+    assert {"eventID": "", "note": "Biography & more"} in notes
     assert {"eventID": str(events["OCCU"]["eventID"]), "note": "Grew corn"} in notes
     cites = sql(app, "SELECT * FROM citations WHERE persfamID = %s ORDER BY eventID", (zed,))
     assert cites[0]["description"] == "A source written inline" and cites[1]["eventID"] == "BIRT"

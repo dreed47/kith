@@ -1,4 +1,4 @@
-"""Importing a GEDCOM file (from a relative's genealogy program) into the tree, for admins.
+"""Importing a GEDCOM file (from a genealogy site or program) into the tree, for admins.
 
 Everything comes in as new records with new IDs, linked among themselves; nothing already in the tree is changed.
 People who are already here show up as possible duplicates on the preview, to combine afterwards with Merge.
@@ -9,6 +9,7 @@ service, a program's own _TAGs), brings its kind of event in with it.
 
 shortcut: no photos or documents (OBJE: a GEDCOM carries only file names, not the files), repositories, LDS data,
 or associations; the preview counts what's left out."""
+import html
 import io
 import json
 import re
@@ -175,6 +176,24 @@ def other_names(indi):
         if val(name, "_MARNM"):
             out.append((f"Married name: {' '.join(x for x in (given, val(name, '_MARNM')) if x)}", None))
     return [(text, name) for text, name in out if text]
+
+
+TAGS = re.compile(r"</?(p|br|div|span|b|i|u|em|strong|a|ul|ol|li|ref|references|sup|sub|font|center|small|big"
+                  r"|blockquote|h[1-6]|table|tr|td|th|tbody|thead|hr)\b[^>]*>", re.I)
+
+
+def plain(text):
+    """Note text without the HTML some sites write into it (WikiTree biographies): paragraphs and line breaks
+    become new lines, list items "- ", citations [in brackets], other tags go, &amp; and the like become characters. Text with none of
+    these tags is left as it is, so a "<" in ordinary notes survives."""
+    if not TAGS.search(text):
+        return text
+    text = re.sub(r"<(br|hr)\b[^>]*>|</(p|div|li|h[1-6]|tr|blockquote)>", "\n", text, flags=re.I)
+    text = re.sub(r"<li\b[^>]*>", "- ", text, flags=re.I)
+    text = re.sub(r"<ref\b[^>]*/>", "", text, flags=re.I)  # a repeat of a citation already given
+    text = re.sub(r"<ref\b[^>]*>(.*?)</ref>", r" [\1]", text, flags=re.I | re.S)
+    text = html.unescape(TAGS.sub("", text))
+    return re.sub(r"\n[ \t]*\n(\s*\n)+", "\n\n", text).strip()
 
 
 def plan(records):
@@ -359,12 +378,12 @@ def write(records):
     for s in by["SOUR"]:
         ids[s["xref"]] = next_id("sources", "sourceID", "S", {
             "title": val(s, "TITL") or s["value"], "author": val(s, "AUTH"), "publisher": val(s, "PUBL"),
-            "shorttitle": val(s, "ABBR"), "actualtext": val(s, "TEXT"),
+            "shorttitle": val(s, "ABBR"), "actualtext": plain(val(s, "TEXT")),
             "changedate": now(), "changedby": g.user["username"]})
         made["sources"].append(ids[s["xref"]])
     shared_notes = {}
     for n in by["NOTE"]:
-        _, shared_notes[n["xref"]] = insert("xnotes", {"gedcom": t, "note": n["value"]})
+        _, shared_notes[n["xref"]] = insert("xnotes", {"gedcom": t, "note": plain(n["value"])})
         made["xnotes"].append(shared_notes[n["xref"]])
 
     def notes_and_sources(node, owner, event_id=""):
@@ -372,14 +391,14 @@ def write(records):
             if c["tag"] == "NOTE":
                 xid = shared_notes.get(c["value"].strip())
                 if xid is None:
-                    _, xid = insert("xnotes", {"gedcom": t, "note": c["value"]})
+                    _, xid = insert("xnotes", {"gedcom": t, "note": plain(c["value"])})
                     made["xnotes"].append(xid)
                 insert("notelinks", {"gedcom": t, "persfamID": owner, "xnoteID": xid, "eventID": event_id})
             elif c["tag"] == "SOUR":
                 ref = c["value"].strip()
                 insert("citations", {"gedcom": t, "persfamID": owner, "eventID": event_id,
                                          "sourceID": ids.get(ref, ""), "page": val(c, "PAGE"),
-                                         "citetext": val(first(c, "DATA"), "TEXT"),
+                                         "citetext": plain(val(first(c, "DATA"), "TEXT")),
                                          "description": "" if ref in ids else ref})  # a source written inline
 
     def events(node, owner, kind, vitals):
