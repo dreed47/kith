@@ -8,7 +8,7 @@ A fact on a person or family with a date or place, of a kind this tree doesn't h
 service, a program's own _TAGs), brings its kind of event in with it.
 
 shortcut: no photos or documents (OBJE: a GEDCOM carries only file names, not the files), repositories, LDS data,
-associations or second names; the preview counts what's left out."""
+or associations; the preview counts what's left out."""
 import io
 import json
 import re
@@ -40,7 +40,9 @@ EVENT_NAMES = {"RESI": "Residence", "EMIG": "Emigration", "NATU": "Naturalizatio
                "BARM": "Bar mitzvah", "BASM": "Bat mitzvah", "BLES": "Blessing", "ORDN": "Ordination",
                "NATI": "Nationality", "ARVL": "Arrival", "DPRT": "Departure", "_DEG": "Degree",
                "ENGA": "Engagement", "MARB": "Marriage banns", "MARC": "Marriage contract",
-               "MARS": "Marriage settlement", "ANUL": "Annulment"}
+               "MARS": "Marriage settlement", "ANUL": "Annulment", "_AKA": "Also known as"}
+NAME_TYPES = {"married": "Married name", "maiden": "Maiden name", "birth": "Birth name", "aka": "Also known as",
+              "immigrant": "Immigrant name"}
 KINDS = {"I": "person", "F": "family"}
 
 
@@ -159,6 +161,22 @@ def person_values(indi, latest_birth=None):
     return v
 
 
+def other_names(indi):
+    """A person's names besides the first, as "Also known as" events: [(text, the NAME line, for its notes and
+    sources, or None)]. A later NAME (with its TYPE: married, maiden...), or a _MARNM married surname."""
+    out = []
+    for n, name in enumerate(c for c in indi["children"] if c["tag"] == "NAME"):
+        given, last, suffix = split_name(name["value"])
+        given, last = val(name, "GIVN") or given, val(name, "SURN") or last
+        if n:
+            kind = val(name, "TYPE")
+            text = " ".join(x for x in (given, last, suffix) if x)
+            out.append((f"{NAME_TYPES.get(kind.lower(), kind)}: {text}" if kind else text, name))
+        if val(name, "_MARNM"):
+            out.append((f"Married name: {' '.join(x for x in (given, val(name, '_MARNM')) if x)}", None))
+    return [(text, name) for text, name in out if text]
+
+
 def plan(records):
     """What the file holds and what won't come in: counts, people, left-out tags (tag -> times) and kinds of event
     the import will add ((tag, I or F) -> times)."""
@@ -172,6 +190,9 @@ def plan(records):
     eventish = {(c["tag"], kind) for c, kind in facts if c["tag"] not in LDS
                 and re.fullmatch(r"_?[A-Z][A-Z0-9_]{0,8}", c["tag"]) and (first(c, "DATE") or first(c, "PLAC"))}
     new = Counter((c["tag"], kind) for c, kind in facts if (c["tag"], kind) in eventish)
+    aka = sum(len(other_names(p)) for p in by["INDI"])
+    if aka and ("_AKA", "I") not in types:
+        new["_AKA", "I"] = aka
     skipped.update(c["tag"] for c, kind in facts if (c["tag"], kind) not in eventish)
     return by, skipped, new
 
@@ -381,6 +402,12 @@ def write(records):
                 made["events"].append(eid)
                 places.add(val(c, "PLAC")[:248])
                 notes_and_sources(c, owner, str(eid))
+        for text, name in other_names(node) if kind == "I" else []:
+            _, eid = insert("events", {"gedcom": t, "persfamID": owner, "eventtypeID": types["_AKA", "I"],
+                                       "info": text})
+            made["events"].append(eid)
+            if name:
+                notes_and_sources(name, owner, str(eid))
         notes_and_sources(node, owner)
 
     living, people_fams = {}, Counter()

@@ -2,6 +2,12 @@
 
 Kith follows semantic versioning. Releases are on GitHub.
 
+## Unreleased
+
+- GEDCOM import keeps a person's other names (married, maiden, aliases, _MARNM married surnames) as "Also known
+  as" events under Life events, with their notes and sources. Before, they were left out. Search doesn't find
+  people by them.
+
 ## 0.4.1 (2026-11-04)
 
 - GEDCOM import warns when a file looks already imported (the same people's _UIDs as an earlier import, or most of

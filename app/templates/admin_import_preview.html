@@ -9,7 +9,7 @@
 <section class="card">
   <p><strong>{{ by.INDI|length }}</strong> people, <strong>{{ by.FAM|length }}</strong> families, <strong>{{ by.SOUR|length }}</strong> sources and <strong>{{ by.NOTE|length }}</strong> shared notes will be added as new records.</p>
   {% if new %}<p class="small">New kinds of event, added to the tree's event types: {% for name, kind, n in new %}{{ name }} ({{ kind }}, {{ n }}){{ ", " if not loop.last }}{% endfor %}. Rename or hide them under Event types.</p>{% endif %}
-  {% if skipped %}<p class="muted small">Left out: {% for tag, n in skipped %}{{ tag }} ({{ n }}){{ ", " if not loop.last }}{% endfor %}. (Photos and documents, repositories, LDS data, second names and facts with no date or place.)</p>{% endif %}
+  {% if skipped %}<p class="muted small">Left out: {% for tag, n in skipped %}{{ tag }} ({{ n }}){{ ", " if not loop.last }}{% endfor %}. (Photos and documents, repositories, LDS data and facts with no date or place.)</p>{% endif %}
   <form method="post" action="{{ url_for('admin.confirm_import', token=token) }}" class="form-actions">
     <input type="hidden" name="csrf" value="{{ csrf_token() }}"><input type="hidden" name="filename" value="{{ filename }}">
     {% if seen %}<label class="check"><input type="checkbox" name="anyway" value="1" required> Import anyway: make a second copy of anyone already here</label>{% endif %}

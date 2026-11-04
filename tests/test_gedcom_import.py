@@ -283,6 +283,11 @@ SITE_GED = """0 HEAD
 1 CHAR UTF-8
 0 @I1@ INDI
 1 NAME Pa /Sitefile/
+2 _MARNM Wedd
+1 NAME Pat /Sitefile/ Sr.
+2 TYPE aka
+2 NOTE Known as Pat at work
+1 NAME Pappy
 1 _UID 1A2B3C
 1 RESI
 2 DATE 1900
@@ -351,6 +356,7 @@ def test_new_kinds_of_event_and_child_relations(app, importer):
     html = text(preview(importer, SITE_GED))
     assert "Residence (person, 2)" in html and "Military service (person, 1)" in html
     assert "Engagement (family, 1)" in html and "_NOPLACE (1)" in html and "ENDL (1)" in html
+    assert "Also known as (person, 3)" in html
     importer.post(f"/admin/import/{token_of(html)}", data={"csrf": CSRF})
     imp = sql(app, "SELECT * FROM app_imports ORDER BY id DESC LIMIT 1")[0]
     made = json.loads(imp["created"])
@@ -358,8 +364,14 @@ def test_new_kinds_of_event_and_child_relations(app, importer):
     events = sql(app, "SELECT et.tag, et.display, e.eventplace FROM events e JOIN eventtypes et USING (eventtypeID)"
                       " WHERE persfamID IN (%s, %s) ORDER BY e.eventID", (pa, made["families"][0]))
     assert [(e["tag"], e["eventplace"]) for e in events] == [("RESI", "Ohio"), ("RESI", "Iowa"), ("_MILT", ""),
-                                                             ("ENGA", "")]
-    assert events[0]["display"] == "Residence" and len(made["eventtypes"]) == 3
+                                                             *[("_AKA", "")] * 3, ("ENGA", "")]
+    assert events[0]["display"] == "Residence" and len(made["eventtypes"]) == 4
+    akas = sql(app, "SELECT e.eventID, e.info FROM events e JOIN eventtypes et USING (eventtypeID)"
+                    " WHERE persfamID = %s AND et.tag = '_AKA' ORDER BY e.eventID", (pa,))
+    assert [a["info"] for a in akas] == ["Married name: Pa Wedd", "Also known as: Pat Sitefile Sr.", "Pappy"]
+    assert sql(app, "SELECT x.note FROM notelinks nl JOIN xnotes x ON x.ID = nl.xnoteID WHERE nl.eventID = %s",
+               (str(akas[1]["eventID"]),))[0]["note"] == "Known as Pat at work"
+    assert "Pappy" in text(importer.get(f"/person/{pa}"))
     rels = {c["personID"]: (c["frel"], c["mrel"]) for c in sql(app, "SELECT * FROM children WHERE familyID = %s",
                                                                  (made["families"][0],))}
     assert rels == {adopted: ("adopted", "adopted"), step: ("step", "birth"), foster: ("foster", "birth")}
@@ -377,12 +389,12 @@ def test_new_kinds_of_event_and_child_relations(app, importer):
     assert made2["eventtypes"] == []
     importer.post(f"/admin/import/{imp['id']}/undo", data={"csrf": CSRF})
     importer.post(f"/admin/import/{imp2['id']}/undo", data={"csrf": CSRF})
-    assert len(sql(app, "SELECT * FROM eventtypes WHERE eventtypeID IN %s", (tuple(made["eventtypes"]),))) == 3
+    assert len(sql(app, "SELECT * FROM eventtypes WHERE eventtypeID IN %s", (tuple(made["eventtypes"]),))) == 4
     sql(app, "DELETE FROM eventtypes WHERE eventtypeID IN %s", (tuple(made["eventtypes"]),))
     # Undone while nothing else uses them, they go too.
     imp, made = run_import(app, importer, SITE_GED)
     importer.post(f"/admin/import/{imp['id']}/undo", data={"csrf": CSRF})
-    assert len(made["eventtypes"]) == 3 and not sql(app, "SELECT * FROM eventtypes WHERE eventtypeID IN %s",
+    assert len(made["eventtypes"]) == 4 and not sql(app, "SELECT * FROM eventtypes WHERE eventtypeID IN %s",
                                                     (tuple(made["eventtypes"]),))
 
 
@@ -392,8 +404,8 @@ def test_imported_kind_matches_one_by_name(app, importer):
     try:
         _, made = run_import(app, importer, SITE_GED)
         assert sql(app, "SELECT COUNT(*) AS n FROM eventtypes WHERE tag = 'RESI'")[0]["n"] == 0
-        assert len(made["eventtypes"]) == 2  # military service and engagement only
+        assert len(made["eventtypes"]) == 3  # military service, engagement and other names only
     finally:
         sql(app, "DELETE FROM events WHERE eventtypeID IN (SELECT eventtypeID FROM eventtypes WHERE tag IN"
-                 " ('_MILT', 'ENGA') OR description = 'Residence')")
-        sql(app, "DELETE FROM eventtypes WHERE tag IN ('_MILT', 'ENGA') OR description = 'Residence'")
+                 " ('_MILT', 'ENGA', '_AKA') OR description = 'Residence')")
+        sql(app, "DELETE FROM eventtypes WHERE tag IN ('_MILT', 'ENGA', '_AKA') OR description = 'Residence'")
