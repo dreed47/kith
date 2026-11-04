@@ -54,7 +54,18 @@ The screenshots show the made-up sample family that comes with Kith.
 ## Install
 
 You need a server that your family can reach. Kith listens on port 8000. Put it behind a reverse proxy with
-HTTPS before it's on the internet (see "Settings").
+HTTPS before it's on the internet (see "Settings"). Three ways, best first:
+
+| | Proxmox VE | Docker | Debian by hand |
+|---|---|---|---|
+| You need | Proxmox VE 8 or 9 | Docker with Compose v2, and git | Debian 13 (or Debian-like, Python 3.12+), root |
+| Installs | One command | Six commands | About 20 commands |
+| Updates | One command, saves a database copy first | Three commands | About 10 commands |
+| Nightly backups, Admin > Backups page | Yes | No: back up the Docker volumes yourself | Optional, by hand |
+| Scheduled jobs (place coordinates, weekly email, version check) | Yes | Add three lines to the host's crontab | Yes |
+
+If you have Proxmox, use it: one command sets up everything, including backups and updates. Kith needs about
+1 GB of memory and a few GB of disk plus your photos. It brings its own MariaDB in all three.
 
 ### Proxmox VE
 
@@ -62,27 +73,129 @@ On the Proxmox host's shell:
 
     bash -c "$(curl -fsSL https://raw.githubusercontent.com/dreed47/kith/main/ct/kith.sh)"
 
-This makes a Debian 13 container with Kith, MariaDB and the first admin account. It uses the
-[community-scripts](https://community-scripts.github.io/ProxmoxVE/) engine. The admin login is in the container:
-`cat ~/kith.creds`. To update, run the same command inside the container. It saves a copy of the database in
-`/var/backups/kith` first.
+This makes a Debian 13 container (2 cores, 1 GB memory, 8 GB disk; it asks if you want others) with Kith, MariaDB
+and the first admin account. It uses the [community-scripts](https://community-scripts.github.io/ProxmoxVE/)
+engine. The admin login is in the container: `cat ~/kith.creds`.
+
+**Update:** in the container's shell, type `update`. It saves a copy of the database in `/var/backups/kith`, then
+installs the newest release.
 
 ### Docker
 
     git clone https://github.com/dreed47/kith.git
     cd kith/docker
-    cp example.env .env          # set DB_PASSWORD
+    git checkout "$(git tag --sort=-v:refname | head -1)"   # the newest release
+    cp example.env .env          # then set DB_PASSWORD in .env
     docker compose up -d
-    docker compose exec app flask --app app setup db       # the first admin
+    docker compose exec app flask --app app setup db       # the first admin (it asks for a password)
     docker compose exec app flask --app app setup sample   # optional: a made-up family to try it with
 
-Then open http://localhost:8000. To update: `git pull`, then `docker compose up -d --build`. Database upgrades
-run as the site starts.
+Then open http://localhost:8000. The database, photos and settings are in the Docker volumes `kith_db`,
+`kith_media` and `kith_instance`; back those up.
+
+**Update:** in `kith/docker`:
+
+    git fetch --tags
+    git checkout "$(git tag --sort=-v:refname | head -1)"
+    docker compose up -d --build
+
+Database upgrades run as the site starts.
+
+**Scheduled jobs:** Docker doesn't run them by itself. Add these to the host's crontab (`crontab -e`), with your
+path to `kith/docker`:
+
+    30 2 * * *  cd /path/to/kith/docker && docker compose exec -T app flask --app app geocode run
+    0 13 * * 1  cd /path/to/kith/docker && docker compose exec -T app flask --app app digest send
+    0 4 * * *   cd /path/to/kith/docker && docker compose exec -T app flask --app app updates check
+
+Place coordinates nightly, the weekly email (needs email set up; sends nothing until an admin turns it on) and the
+daily version check
+(see "What leaves your server").
 
 ### Debian by hand
 
-`install/kith-install.sh` is the reference: MariaDB, a Python venv in `/opt/kith`, settings in `/etc/kith.env`,
-photos in `/srv/kith/media`, and the `kith` systemd service. Do the same steps by hand on any Debian-like server.
+On Debian 13 (or another Debian-like server with Python 3.12 or newer), as root. These are the Proxmox
+installer's steps, by hand:
+
+    apt update && apt install -y mariadb-server python3-venv poppler-utils rsync curl openssl
+
+    # The database, with a random password
+    DB_PASS=$(openssl rand -hex 16)
+    mariadb -e "CREATE DATABASE kith CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+      CREATE USER 'kith'@'localhost' IDENTIFIED BY '$DB_PASS'; GRANT ALL ON kith.* TO 'kith'@'localhost';"
+
+    # The newest release, in /opt/kith
+    URL=$(curl -fsSL https://api.github.com/repos/dreed47/kith/releases/latest | python3 -c 'import json,sys; print(json.load(sys.stdin)["tarball_url"])')
+    mkdir -p /opt/kith && curl -fsSL "$URL" | tar -xz --strip-components=1 -C /opt/kith
+    python3 -m venv /opt/kith/.venv
+    /opt/kith/.venv/bin/pip install -q -r /opt/kith/deploy/requirements.txt gunicorn==23.0.0
+
+    # A user for the site, its folders, and its settings (readable only by root)
+    useradd --system --home-dir /var/lib/kith --shell /usr/sbin/nologin kith
+    install -d -o kith -g kith -m 750 /var/lib/kith /srv/kith /srv/kith/media
+    install -m 600 /dev/null /etc/kith.env
+    cat >/etc/kith.env <<EOF
+    KITH_DB_HOST=127.0.0.1
+    KITH_DB_PORT=3306
+    KITH_DB_NAME=kith
+    KITH_DB_USER=kith
+    KITH_DB_PASSWORD=$DB_PASS
+    KITH_MEDIA_ROOT=/srv/kith/media
+    KITH_INSTANCE=/var/lib/kith
+    KITH_STRONG_PASSWORDS=1
+    EOF
+
+    # The tables and the first admin (it asks for a password)
+    systemd-run --quiet --wait --pty --uid=kith --gid=kith --working-directory=/opt/kith \
+      -p EnvironmentFile=/etc/kith.env /opt/kith/.venv/bin/flask --app app setup db --admin admin
+
+    # The service, on port 8000
+    cat >/etc/systemd/system/kith.service <<'EOF'
+    [Unit]
+    Description=Kith family history site
+    After=network.target mariadb.service
+    Requires=mariadb.service
+
+    [Service]
+    User=kith
+    Group=kith
+    WorkingDirectory=/opt/kith
+    EnvironmentFile=/etc/kith.env
+    ExecStartPre=/opt/kith/.venv/bin/flask --app app setup upgrade
+    ExecStart=/opt/kith/.venv/bin/gunicorn --workers 3 --bind 0.0.0.0:8000 --access-logfile - "app:create_app()"
+    Restart=on-failure
+    ProtectSystem=strict
+    ReadWritePaths=/var/lib/kith /srv/kith
+    PrivateTmp=true
+    NoNewPrivileges=true
+
+    [Install]
+    WantedBy=multi-user.target
+    EOF
+    systemctl daemon-reload && systemctl enable --now kith
+
+    # Nightly place coordinates, the weekly email (off until turned on) and the daily version check
+    bash /opt/kith/deploy/jobs.sh
+
+Then open http://your-server:8000 and log in as `admin`. To add the made-up sample family:
+`systemd-run --wait --pty --uid=kith --working-directory=/opt/kith -p EnvironmentFile=/etc/kith.env
+/opt/kith/.venv/bin/flask --app app setup sample`. For nightly backups and the Admin > Backups page, also do the
+"Setting up Backups" part of `install/kith-install.sh`.
+
+**Update:** as root:
+
+    systemctl stop kith
+    mkdir -p /var/backups/kith
+    mariadb-dump --single-transaction kith | gzip >"/var/backups/kith/kith-$(date +%Y%m%d-%H%M%S).sql.gz"
+    URL=$(curl -fsSL https://api.github.com/repos/dreed47/kith/releases/latest | python3 -c 'import json,sys; print(json.load(sys.stdin)["tarball_url"])')
+    rm -rf /opt/kith && mkdir -p /opt/kith && curl -fsSL "$URL" | tar -xz --strip-components=1 -C /opt/kith
+    python3 -m venv /opt/kith/.venv
+    /opt/kith/.venv/bin/pip install -q -r /opt/kith/deploy/requirements.txt gunicorn==23.0.0
+    bash /opt/kith/deploy/jobs.sh
+    systemctl start kith
+
+Photos, settings and the database live outside `/opt/kith`, so this only replaces the code. Database upgrades run
+as the site starts.
 
 ## Your tree
 

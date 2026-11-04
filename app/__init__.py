@@ -3,6 +3,7 @@ import re
 import secrets
 import subprocess
 import tomllib
+from datetime import timedelta
 from pathlib import Path
 from urllib.parse import quote
 
@@ -106,6 +107,8 @@ def create_app(config=None):
         # What else backs up this server, e.g. "Proxmox backups", so the Backups page doesn't warn they're only here.
         BACKUP_OFFSITE=env("BACKUP_OFFSITE", ""),
         SESSION_COOKIE_SAMESITE="Lax",
+        # Logins last 90 days from the last visit (Flask renews the cookie on each request).
+        PERMANENT_SESSION_LIFETIME=timedelta(days=90),
         MAX_CONTENT_LENGTH=int(env("MAX_UPLOAD_MB", "50")) * 1024 * 1024,
         # Set to 1 when running behind the reverse proxy, so client IPs (used by login throttling) are real.
         TRUSTED_PROXIES=int(env("TRUSTED_PROXIES", "0")),

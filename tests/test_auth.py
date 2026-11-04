@@ -62,6 +62,7 @@ def test_login_success_goes_to_next(fake_users):
     c = create_app({"TESTING": True}).test_client()
     r = login(c, "ann", "right", next="/surnames")
     assert r.status_code == 302 and r.location == "/surnames"
+    assert "Expires=" in r.headers["Set-Cookie"]  # kept when a phone closes the browser
     with c.session_transaction() as s:
         assert s["uid"] == 1
 

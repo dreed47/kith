@@ -8,6 +8,7 @@ COPY deploy/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt gunicorn==23.0.0
 COPY app app
 COPY themes themes
+COPY pyproject.toml .
 # Readable whatever the checkout's permissions; owned by root, so the site can't change its own code.
 RUN chmod -R a+rX /app && useradd --system --home /app kith && mkdir -p /data/media /data/instance && chown kith /data/media /data/instance
 USER kith

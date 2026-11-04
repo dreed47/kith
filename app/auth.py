@@ -168,6 +168,7 @@ def login():
             if user and check_password(request.form.get("password", ""), user) and can_log_in(user):
                 session.clear()  # new session (and CSRF token) on login
                 session["uid"] = user["userID"]
+                session.permanent = True  # a dated cookie, so phones don't drop it when they close the browser
                 clear_failures(username)
                 execute("UPDATE users SET lastlogin = NOW() WHERE userID = %s", (user["userID"],))  # as TNG does
                 if current_app.config["STRONG_PASSWORDS"] and user["password_type"] == "md5":

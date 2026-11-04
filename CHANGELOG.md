@@ -2,6 +2,14 @@
 
 Kith follows semantic versioning. Releases are on GitHub.
 
+## Unreleased
+
+- Logins last 90 days from the last visit. Before, phones logged people out whenever they closed the browser.
+  Existing logins need one fresh login to pick this up.
+- Docker: the site no longer fails to start (the image was missing `pyproject.toml`; broken since 0.2.0).
+- README: which install to choose and what each needs; step-by-step Debian install and update; Docker installs the
+  newest release, not `main`, and gets the scheduled jobs from the host's crontab.
+
 ## 0.3.0 (2026-11-04)
 
 - Version check: once a day the site asks kithgenealogy.org for the newest version, and Admin says when there's
