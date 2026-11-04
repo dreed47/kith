@@ -63,8 +63,8 @@ HTTPS before it's on the internet (see "Settings"). Three ways, best first:
 | | Proxmox VE | Docker | Debian by hand |
 |---|---|---|---|
 | You need | Proxmox VE 8 or 9 | Docker with Compose v2, and git | Debian 13 (or Debian-like, Python 3.12+), root |
-| Installs | One command | Six commands | About 20 commands |
-| Updates | One command, saves a database copy first | Three commands | About 10 commands |
+| Installs | One command | Six commands | About 20 commands, copied from below |
+| Updates | One command, saves a database copy first | Three commands | One command, saves a database copy first |
 | Nightly backups, Admin > Backups page | Yes | No: back up the Docker volumes yourself | Optional, by hand |
 | Scheduled jobs (place coordinates, weekly email, version check) | Yes | Add three lines to the host's crontab | Yes |
 
@@ -181,25 +181,17 @@ installer's steps, by hand:
     # Nightly place coordinates, the weekly email (off until turned on) and the daily version check
     bash /opt/kith/deploy/jobs.sh
 
+    # The update command
+    install -m 755 /opt/kith/deploy/update.sh /usr/local/sbin/kith-update
+
 Then open http://your-server:8000 and log in as `admin`. To add the made-up sample family:
 `systemd-run --wait --pty --uid=kith --working-directory=/opt/kith -p EnvironmentFile=/etc/kith.env
 /opt/kith/.venv/bin/flask --app app setup sample`. For nightly backups and the Admin > Backups page, also do the
 "Setting up Backups" part of `install/kith-install.sh`.
 
-**Update:** as root:
-
-    systemctl stop kith
-    mkdir -p /var/backups/kith
-    mariadb-dump --single-transaction kith | gzip >"/var/backups/kith/kith-$(date +%Y%m%d-%H%M%S).sql.gz"
-    URL=$(curl -fsSL https://api.github.com/repos/dreed47/kith/releases/latest | python3 -c 'import json,sys; print(json.load(sys.stdin)["tarball_url"])')
-    rm -rf /opt/kith && mkdir -p /opt/kith && curl -fsSL "$URL" | tar -xz --strip-components=1 -C /opt/kith
-    python3 -m venv /opt/kith/.venv
-    /opt/kith/.venv/bin/pip install -q -r /opt/kith/deploy/requirements.txt gunicorn==23.0.0
-    bash /opt/kith/deploy/jobs.sh
-    systemctl start kith
-
-Photos, settings and the database live outside `/opt/kith`, so this only replaces the code. Database upgrades run
-as the site starts.
+**Update:** as root, run `kith-update`. It saves a copy of the database in `/var/backups/kith`, then installs the
+newest release (`kith-update --force` installs it again). Photos, settings and the database live outside
+`/opt/kith`, so only the code is replaced. Database upgrades run as the site starts.
 
 ## Your tree
 
@@ -306,7 +298,7 @@ all the connections it makes, and how to stop each one:
   - Admin > Site settings > Updates: untick **Check for new versions of Kith**, then Save.
   - `KITH_UPDATE_CHECK=0` in `/etc/kith.env` (or `docker/.env`), then restart: off for good, whatever Site
     settings say.
-  - Proxmox: `systemctl disable --now kith-updates.timer`. Elsewhere: leave out its cron line.
+  - Proxmox or Debian: `systemctl disable --now kith-updates.timer`. Docker: leave out its cron line.
 - **Map coordinates.** The nightly geocode job sends place names only (no people) to OpenStreetMap's Nominatim.
   Stop it: `systemctl disable --now kith-geocode.timer`, or leave out its cron line. Coordinates can still be typed
   in by hand.

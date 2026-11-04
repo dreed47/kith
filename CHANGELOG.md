@@ -2,6 +2,11 @@
 
 Kith follows semantic versioning. Releases are on GitHub.
 
+## 0.3.2 (2026-11-04)
+
+- Debian installs made by hand get an update command, `kith-update` (`deploy/update.sh`): it saves a copy of the
+  database, then installs the newest release.
+
 ## 0.3.1 (2026-11-04)
 
 - Moving from TNG: `flask --app app setup import-tng tng.sql` starts a new site from a dump of a TNG database,
