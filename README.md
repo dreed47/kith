@@ -49,8 +49,8 @@ The screenshots show the made-up sample family that comes with Kith.
 - Editing on the site: add relatives, merge duplicates, tidy place names (spellings, misspellings, record titles
   where a place should be), link surname spellings, and data checks for impossible dates and death dates that
   differ from the obituary.
-- GEDCOM import (with undo) and export, and a one-time import of a whole TNG site (see
-  [Moving from TNG](#moving-from-tng)).
+- GEDCOM import (with undo) and export, with steps for getting a tree out of Ancestry, MyHeritage, FamilySearch,
+  Geneanet and WikiTree, and a one-time import of a whole TNG site (see [Moving from TNG](#moving-from-tng)).
 - What's new, watching a person, and an optional weekly email.
 - Admin page with what's waiting, recent visits, and what's changed on the site lately (from its git history).
 - Five themes, which each person can choose for themselves, including large print.
@@ -195,8 +195,11 @@ newest release (`kith-update --force` installs it again). Photos, settings and t
 
 ## Your tree
 
-Import a GEDCOM file from your genealogy program under Admin > Import GEDCOM. Photos and documents are uploaded
-on the site. A GEDCOM file names them, but doesn't carry them.
+Import a GEDCOM file from your genealogy program or site under Admin > Import GEDCOM. Ancestry's .zip export can
+be uploaded as it is, and the import page explains how to get a file out of Ancestry, MyHeritage, FamilySearch,
+Geneanet and WikiTree. Facts this tree has no kind of event for yet, such as residence or military service, add
+that kind of event. Photos and documents are uploaded on the site. A GEDCOM file names them, but doesn't carry
+them.
 
 ## Moving from TNG
 

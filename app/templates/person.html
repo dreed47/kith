@@ -91,6 +91,8 @@
   <div>
     {% for f in parent_fams %}
     <h2>Parents</h2>
+    {% set frel, mrel = (f.frel or "birth")|lower, (f.mrel or "birth")|lower %}
+    {% if frel != "birth" or mrel != "birth" %}<p class="small muted">{% if frel == mrel %}{{ frel|capitalize }} child{% else %}Father: {{ frel }} · mother: {{ mrel }}{% endif %}</p>{% endif %}
     <ul class="people-list">
       {% for x in (folks.get(f.husband), folks.get(f.wife)) if x %}{{ person_row(x) }}{% endfor %}
     </ul>

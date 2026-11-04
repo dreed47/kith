@@ -4,6 +4,7 @@ import json
 import os
 import re
 import time
+import zipfile
 
 import pymysql
 import pytest
@@ -128,7 +129,7 @@ def test_decode_and_names():
 def test_years_and_living_bounds(app):
     with app.app_context():
         assert gi.year("1 JAN 1850") == 1850 and gi.year("3/5/1474/5") is None and gi.year("") is None
-        by, skipped = gi.plan(gi.parse(GED))
+        by, skipped, _ = gi.plan(gi.parse(GED))
         born = gi.birth_bounds(by)
         # Kid has no dates: bounded by the grandchild (2001 - 12); the grandparents by Zed's own dates.
         assert born["@I3@"] == 1989 and born["@I1@"] == 1850 and born["@I2@"] == 1863
@@ -164,6 +165,8 @@ def test_preview_and_errors(app, importer):
 
 
 def test_import_and_undo(app, importer):
+    sql(app, "INSERT INTO places (gedcom, place, temple, geoignore, changedate, changedby)"
+             " VALUES (%s, 'Sea', 0, 0, '2000-01-01', 'x')", (app.config["TREE"],))
     html = text(preview(importer))
     r = importer.post(f"/admin/import/{token_of(html)}", data={"csrf": CSRF, "filename": "family.ged"})
     assert r.status_code == 302 and "Imported 4 people and 2 families" in text(importer.get("/admin/import"))
@@ -191,6 +194,11 @@ def test_import_and_undo(app, importer):
     assert cites[0]["description"] == "A source written inline" and cites[1]["eventID"] == "BIRT"
     assert cites[1]["sourceID"] == made["sources"][0] and cites[1]["citetext"] == "Born at home"
     assert sql(app, "SELECT * FROM places WHERE place = 'Importville, PA'")
+    assert made["places"] == ["Censusville", "Importville, PA", "Wedtown, PA"]  # not Sea, already here
+    sql(app, "UPDATE places SET changedate = NOW() + INTERVAL 1 DAY WHERE place = 'Censusville'")
+    sql(app, "UPDATE users SET personID = %s, mygedcom = %s WHERE username = 'fx_nonotes'", (zed, app.config["TREE"]))
+    sql(app, "INSERT INTO app_watches (gedcom, personID, userID, created_at) SELECT %s, %s, userID, NOW() FROM users"
+             " WHERE username = 'fx_nonotes'", (app.config["TREE"], zed))
     assert "Undo this import" in text(importer.get("/admin/import"))
     importer.post(f"/admin/import/{imp['id']}/undo", data={"csrf": CSRF})
     assert not sql(app, "SELECT * FROM people WHERE personID IN (%s, %s)", (zed, grandkid))
@@ -198,11 +206,17 @@ def test_import_and_undo(app, importer):
     assert not sql(app, "SELECT * FROM sources WHERE sourceID = %s", (made["sources"][0],))
     assert not sql(app, "SELECT * FROM xnotes WHERE ID IN %s", (tuple(made["xnotes"]),))
     assert '<span class="tag">undone</span>' in text(importer.get("/admin/import"))
+    assert sql(app, "SELECT personID FROM users WHERE username = 'fx_nonotes'")[0]["personID"] == ""
+    assert not sql(app, "SELECT * FROM app_watches WHERE personID = %s", (zed,))
+    places = {r["place"] for r in sql(app, "SELECT place FROM places WHERE place IN"
+                                           " ('Importville, PA', 'Wedtown, PA', 'Censusville', 'Sea')")}
+    assert places == {"Sea", "Censusville"}  # here before the import; edited since
+    sql(app, "DELETE FROM places WHERE place IN ('Sea', 'Censusville')")
     assert importer.post(f"/admin/import/{imp['id']}/undo", data={"csrf": CSRF}).status_code == 404
 
 
-def run_import(app, importer):
-    importer.post(f"/admin/import/{token_of(text(preview(importer)))}", data={"csrf": CSRF})
+def run_import(app, importer, data=GED):
+    importer.post(f"/admin/import/{token_of(text(preview(importer, data)))}", data={"csrf": CSRF})
     imp = sql(app, "SELECT * FROM app_imports ORDER BY id DESC LIMIT 1")[0]
     return imp, json.loads(imp["created"])
 
@@ -257,5 +271,112 @@ def test_birth_bounds_stop_on_a_loop(app):
     """Bad data where someone is their own child: the bound would fall forever, so passes are capped."""
     loop = "0 HEAD\n0 @I1@ INDI\n1 BIRT\n2 DATE 1900\n0 @F1@ FAM\n1 HUSB @I1@\n1 CHIL @I1@\n0 TRLR"
     with app.app_context():
-        by, _ = gi.plan(gi.parse(loop))
+        by, _, _ = gi.plan(gi.parse(loop))
         assert gi.birth_bounds(by)["@I1@"] == 1900 - 12 * 50
+
+
+SITE_GED = """0 HEAD
+1 CHAR UTF-8
+0 @I1@ INDI
+1 NAME Pa /Sitefile/
+1 RESI
+2 DATE 1900
+2 PLAC Ohio
+1 RESI
+2 PLAC Iowa
+1 _MILT
+2 DATE 1918
+1 _NOPLACE no date or place
+1 ENDL
+2 DATE 1950
+1 FAMS @F1@
+0 @I2@ INDI
+1 NAME Adopted /Sitefile/
+1 FAMC @F1@
+2 PEDI adopted
+0 @I3@ INDI
+1 NAME Step /Sitefile/
+1 FAMC @F1@
+0 @F1@ FAM
+1 HUSB @I1@
+1 CHIL @I2@
+1 CHIL @I3@
+2 _FREL STEP
+2 _MREL Natural
+1 ENGA
+2 DATE 1899
+0 TRLR
+"""
+
+
+def zipped(files):
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w") as z:
+        for name, body in files.items():
+            z.writestr(name, body)
+    return buf.getvalue()
+
+
+def test_zip_uploads(app, importer):
+    html = text(preview(importer, zipped({"tree.ged": GED, "__MACOSX/._tree.ged": "junk"}), "tree.zip"))
+    assert "<strong>4</strong> people" in html
+    importer.post(f"/admin/import/{token_of(html)}", data={"csrf": CSRF, "filename": "tree.zip"})
+    assert "Imported 4 people" in text(importer.get("/admin/import"))
+    for files, message in (({"a.ged": GED, "b.ged": GED}, "holds 2"), ({"x.txt": "x"}, "holds 0")):
+        preview(importer, zipped(files), "tree.zip")
+        assert message in text(importer.get("/admin/import"))
+    preview(importer, b"PK\x03\x04 not really a zip", "tree.zip")
+    assert "can&#39;t be opened" in text(importer.get("/admin/import"))
+    app.config["MAX_CONTENT_LENGTH"], limit = 100, app.config["MAX_CONTENT_LENGTH"]
+    try:
+        with app.test_request_context(), pytest.raises(gi.GedcomError, match="too big"):
+            gi.unzip(zipped({"big.ged": "0 HEAD\n" * 100}))
+    finally:
+        app.config["MAX_CONTENT_LENGTH"] = limit
+
+
+def test_new_kinds_of_event_and_child_relations(app, importer):
+    html = text(preview(importer, SITE_GED))
+    assert "Residence (person, 2)" in html and "Military service (person, 1)" in html
+    assert "Engagement (family, 1)" in html and "_NOPLACE (1)" in html and "ENDL (1)" in html
+    importer.post(f"/admin/import/{token_of(html)}", data={"csrf": CSRF})
+    imp = sql(app, "SELECT * FROM app_imports ORDER BY id DESC LIMIT 1")[0]
+    made = json.loads(imp["created"])
+    pa, adopted, step = made["people"]
+    events = sql(app, "SELECT et.tag, et.display, e.eventplace FROM events e JOIN eventtypes et USING (eventtypeID)"
+                      " WHERE persfamID IN (%s, %s) ORDER BY e.eventID", (pa, made["families"][0]))
+    assert [(e["tag"], e["eventplace"]) for e in events] == [("RESI", "Ohio"), ("RESI", "Iowa"), ("_MILT", ""),
+                                                             ("ENGA", "")]
+    assert events[0]["display"] == "Residence" and len(made["eventtypes"]) == 3
+    rels = {c["personID"]: (c["frel"], c["mrel"]) for c in sql(app, "SELECT * FROM children WHERE familyID = %s",
+                                                                 (made["families"][0],))}
+    assert rels == {adopted: ("adopted", "adopted"), step: ("step", "birth")}
+    assert "Adopted child" in text(importer.get(f"/person/{adopted}"))
+    assert "Father: step · mother: birth" in text(importer.get(f"/person/{step}"))
+    assert "child</p>" not in text(importer.get(f"/person/{pa}"))
+    # A second import reuses the kinds of event the first added. Undoing the first keeps them while the second
+    # uses them; after that they stay, unused, for an admin to delete under Event types.
+    imp2, made2 = run_import(app, importer, SITE_GED)
+    assert made2["eventtypes"] == []
+    importer.post(f"/admin/import/{imp['id']}/undo", data={"csrf": CSRF})
+    importer.post(f"/admin/import/{imp2['id']}/undo", data={"csrf": CSRF})
+    assert len(sql(app, "SELECT * FROM eventtypes WHERE eventtypeID IN %s", (tuple(made["eventtypes"]),))) == 3
+    sql(app, "DELETE FROM eventtypes WHERE eventtypeID IN %s", (tuple(made["eventtypes"]),))
+    # Undone while nothing else uses them, they go too.
+    imp, made = run_import(app, importer, SITE_GED)
+    importer.post(f"/admin/import/{imp['id']}/undo", data={"csrf": CSRF})
+    assert len(made["eventtypes"]) == 3 and not sql(app, "SELECT * FROM eventtypes WHERE eventtypeID IN %s",
+                                                    (tuple(made["eventtypes"]),))
+
+
+def test_imported_kind_matches_one_by_name(app, importer):
+    sql(app, "INSERT INTO eventtypes (tag, description, display, keep, collapse, ordernum, ldsevent, type)"
+             " VALUES ('EVEN', 'Residence', 'Residence', 1, 0, 0, 0, 'I')")
+    try:
+        _, made = run_import(app, importer, SITE_GED)
+        assert sql(app, "SELECT COUNT(*) AS n FROM eventtypes WHERE tag = 'RESI'")[0]["n"] == 0
+        assert len(made["eventtypes"]) == 2  # military service and engagement only
+    finally:
+        sql(app, "DELETE FROM events WHERE eventtypeID IN (SELECT eventtypeID FROM eventtypes WHERE tag IN"
+                 " ('_MILT', 'ENGA') OR description = 'Residence')")
+        sql(app, "DELETE FROM eventtypes WHERE tag IN ('_MILT', 'ENGA') OR description = 'Residence'")

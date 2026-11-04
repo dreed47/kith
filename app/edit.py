@@ -399,6 +399,14 @@ def family_is_empty(fid):
                                       ("medialinks", "personID")))
 
 
+def unlink_users(pids):
+    """Users linked to people who are being deleted ("This is me") lose the link, and their requests to be them."""
+    marks = ",".join(["%s"] * len(pids))
+    execute(f"UPDATE users SET personID = '', mygedcom = '' WHERE mygedcom = %s AND personID IN ({marks})",
+            (tree(), *pids))
+    execute(f"DELETE FROM app_link_requests WHERE status = 'pending' AND personID IN ({marks})", pids)
+
+
 @bp.route("/person/<pid>/delete", methods=["GET", "POST"])
 def delete_person(pid):
     """Port of TNG's deletePersonPlus. Unlike TNG, a family left with nothing in it (no children, marriage
@@ -419,6 +427,7 @@ def delete_person(pid):
     execute("DELETE FROM app_census_links WHERE gedcom = %s AND personID = %s", (t, pid))
     execute("DELETE FROM people WHERE gedcom = %s AND personID = %s", (t, pid))
     execute("DELETE FROM children WHERE gedcom = %s AND personID = %s", (t, pid))
+    unlink_users([pid])
     delete_owned(pid, links)
     execute("UPDATE families SET husband = '', husborder = 0 WHERE gedcom = %s AND husband = %s", (t, pid))
     execute("UPDATE families SET wife = '', wifeorder = 0 WHERE gedcom = %s AND wife = %s", (t, pid))

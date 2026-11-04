@@ -2,6 +2,20 @@
 
 Kith follows semantic versioning. Releases are on GitHub.
 
+## 0.4.0 (2026-11-04)
+
+- GEDCOM import takes Ancestry's export as it is: a .zip holding one .ged file.
+- Facts this tree has no kind of event for yet, such as residence, emigration, naturalization or military service,
+  now come in, and add that kind of event. The preview lists them first. Before, they were left out.
+- Adopted, step and foster children keep that relationship (GEDCOM PEDI, or Ancestry's _FREL and _MREL), and the
+  person page says so under Parents.
+- The import page explains how to get a GEDCOM file out of Ancestry, MyHeritage, FamilySearch, Geneanet, WikiTree
+  and desktop programs.
+- Undoing an import also removes the places it added that nothing uses, and anything added to its people since
+  (face tags, watches, comments, census matches).
+- Fix: deleting a person, or undoing the import that brought them in, left a user who had said "this is me" for
+  them with a Me link that failed. The link now goes with the person; the upgrade clears old ones.
+
 ## 0.3.2 (2026-11-04)
 
 - Debian installs made by hand get an update command, `kith-update` (`deploy/update.sh`): it saves a copy of the

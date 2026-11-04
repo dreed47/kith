@@ -237,8 +237,13 @@ def test_delete_person_without_links(app, admin):
     admin.post("/edit/person/new", data={"csrf": "t", "firstname": "Lonely", "lastname": "Fixture"})
     pid = sql(app, "SELECT personID FROM people WHERE firstname = 'Lonely'")[0]["personID"]
     assert "nothing else; this person has no links" in admin.get(f"/edit/person/{pid}/delete").get_data(as_text=True)
+    sql(app, "UPDATE users SET personID = %s, mygedcom = %s WHERE username = 'fx_nonotes'", (pid, app.config["TREE"]))
+    uid = sql(app, "SELECT userID FROM users WHERE username = 'fx_nonotes'")[0]["userID"]
+    sql(app, "INSERT INTO app_link_requests (userID, personID, requested_at) VALUES (%s, %s, NOW())", (uid, pid))
     r = admin.post(f"/edit/person/{pid}/delete", data={"csrf": "t"})
     assert r.location.endswith("/") and "Deleted Lonely Fixture" in admin.get("/").get_data(as_text=True)
+    assert sql(app, "SELECT personID FROM users WHERE userID = %s", (uid,))[0]["personID"] == ""  # their Me link
+    assert not sql(app, "SELECT * FROM app_link_requests WHERE personID = %s", (pid,))
 
 
 def test_remove_a_life_event(app, admin):

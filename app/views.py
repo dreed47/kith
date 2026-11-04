@@ -524,7 +524,8 @@ def relatives(pid):
     """A person's parent and spouse families, their siblings and children, and everyone in those families
     (for the person page and the edit page)."""
     parent_fams = query(
-        "SELECT f.* FROM children c JOIN families f ON f.familyID = c.familyID AND f.gedcom = c.gedcom"
+        "SELECT f.*, c.frel, c.mrel FROM children c JOIN families f"
+        " ON f.familyID = c.familyID AND f.gedcom = c.gedcom"
         " WHERE c.gedcom = %s AND c.personID = %s ORDER BY c.parentorder", (tree(), pid))
     spouse_fams = query(
         "SELECT * FROM families WHERE gedcom = %s AND (husband = %s OR wife = %s)"

@@ -5,9 +5,24 @@
 <p class="muted">For a file from a relative's genealogy program. Everyone in it comes in as new people and families, linked among themselves; nothing already in the tree changes. You'll see what's in the file before anything is imported, and an import can be undone until someone edits what it brought in.</p>
 <form method="post" enctype="multipart/form-data" class="card edit-form">
   <input type="hidden" name="csrf" value="{{ csrf_token() }}">
-  <label>GEDCOM file (.ged) <input type="file" name="file" accept=".ged,.GED,text/plain" required></label>
+  <label>GEDCOM file (.ged, or the .zip Ancestry gives you) <input type="file" name="file" accept=".ged,.GED,.zip,text/plain,application/zip" required></label>
   <div class="form-actions"><button>Look at the file</button><a href="{{ url_for('admin.home') }}">Cancel</a></div>
 </form>
+<section class="card"><h2>Getting a file from another site</h2>
+  <p class="muted small">Each site exports the names, dates, places, relationships, notes and sources. Photos and documents stay behind; upload them here afterwards. Importing the same file twice makes two copies of everyone.</p>
+  <details><summary>Ancestry</summary>
+    <p>On the Ancestry website (the app can't export), open the tree, then choose Tree settings and Export tree. When it's ready, download it and choose the .zip file here as it is.</p></details>
+  <details><summary>MyHeritage</summary>
+    <p>On the MyHeritage website, open Family tree, then Manage trees. Next to the tree, choose Export to GEDCOM. MyHeritage emails you a link; download the file and choose it here.</p></details>
+  <details><summary>FamilySearch</summary>
+    <p>FamilySearch has no GEDCOM download for its shared Family Tree. Copy your branch into a desktop program that connects to FamilySearch, such as RootsMagic or Ancestral Quest, then export a GEDCOM file from that program. People still living, and Memories (photos and stories), don't come across.</p></details>
+  <details><summary>Geneanet</summary>
+    <p>On your Geneanet tree, open the tree menu and choose Import/export, then export a GEDCOM file.</p></details>
+  <details><summary>WikiTree</summary>
+    <p>Use WikiTree's GEDCOM download page (Special:DownloadGedcom) and start from one person, taking their ancestors or descendants. Profiles you can't see are left out. Biographies come in as notes, so check their formatting.</p></details>
+  <details><summary>A desktop program (Family Tree Maker, RootsMagic, Legacy, Gramps)</summary>
+    <p>Use File, then Export, and choose GEDCOM. If it asks for a character set, choose UTF-8 so accented letters come through.</p></details>
+</section>
 {% if history %}
 <section class="card"><h2>Earlier imports</h2>
   <ul class="child-list">

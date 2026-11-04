@@ -4,12 +4,17 @@ Everything comes in as new records with new IDs, linked among themselves; nothin
 People who are already here show up as possible duplicates on the preview, to combine afterwards with Merge.
 Each import is recorded with the IDs it created, so it can be undone while nobody has edited those records.
 
-shortcut: no photos or documents (OBJE: a GEDCOM carries only file names, not the files), repositories, LDS data
-or associations; the preview counts what's left out."""
+A fact on a person or family with a date or place, of a kind this tree doesn't have yet (residence, military
+service, a program's own _TAGs), brings its kind of event in with it.
+
+shortcut: no photos or documents (OBJE: a GEDCOM carries only file names, not the files), repositories, LDS data,
+associations or second names; the preview counts what's left out."""
+import io
 import json
 import re
 import secrets
 import time
+import zipfile
 from collections import Counter
 from pathlib import Path
 
@@ -19,7 +24,8 @@ from flask import abort, current_app, flash, g, redirect, render_template, reque
 from .admin import bp
 from .dates import convert_date
 from .db import execute, insert, query
-from .edit import add_places, audit, now
+from .edit import add_places, audit, now, unlink_users
+from .edit_places import PLACE_COLUMNS
 from .living import latest_births, plausible, too_old
 from .views import one, tree
 
@@ -27,6 +33,15 @@ VITALS = {"BIRT": "birth", "CHR": "altbirth", "BAPM": "altbirth", "DEAT": "death
 FAMILY_VITALS = {"MARR": "marr", "DIV": "div"}
 NAME_PARTS = {"NPFX": "prefix", "NSFX": "suffix", "NICK": "nickname", "SPFX": "lnprefix"}
 HANDLED = {"NAME", "SEX", "FAMC", "FAMS", "NOTE", "SOUR", "HUSB", "WIFE", "CHIL", "CHAN", "_UID", "RIN", "UID"}
+LDS = {"BAPL", "CONL", "ENDL", "INIT", "SLGC", "SLGS", "WAC"}
+# Names for kinds of event a file may bring in; any other tag is named as itself (rename it under Event types).
+EVENT_NAMES = {"RESI": "Residence", "EMIG": "Emigration", "NATU": "Naturalization", "_MILT": "Military service",
+               "PROB": "Probate", "RETI": "Retirement", "CONF": "Confirmation", "CHRA": "Adult christening",
+               "BARM": "Bar mitzvah", "BASM": "Bat mitzvah", "BLES": "Blessing", "ORDN": "Ordination",
+               "NATI": "Nationality", "ARVL": "Arrival", "DPRT": "Departure", "_DEG": "Degree",
+               "ENGA": "Engagement", "MARB": "Marriage banns", "MARC": "Marriage contract",
+               "MARS": "Marriage settlement", "ANUL": "Annulment"}
+KINDS = {"I": "person", "F": "family"}
 
 
 class GedcomError(ValueError):
@@ -56,6 +71,27 @@ def parse(text):
     if not records or records[0]["tag"] != "HEAD":
         raise GedcomError("That isn't a GEDCOM file (it should start with 0 HEAD).")
     return records
+
+
+def unzip(data):
+    """A zip holding one GEDCOM file (how Ancestry exports a tree) becomes that file; anything else is left alone."""
+    if not data.startswith(b"PK\x03\x04"):
+        return data
+    limit = current_app.config.get("MAX_CONTENT_LENGTH") or 50 * 1024 * 1024
+    try:
+        with zipfile.ZipFile(io.BytesIO(data)) as z:
+            geds = [i for i in z.infolist() if i.filename.lower().endswith(".ged")
+                    and not i.filename.rsplit("/", 1)[-1].startswith("._")]  # macOS adds ._ copies
+            if len(geds) != 1:
+                raise GedcomError("The zip file should hold one GEDCOM (.ged) file; this one holds"
+                                  f" {len(geds)}.")
+            with z.open(geds[0]) as f:
+                out = f.read(limit + 1)  # not the size the zip claims: that can lie
+    except (zipfile.BadZipFile, RuntimeError, NotImplementedError, EOFError):
+        raise GedcomError("That zip file can't be opened (damaged, or locked with a password).")
+    if len(out) > limit:
+        raise GedcomError("The GEDCOM file inside the zip is too big.")
+    return out
 
 
 def decode(data):
@@ -124,18 +160,20 @@ def person_values(indi, latest_birth=None):
 
 
 def plan(records):
-    """What the file holds and what won't come in: counts, people, and left-out tags (tag -> times)."""
+    """What the file holds and what won't come in: counts, people, left-out tags (tag -> times) and kinds of event
+    the import will add ((tag, I or F) -> times)."""
     by = {k: [r for r in records if r["tag"] == k] for k in ("INDI", "FAM", "SOUR", "NOTE")}
     types = event_types()
     skipped = Counter(r["tag"] for r in records if r["tag"] not in ("HEAD", "TRLR", "SUBM", "INDI", "FAM", "SOUR",
                                                                      "NOTE"))
-    for kind, recs in (("I", by["INDI"]), ("F", by["FAM"])):
-        for r in recs:
-            for c in r["children"]:
-                if not (c["tag"] in HANDLED or c["tag"] in VITALS and kind == "I"
-                        or c["tag"] in FAMILY_VITALS and kind == "F" or (c["tag"], kind) in types):
-                    skipped[c["tag"]] += 1
-    return by, skipped
+    facts = [(c, kind) for kind, recs in (("I", by["INDI"]), ("F", by["FAM"])) for r in recs for c in r["children"]
+             if not (c["tag"] in HANDLED or c["tag"] in VITALS and kind == "I"
+                     or c["tag"] in FAMILY_VITALS and kind == "F" or (c["tag"], kind) in types)]
+    eventish = {(c["tag"], kind) for c, kind in facts if c["tag"] not in LDS
+                and re.fullmatch(r"_?[A-Z][A-Z0-9_]{0,8}", c["tag"]) and (first(c, "DATE") or first(c, "PLAC"))}
+    new = Counter((c["tag"], kind) for c, kind in facts if (c["tag"], kind) in eventish)
+    skipped.update(c["tag"] for c, kind in facts if (c["tag"], kind) not in eventish)
+    return by, skipped, new
 
 
 def event_types():
@@ -143,6 +181,41 @@ def event_types():
     out = {}
     for t in query("SELECT eventtypeID, tag, type FROM eventtypes WHERE ldsevent = 0 ORDER BY eventtypeID"):
         out.setdefault((t["tag"], t["type"]), t["eventtypeID"])
+    return out
+
+
+def add_event_types(new):
+    """Create the kinds of event in new, or use one this tree already has by that name: {(tag, kind): ID}, and the
+    IDs created."""
+    out, created = {}, []
+    for tag, kind in new:
+        name = EVENT_NAMES.get(tag, tag)
+        hit = one("SELECT eventtypeID FROM eventtypes WHERE type = %s AND ldsevent = 0"
+                  " AND (LOWER(display) = LOWER(%s) OR LOWER(description) = LOWER(%s))", (kind, name, name))
+        if hit:
+            out[tag, kind] = hit["eventtypeID"]
+        else:
+            _, out[tag, kind] = insert("eventtypes", {"tag": tag, "description": name, "display": name, "type": kind,
+                                                       "keep": 1})
+            created.append(out[tag, kind])
+    return out, created
+
+
+def child_relations(by):
+    """(child, family) -> (frel, mrel) when the file says, as PEDI under a person's FAMC or as Ancestry's _FREL and
+    _MREL under a family's CHIL. Adopted, foster, step...; birth is the default."""
+    def rel(value):
+        v = value.strip().lower()
+        return {"natural": "birth", "biological": "birth", "unknown": ""}.get(v, v)[:20]
+    out = {}
+    for p in by["INDI"]:
+        for c in p["children"]:
+            if c["tag"] == "FAMC" and val(c, "PEDI"):
+                out[p["xref"], c["value"]] = (rel(val(c, "PEDI")),) * 2
+    for f in by["FAM"]:
+        for c in f["children"]:
+            if c["tag"] == "CHIL" and (val(c, "_FREL") or val(c, "_MREL")):
+                out[c["value"], f["xref"]] = (rel(val(c, "_FREL")), rel(val(c, "_MREL")))
     return out
 
 
@@ -187,20 +260,22 @@ def import_gedcom():
         if not upload or not upload.filename:
             flash("Choose a GEDCOM file.")
             return redirect(url_for("admin.import_gedcom"))
-        data = upload.read()
-        text, warning = decode(data)
         try:
+            data = unzip(upload.read())
+            text, warning = decode(data)
             records = parse(text)
         except GedcomError as e:
             flash(str(e))
             return redirect(url_for("admin.import_gedcom"))
         token = secrets.token_urlsafe(24)
         (upload_dir() / f"{token}.ged").write_bytes(data)
-        by, skipped = plan(records)
+        by, skipped, new = plan(records)
         born = birth_bounds(by)
         return render_template("admin_import_preview.html", token=token, filename=upload.filename, by=by,
                                people=[person_values(p, born[p["xref"]]) for p in by["INDI"][:100]],
-                               warning=warning, skipped=sorted(skipped.items()), dupes=possible_duplicates(by["INDI"]))
+                               warning=warning, skipped=sorted(skipped.items()), dupes=possible_duplicates(by["INDI"]),
+                               new=[(EVENT_NAMES.get(tag, tag), KINDS[kind], n)
+                                    for (tag, kind), n in sorted(new.items())])
     history = query("SELECT * FROM app_imports ORDER BY id DESC")
     for h in history:
         h["counts"] = {k: len(v) for k, v in json.loads(h["created"]).items()}
@@ -229,9 +304,11 @@ def id_allocator():
 
 def write(records):
     """Create everything; returns the created IDs by kind, for undo."""
-    by, _ = plan(records)
+    by, _, new = plan(records)
     types, t = event_types(), tree()
     made = {"people": [], "families": [], "sources": [], "xnotes": [], "events": []}
+    added, made["eventtypes"] = add_event_types(new)
+    types.update(added)
     ids, places, next_id = {}, set(), id_allocator()
     for s in by["SOUR"]:
         ids[s["xref"]] = next_id("sources", "sourceID", "S", {
@@ -293,7 +370,7 @@ def write(records):
     # Worked out here rather than per person afterwards: who has children (TNG's haskids on their own child row)
     # and each child's first family (famc).
     parents_with_kids = {ids.get(val(f, k)) for f in by["FAM"] if first(f, "CHIL") for k in ("HUSB", "WIFE")}
-    famc = {}
+    famc, rels = {}, child_relations(by)
     for f in by["FAM"]:
         husband, wife = (ids.get(val(f, k), "") for k in ("HUSB", "WIFE"))
         v = {"husband": husband, "wife": wife, "changedate": now(), "changedby": g.user["username"],
@@ -308,10 +385,15 @@ def write(records):
         made["families"].append(fid)
         for n, c in enumerate((c for c in f["children"] if c["tag"] == "CHIL" and c["value"] in ids), 1):
             kid = ids[c["value"]]
-            insert("children", {"gedcom": t, "familyID": fid, "personID": kid, "ordernum": n,
-                                    "haskids": int(kid in parents_with_kids)})
+            frel, mrel = rels.get((c["value"], f["xref"]), ("", ""))
+            insert("children", {"gedcom": t, "familyID": fid, "personID": kid, "ordernum": n, "frel": frel,
+                                    "mrel": mrel, "haskids": int(kid in parents_with_kids)})
             famc.setdefault(kid, fid)
         events(f, fid, "F", FAMILY_VITALS)
+    places.discard("")
+    known = {r["place"].rstrip().lower() for chunk in chunks(sorted(places))
+             for r in query(f"SELECT place FROM places WHERE gedcom = %s AND place IN ({marks(chunk)})", (t, *chunk))}
+    made["places"] = sorted(p for p in places if p.rstrip().lower() not in known)  # for undo
     add_places(*places)
     pairs = list(famc.items())
     for i in range(0, len(pairs), 500):  # 500 children per UPDATE
@@ -340,6 +422,21 @@ def marks(ids):
     return ",".join(["%s"] * len(ids))
 
 
+def chunks(items, n=500):
+    return (items[i:i + n] for i in range(0, len(items), n))
+
+
+def unused_places(names):
+    """Of these place names, the ones no record or cemetery uses (the database ignores case and trailing spaces)."""
+    used = set()
+    for chunk in chunks(names):
+        for table, col in (*PLACE_COLUMNS, ("cemeteries", "place")):
+            where, args = ("", chunk) if table == "cemeteries" else ("gedcom = %s AND ", (tree(), *chunk))
+            used.update(r["p"].rstrip().lower() for r in query(
+                f"SELECT DISTINCT {col} AS p FROM {table} WHERE {where}{col} IN ({marks(chunk)})", args))
+    return [n for n in names if n.rstrip().lower() not in used]
+
+
 @bp.post("/import/<int:import_id>/undo")
 def undo_import(import_id):
     imp = one("SELECT * FROM app_imports WHERE id = %s AND undone_at IS NULL", (import_id,))
@@ -356,6 +453,13 @@ def undo_import(import_id):
                   " automatically.")
             return redirect(url_for("admin.import_gedcom"))
     owners = made["people"] + made["families"]
+    if made["people"]:  # what the site added to imported people since: as when deleting a person by hand
+        people = made["people"]
+        for table in ("app_face_tags", "app_watches", "app_census_links"):
+            execute(f"DELETE FROM {table} WHERE gedcom = %s AND personID IN ({marks(people)})", (t, *people))
+        execute(f"DELETE FROM app_comments WHERE gedcom = %s AND kind = 'person' AND target IN ({marks(people)})",
+                (t, *people))
+        unlink_users(people)
     if owners:
         for table, col in (("events", "persfamID"), ("notelinks", "persfamID"),
                            ("citations", "persfamID"), ("medialinks", "personID")):
@@ -371,6 +475,12 @@ def undo_import(import_id):
         execute(f"DELETE FROM sources WHERE gedcom = %s AND sourceID IN ({marks(made['sources'])})"
                 " AND NOT EXISTS (SELECT 1 FROM citations c WHERE c.gedcom = sources.gedcom"
                 " AND c.sourceID = sources.sourceID)", (t, *made["sources"]))
+    for chunk in chunks(unused_places(made.get("places", []))):  # unless someone edited the place since
+        execute(f"DELETE FROM places WHERE gedcom = %s AND changedate <= %s AND place IN ({marks(chunk)})",
+                (t, imp["at"], *chunk))
+    if made.get("eventtypes"):  # imports before kinds of event came in with them have none
+        execute(f"DELETE FROM eventtypes WHERE eventtypeID IN ({marks(made['eventtypes'])}) AND NOT EXISTS"
+                " (SELECT 1 FROM events e WHERE e.eventtypeID = eventtypes.eventtypeID)", made["eventtypes"])
     execute("UPDATE app_imports SET undone_at = NOW() WHERE id = %s", (import_id,))
     audit("undo import", "app_imports", str(import_id), {k: len(v) for k, v in made.items()}, None)
     flash(f"Undone: removed {len(made['people'])} people and {len(made['families'])} families.")
