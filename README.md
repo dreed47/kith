@@ -353,7 +353,8 @@ sample family (`app/sample.ged`, made by `scripts/make_sample_gedcom.py`). A dat
 file in `app/migrations/`. It runs once on every site at its next start, so it must be safe to run twice.
 
 The landing page at kithgenealogy.org is `site/`, published by `.github/workflows/pages.yml`. Its tour video is
-recorded by `scripts/tour/record.sh` (needs Playwright, Chromium and ffmpeg; see the script's header).
+recorded by `scripts/tour/record.sh` (needs Playwright, Chromium and ffmpeg; see the script's header). The TikTok and
+YouTube videos are made by `scripts/promo/` (see the header of `scripts/promo/site.sh`).
 
 See `CONTRIBUTING.md`.
 

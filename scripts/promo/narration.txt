@@ -1,0 +1,50 @@
+[intro]
+Your great-great-grandmother survived a sea crossing, two wars and eleven children. Surely she deserves better than living behind a monthly subscription. Stop paying, and the whole family gets locked out. Kith is a free, open-source family history, genealogy website that you run yourself. No rent. No landlord. Let's have a look around.
+
+[import]
+A new site starts empty, like a family reunion five minutes before the food arrives. You can type everyone in by hand, if you have a free decade. Or export a GEDCOM file from Ancestry, MyHeritage, FamilySearch, or a desktop program, and bring the whole tree in at once. Kith shows you what's in the file before anything is saved. And if it all goes horribly wrong, there's an undo button. Try getting that from a real family.
+
+[search]
+Finding someone is easy. Just start typing a name. Search even copes with married names, and with the creative spellings your ancestors used, apparently just to annoy you.
+
+[person]
+Every person gets their own page. Births, marriages and deaths, with places and sources. Notes, and a life story. Parents, spouses, children, and even the half-siblings nobody talks about at Christmas. A map of where their life happened. And links that search other genealogy sites, and old newspapers, for them.
+
+[faces]
+Now, old photos. Every family has a shoebox of stern people nobody can name. Open a photo, draw a box around a face, and pick who it is. Kith even suggests likely candidates from the family.
+
+[portrait]
+And each tagged face becomes that person's portrait. Great-grandad finally gets his close-up. He still isn't smiling.
+
+[charts]
+There's a chart for every way of looking at a family. The hourglass: parents above, children below, like a very tidy argument. The fan chart spreads the ancestors around a person, with photos, and prints as a poster for the wall. And the descendants chart follows a family all the way down to the cousins you've never met.
+
+[relationship]
+How exactly is cousin Barry related to you? Kith shows the path between any two people, face by face. Cousin Barry is not "some guy from a cookout." He is a documented some guy [pause] from a cookout.
+
+[places]
+Places drill down from state, to county, to town. Pick one, and see everyone who was born, married, or buried there.
+
+[map]
+Family maps show where a surname's people were born and died. Watch a family spread across the country, one wagon at a time.
+
+[census]
+Census records get pages of their own. Each census year lists its households by place, and Kith suggests which person in your tree each name belongs to. Even when the census taker clearly couldn't spell.
+
+[privacy]
+Your site is private. Visitors see a welcome page, not your family secrets. Relatives ask for an account, and you decide who gets in. Living people are hidden from anyone who shouldn't see them. And Kith has no ads, no tracking, and absolutely nothing to sell you.
+
+[relatives]
+Once they're in, relatives can mark which person is them, watch the people they care about, leave comments, and get an optional weekly email of what's new. Finally, a family email that isn't a chain letter.
+
+[themes]
+There are five themes. Dark mode, for late-night digging. Large print, for anyone who's old enough to need reading glasses. Each person picks their own. And it all works on a phone.
+
+[about]
+Now, a small confession. No surprise! I'm not a real narrator. I'm an AI. And much of Kith's code was written by an AI too: Claude, from Anthropic. So, the computer wrote a lot of the code. But Kith was designed and engineered by an experienced IT professional, who decided what got built, and tested every change. It runs the author's own family site every day, with more than twenty-two thousand people in it.
+
+[install]
+So, how do you get it? One command on Proxmox. Agreeing on the potato salad still takes longer. There are also steps for Docker, and for a plain Debian server, for those who enjoy typing. Updates are one command too, and the Proxmox install backs up your tree every night, while you sleep.
+
+[outro]
+Are you already on a TNG site? It moves over in one command, user accounts and passwords included. Kith is free and open source. Find it at kith genealogy dot org. Your ancestors would approve. Probably. Thanks for watching.
