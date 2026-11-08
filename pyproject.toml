@@ -1,6 +1,6 @@
 [project]
 name = "kith"
-version = "0.4.3"
+version = "0.4.4"
 requires-python = ">=3.12"
 dependencies = [
     "flask>=3.1",

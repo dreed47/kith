@@ -2,7 +2,7 @@
 
 Kith follows semantic versioning. Releases are on GitHub.
 
-## Unreleased
+## 0.4.4 (2026-11-08)
 
 - Menus (your name at top right, "Add…" on a person page) close when you click anywhere else or press Escape.
 - Browser tabs and bookmarks show Kith's tree icon.
