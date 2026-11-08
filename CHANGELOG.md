@@ -2,6 +2,11 @@
 
 Kith follows semantic versioning. Releases are on GitHub.
 
+## Unreleased
+
+- Menus (your name at top right, "Add…" on a person page) close when you click anywhere else or press Escape.
+- Browser tabs and bookmarks show Kith's tree icon.
+
 ## 0.4.3 (2026-11-04)
 
 - GEDCOM import keeps the cause of death, as a note on the death. Before, it was left out.
