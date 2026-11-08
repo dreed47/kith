@@ -2,6 +2,10 @@
 
 Kith follows semantic versioning. Releases are on GitHub.
 
+## 0.4.5 (2026-11-08)
+
+- A PNG app icon, so phones and desktop web-app makers (such as Omarchy's) find it.
+
 ## 0.4.4 (2026-11-08)
 
 - Menus (your name at top right, "Add…" on a person page) close when you click anywhere else or press Escape.
