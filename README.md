@@ -3,7 +3,7 @@
 A private family history website for your relatives: people, families, photos, documents and stories, with
 living people kept private. Free and open source (AGPL), written in Python/Flask on MariaDB.
 
-Website: https://kithgenealogy.org
+Website: https://kithgenealogy.org · Video tour (5 minutes): https://www.youtube.com/watch?v=DjpW0lOCsnE
 
 Coming from Ancestry, MyHeritage, FamilySearch or a desktop program? Export a GEDCOM file there and import it. See
 [Your tree](#your-tree). Coming from TNG? Your whole site moves over in one command, user accounts and passwords
